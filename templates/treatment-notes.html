@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Treatment Notes</title>
+    <link rel="stylesheet" href="/static/forms.css">
+    <link rel="stylesheet" href="/static/nav.css">
+    <link rel="preload" href="/static/fonts/MaterialIcons-Regular.woff2" as="font" type="font/ttf" crossorigin="anonymous">
+</head>
+<body>
+  <script src="/static/js/nav-bar.js"></script>
+  <div id="top-nav"></div>
+    <div id="i3q7v4" class="form-section">
+      <h1 id="treatment-heading" style="font-size: 1.8rem;">Treatment Notes</h1>
+      <div id="appt-summary" style="color: #555; font-size: 0.95rem; margin-bottom: 1rem;"></div>
+      <div class="section">
+        <form onsubmit="submitTreatmentNote(event)" method="post" id="i7vw2d" class="treatment-form form-flex">
+          <label>Subjective Findings<textarea name="subjective_findings" rows="3" id="i84xe9-2"></textarea></label>
+          <label>Objective Findings<textarea name="objective_findings" rows="3" id="iazhsj-2"></textarea></label>
+          <label>Treatment<textarea name="treatment" rows="3" id="i4sok2-2"></textarea></label>
+          <label>Plan<textarea name="plan" rows="3" id="ig3tph-2"></textarea></label>
+          <label for="note-to-patient">Note to Patient (optional):</label>
+            <textarea
+              id="note-to-patient"
+              name="note_to_patient"
+              rows="3"
+              placeholder="Enter any note you'd like to send to the patient"
+            ></textarea>
+          <label class="toggle-group">Consent to Treatment
+            <div class="switch-wrapper">
+              <input type="checkbox" id="consent" name="consent" class="switch-checkbox">
+              <span class="switch-slider"></span>
+            </div>
+          </label>
+          <label class="toggle-group">Team Alert
+            <div class="switch-wrapper">
+              <input type="checkbox" id="team_alert" name="team_alert" class="switch-checkbox" onchange="toggleAlertDetails()">
+              <span class="switch-slider"></span>
+            </div>
+          </label>
+          <div id="alert-details" style="display:none;">
+            <label id="ik5zbm">Alert Comment <textarea name="alert_comment" rows="2" id="iznbsm-2"></textarea></label>
+            <label class="toggle-group">Alert Resolved
+              <div class="switch-wrapper">
+                <input type="checkbox" id="alert_resolved" name="alert_resolved" class="switch-checkbox">
+                <span class="switch-slider"></span>
+              </div>
+            </label>
+          </div>
+
+          <div id="billing-section" style="margin-top: 2rem; width: 100%; grid-column: 1 / -1;">
+            <h3>Billing</h3>
+            <table class="billing-table">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Description</th>
+                  <th>Number</th>
+                  <th>Modifier</th>
+                  <th>Rate</th>
+                  <th>Total</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="billing-table-body">
+                <tr class="billing-entry">
+                  <td>
+                    <input name="code_id[]" list="billing-codes-datalist" placeholder="Start typing code" oninput="populateBillingRow(this)">
+                  </td>
+                  <td class="description-cell">—</td>
+                  <td>
+                    <input type="number" name="number[]" value="1" min="1" onchange="recalculateTotal(this)">
+                  </td>
+                  <td>
+                    <select name="billing_modifier[]" onchange="applyModifier(this)">
+                      <option value="">None</option>
+                    </select>
+                  </td>
+                  <td class="rate-cell">—</td>
+                  <td class="total-cell">—</td>
+                  <td>
+                    <button type="button" onclick="removeBillingRow(this)">✕</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div id="billing-total" style="margin-top: 1rem; font-weight: bold; text-align: right;">
+              Total: R<span id="overall-total">0.00</span>
+            </div>
+            <datalist id="billing-codes-datalist"></datalist>
+            <button type="button" onclick="addBillingRow()">+ Add Code</button>
+          </div>
+
+          <button type="submit">Submit Note</button>
+        </form>
+      </div>
+    </div>
+    <script src="/static/js/nav-bar.js"></script>
+    <div id="bottom-nav"></div>
+    <script>
+      function toggleAlertDetails() {
+        const teamAlertChecked = document.getElementById("team_alert").checked;
+        document.getElementById("alert-details").style.display = teamAlertChecked ? "block" : "none";
+      }
+
+      // Ensure state is reflected on load
+      document.addEventListener("DOMContentLoaded", function() {
+        toggleAlertDetails();
+        document.getElementById("team_alert").addEventListener("change", toggleAlertDetails);
+      });
+    </script>
+    <script>
+      let therapistName = '';
+      let therapistId = '';
+
+      async function submitTreatmentNote(event) {
+        event.preventDefault();
+
+        const form = document.getElementById("i7vw2d");
+        const formData = new FormData(form);
+        const params = new URLSearchParams(window.location.search);
+        const bookingId = params.get("booking_id");
+
+        // Gather billing data first
+        const billingRows = document.querySelectorAll("#billing-table-body .billing-entry");
+        const billingEntries = Array.from(billingRows).map(row => ({
+          code_id: row.querySelector("input[name='code_id[]']").value.split(" - ")[0],
+          billing_modifier: row.querySelector("select[name='billing_modifier[]']").value || "",
+          final_fee: parseFloat(row.querySelector(".total-cell").textContent) || 0
+        }));
+
+        // 1. Before billingPayload: debug log
+        console.log("Preparing billing submission");
+        // Safeguard for appt before building billingPayload
+        if (!appt) {
+          console.warn("❌ No appointment data found. Skipping billing submission.");
+          return;
+        }
+        const billingPayload = {
+          session: {
+            id: bookingId,
+            patient_id: appt.patient_id,
+            therapist_id: therapistId,
+            session_date: appt?.date || new Date().toISOString().split("T")[0],
+            notes: formData.get("treatment") || "",
+            total_amount: parseFloat(document.getElementById("overall-total").textContent) || 0
+          },
+          entries: billingEntries
+        };
+        // 2. After billingPayload: debug log
+        console.log("Billing payload:", billingPayload);
+
+        // Prepare treatment note payload
+        const payload = {
+          appointment_id: bookingId,
+          appointment_date: document.getElementById("appt-summary").textContent.split("•")[0].trim(),
+          start_time: document.getElementById("appt-summary").textContent.split("•")[1].trim(),
+          duration: parseInt(document.getElementById("appt-summary").textContent.split("•")[2]) || 0,
+          patient_name: document.getElementById("treatment-heading").textContent.split(" - ")[0],
+          patient_id: appt.patient_id,  // use actual patient_id from the appointment object
+          profession: currentProfession || "",
+          therapist_name: therapistName || "",
+          therapist_id: therapistId || "",
+          subjective_findings: formData.get("subjective_findings"),
+          objective_findings: formData.get("objective_findings"),
+          treatment: formData.get("treatment"),
+          plan: formData.get("plan"),
+          note_to_patient: document.getElementById('note-to-patient').value.trim(),
+          consent_to_treatment: formData.get("consent") ? "Yes" : "No",
+          team_alert: formData.get("team_alert") ? "Yes" : "No",
+          alert_comment: formData.get("alert_comment"),
+          alert_resolved: formData.get("alert_resolved") ? "Yes" : "No"
+        };
+
+        try {
+          // 3. Before fetch: debug log
+          console.log("Sending billing data to /submit-billing...");
+          const billingRes = await fetch("/submit-billing", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(billingPayload)
+          });
+          // 4. After fetch: debug log
+          console.log("Billing response status:", billingRes.status);
+
+          if (!billingRes.ok) throw new Error("Failed to save billing");
+
+          // Now submit treatment note
+          const response = await fetch("/submit-treatment-note", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+          });
+
+          if (!response.ok) throw new Error("Failed to save treatment note");
+
+          // Success: show notification
+          showToast("Billing submitted successfully.", "#2D6356");
+          showToast("Treatment note saved successfully.", "#32517A");
+          // After success, go back after 3 seconds
+          setTimeout(() => {
+            history.back();
+          }, 3000);
+        } catch (err) {
+          console.error("Error saving treatment note:", err);
+          alert("Error saving treatment note.");
+        }
+      }
+    </script>
+    <script>
+      function addBillingRow() {
+        const row = document.querySelector(".billing-entry").cloneNode(true);
+        row.querySelectorAll("input").forEach(input => {
+          if (input.type !== "number") input.value = "";
+        });
+        row.querySelector(".description-cell").textContent = "—";
+        row.querySelector(".rate-cell").textContent = "—";
+        row.querySelector(".total-cell").textContent = "—";
+        document.getElementById("billing-table-body").appendChild(row);
+        loadModifiers(row.querySelector("select[name='billing_modifier[]']"));
+      }
+
+      function removeBillingRow(button) {
+        const row = button.closest("tr");
+        const table = document.getElementById("billing-table-body");
+        if (table.rows.length > 1) table.removeChild(row);
+      }
+
+      async function populateBillingRow(input) {
+        const codeInput = input.value.split(" - ")[0];
+        try {
+          const response = await fetch("/api/billing-codes");
+          const codes = await response.json();
+          const match = codes.find(c => c.code === codeInput);
+          if (match) {
+            const row = input.closest("tr");
+            row.dataset.baseRate = match.base_fee;
+            row.querySelector(".description-cell").textContent = match.description;
+            row.querySelector(".rate-cell").textContent = match.base_fee.toFixed(2);
+            const quantity = parseInt(row.querySelector("input[name='number[]']").value) || 1;
+            row.querySelector(".total-cell").textContent = (match.base_fee * quantity).toFixed(2);
+            updateOverallTotal();
+          }
+        } catch (err) {
+          console.error("Error populating billing row:", err);
+        }
+      }
+
+      async function loadModifiers(selectElement) {
+        try {
+          // Use currentProfession if available, otherwise fallback to no filter
+          const response = await fetch(`/api/billing_modifiers?profession=${encodeURIComponent(currentProfession || "")}`);
+          const billing_modifiers = await response.json();
+          billing_modifiers.forEach(mod => {
+            const option = document.createElement("option");
+            // Use modifier_code and modifier_description for value/text
+            option.value = mod.modifier_code;
+            option.textContent = `${mod.modifier_code} - ${mod.modifier_description}`;
+            // Use modifier_multiplier as the adjustment factor
+            option.dataset.factor = mod.modifier_multiplier;
+            selectElement.appendChild(option);
+          });
+        } catch (err) {
+          console.error("Failed to load billing_modifiers", err);
+        }
+      }
+
+      function applyModifier(select) {
+        const row = select.closest("tr");
+        const baseRate = parseFloat(row.dataset.baseRate || 0);
+        const factor = parseFloat(select.selectedOptions[0].dataset.factor || 1);
+        const adjustedRate = baseRate * factor;
+        row.querySelector(".rate-cell").textContent = adjustedRate.toFixed(2);
+
+        const quantity = parseInt(row.querySelector("input[name='number[]']").value) || 1;
+        row.querySelector(".total-cell").textContent = (adjustedRate * quantity).toFixed(2);
+
+        updateOverallTotal();
+      }
+
+      function recalculateTotal(input) {
+        const row = input.closest("tr");
+        const rateText = row.querySelector(".rate-cell").textContent;
+        const rate = parseFloat(rateText);
+        const quantity = parseInt(input.value) || 1;
+        if (!isNaN(rate)) {
+          row.querySelector(".total-cell").textContent = (rate * quantity).toFixed(2);
+        }
+        updateOverallTotal();
+      }
+
+// Apply Modifier Rule 008 (50% additional procedure)
+function applyModifierRule008(skipUpdateTotal) {
+  // Only apply this rule for physiotherapy
+  if (currentProfession.toLowerCase() !== "physiotherapy") {
+    return; // Only apply this rule for physiotherapy
+  }
+  const rows = document.querySelectorAll("#billing-table-body .billing-entry");
+  const rateMap = [];
+
+  rows.forEach(row => {
+    const codeInput = row.querySelector("input[name='code_id[]']").value;
+    const baseRate = parseFloat(row.dataset.baseRate || 0);
+    const code = codeInput.split(" - ")[0].trim();
+    rateMap.push({ row, code, baseRate });
+  });
+
+  // Sort by baseRate descending
+  rateMap.sort((a, b) => b.baseRate - a.baseRate);
+
+  const excludedCodes = [
+    "72407", "72501", "72502", "72503", "72507", "72508", "72509",
+    "72701", "72702", "72703", "72704", "72705", "72706", "72707", "72708",
+    "72720", "72721", "72801", "72803", "72901", "72903"
+  ];
+
+  // Identify the first major procedure that is not excluded
+  let majorProcedureIndex = rateMap.findIndex(entry => !excludedCodes.includes(entry.code));
+  if (majorProcedureIndex === -1) majorProcedureIndex = 0; // fallback to first
+
+  for (let i = 0; i < rateMap.length; i++) {
+    const { row, code, baseRate } = rateMap[i];
+
+    // Skip the major procedure (first non-excluded)
+    if (i === majorProcedureIndex) continue;
+
+    if (!excludedCodes.includes(code)) {
+      const rateCell = row.querySelector(".rate-cell");
+      const totalCell = row.querySelector(".total-cell");
+      const quantity = parseInt(row.querySelector("input[name='number[]']").value) || 1;
+      const modifiedRate = baseRate * 0.5;
+
+      rateCell.textContent = modifiedRate.toFixed(2);
+      totalCell.textContent = (modifiedRate * quantity).toFixed(2);
+
+      const modifierSelect = row.querySelector("select[name='billing_modifier[]']");
+      if (modifierSelect && ![...modifierSelect.options].some(o => o.value === "0008")) {
+        const option = document.createElement("option");
+        option.value = "0008";
+        option.textContent = "0008 - 50% additional procedure";
+        modifierSelect.appendChild(option);
+      }
+      modifierSelect.value = "0008";
+    }
+  }
+  updateOverallTotal(true);
+}
+
+function updateOverallTotal(skipRule008 = false) {
+  const totalCells = document.querySelectorAll(".total-cell");
+  let sum = 0;
+  totalCells.forEach(cell => {
+    const value = parseFloat(cell.textContent);
+    if (!isNaN(value)) sum += value;
+  });
+  document.getElementById("overall-total").textContent = sum.toFixed(2);
+
+  if (!skipRule008) {
+    applyModifierRule008(true);
+  }
+}
+    </script>
+    <script>
+      // Store profession for later use
+      let currentProfession = '';
+
+      document.addEventListener("DOMContentLoaded", async () => {
+        const params = new URLSearchParams(window.location.search);
+        const bookingId = params.get("booking_id");
+        if (!bookingId) return;
+
+        try {
+          const res = await fetch(`/bookings/${bookingId}`);
+          const appt = await res.json();
+          window.appt = appt;  // make the booking data available globally
+
+          const dateStr = new Date(appt.date).toLocaleDateString();
+          const timeStr = appt.time || "Unknown";
+          const durationStr = `${appt.duration || 0} minutes`;
+
+          const heading = document.getElementById("treatment-heading");
+          heading.textContent = `${appt.name || "Patient"} - ${appt.profession || ""} Notes`;
+
+          const summary = document.getElementById("appt-summary");
+          summary.textContent = `${dateStr} • ${timeStr} • ${durationStr}`;
+
+          currentProfession = appt.profession || '';
+          therapistName = appt.therapist || '';
+          therapistId = appt.therapist_id ? String(appt.therapist_id) : '';
+          populateBillingCodes(); // ensure profession is available before loading codes
+        } catch (err) {
+          console.error("Failed to fetch appointment", err);
+        }
+        // Populate modifiers for all existing modifier selects
+        document.querySelectorAll("select[name='billing_modifier[]']").forEach(loadModifiers);
+      });
+    </script>
+    <script>
+      async function addBillingCode() {
+        const container = document.getElementById('billing-codes');
+        const entry = document.createElement('div');
+        entry.className = 'billing-entry';
+        entry.innerHTML = `
+          <input name="code_id[]" list="billing-codes-datalist" placeholder="Start typing code or description">
+          <input type="text" name="billing_modifier[]" placeholder="Modifier (optional)" />
+        `;
+        container.appendChild(entry);
+        await populateBillingCodes();
+      }
+
+      async function populateBillingCodes() {
+        if (!currentProfession) return;
+        try {
+          const response = await fetch(`/api/billing-codes?profession=${encodeURIComponent(currentProfession)}`);
+          const codes = await response.json();
+          const datalist = document.getElementById("billing-codes-datalist");
+          datalist.innerHTML = ""; // clear previous
+
+          codes.forEach(code => {
+            const option = document.createElement("option");
+            const truncatedDesc = code.description.length > 50 ? code.description.slice(0, 50) + '...' : code.description;
+            option.value = `${code.code} - ${truncatedDesc}`;
+            datalist.appendChild(option);
+          });
+        } catch (err) {
+          console.error("Failed to load billing codes", err);
+        }
+      }
+    </script>
+    <div id="toast-container" style="position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+      display: flex; flex-direction: column; gap: 0.5rem; align-items: center; z-index: 9999;"></div>
+  <script>
+    function showToast(message, bgColor = "#2D6356") {
+      const container = document.getElementById("toast-container");
+      const toast = document.createElement("div");
+      toast.textContent = message;
+      toast.style.backgroundColor = bgColor;
+      toast.style.color = "white";
+      toast.style.padding = "0.75rem 1.25rem";
+      toast.style.borderRadius = "8px";
+      toast.style.fontSize = "0.9rem";
+      toast.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+      toast.style.minWidth = "220px";
+      toast.style.textAlign = "center";
+      toast.style.opacity = "0.95";
+
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.remove();
+      }, 3000);
+    }
+  </script>
+    </body>
+    </html>

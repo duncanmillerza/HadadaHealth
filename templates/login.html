@@ -1,0 +1,116 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login - HadadaHealth</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f8f8f8;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .login-container {
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      width: 300px;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 0.75rem;
+      margin-bottom: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    button {
+      width: 100%;
+      padding: 0.75rem;
+      background-color: #2D6356;
+      border: none;
+      color: white;
+      font-size: 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #244c45;
+    }
+    .error {
+      color: red;
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="login-container">
+  <h2>Login</h2>
+  <div id="error" class="error"></div>
+  <input type="text" id="username" placeholder="Username" required>
+  <input type="password" id="password" placeholder="Password" required>
+  <button onclick="submitLogin()">Login</button>
+</div>
+
+<script>
+async function submitLogin() {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value.trim();
+  const errorDiv = document.getElementById('error');
+  errorDiv.textContent = "";
+
+  if (!username || !password) {
+    errorDiv.textContent = "Please fill in both fields.";
+    return;
+  }
+
+  const credentials = btoa(username + ":" + password);
+  try {
+    const res = await fetch('/login', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Basic ' + credentials
+      },
+      credentials: 'include'
+    });
+    if (res.ok) {
+      window.location.href = "/";
+    } else {
+      const data = await res.json();
+      errorDiv.textContent = data.detail || "Login failed.";
+    }
+  } catch (err) {
+    console.error('Login error:', err);
+    errorDiv.textContent = "Login failed.";
+  }
+}
+// Automatically focus on username field when page loads and allow Enter to submit login
+window.onload = function() {
+  const usernameField = document.getElementById('username');
+  const passwordField = document.getElementById('password');
+  usernameField.focus();
+
+  // Allow Enter key to submit login
+  [usernameField, passwordField].forEach(field => {
+    field.addEventListener('keypress', function(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        submitLogin();
+      }
+    });
+  });
+};
+</script>
+
+</body>
+</html>

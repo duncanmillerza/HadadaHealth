@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Settings</title>
+  <link rel="stylesheet" href="/static/calendar.css" />
+  <link rel="stylesheet" href="/static/nav.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+</head>
+<body>
+  <script src="/static/js/nav-bar.js"></script>
+  <div id="top-nav"></div>
+
+  <main class="dashboard">
+    <div class="section">
+      <h2>Schedule Settings</h2>
+      <label>Start Time: <input type="time" id="start-time" /></label><br /><br />
+      <label>End Time: <input type="time" id="end-time" /></label><br /><br />
+      <label>Slot Duration (minutes): <input type="number" id="slot-duration" min="5" step="5" /></label><br />
+    </div>
+
+    <div class="section">
+      <h2>Days of the Week</h2>
+        <label><input type="checkbox" data-day-checkbox value="Monday" checked /> Monday</label><br />
+        <label><input type="checkbox" data-day-checkbox value="Tuesday" checked /> Tuesday</label><br />
+        <label><input type="checkbox" data-day-checkbox value="Wednesday" checked /> Wednesday</label><br />
+        <label><input type="checkbox" data-day-checkbox value="Thursday" checked /> Thursday</label><br />
+        <label><input type="checkbox" data-day-checkbox value="Friday" checked /> Friday</label><br />
+        <label><input type="checkbox" data-day-checkbox value="Saturday" /> Saturday</label><br />
+        <label><input type="checkbox" data-day-checkbox value="Sunday" /> Sunday</label><br />
+</div>
+
+    <div class="section">
+      <h2>Appearance</h2>
+      <label><input type="checkbox" id="dark-mode" /> Enable Dark Mode</label>
+    </div>
+    <div class="section">
+      <h2>Professions</h2>
+      <div id="professions-list" style="margin-bottom:1rem;">
+        <!-- Professions will be loaded here -->
+      </div>
+      <div style="text-align:center; margin-top:1rem;">
+        <button onclick="openAddProfessionModal()" style="padding: 0.6rem 1.2rem; background-color: #32517A; color: white; border: none; border-radius: 6px; font-size: 1rem;">Add Profession</button>
+      </div>
+    </div>
+    <div class="section">
+      <h2>Clinics</h2>
+      <div id="clinics-list" style="margin-bottom:1rem;">
+        <!-- Clinics will be loaded here -->
+      </div>
+      <div style="text-align:center; margin-top:1rem;">
+        <button onclick="openAddClinicModal()" style="padding: 0.6rem 1.2rem; background-color: #32517A; color: white; border: none; border-radius: 6px; font-size: 1rem;">Add Clinic</button>
+      </div>
+    </div>
+    <div class="section">
+      <h2>Bulk Import</h2>
+      <div style="text-align:center; margin-top:1rem;">
+        <input type="file" id="patient-upload" accept=".xlsx, .xls" style="display:none" onchange="submitPatientUpload()" />
+        <button onclick="document.getElementById('patient-upload').click()" style="padding: 0.6rem 1.2rem; background-color: #2D6356; color: white; border: none; border-radius: 6px; font-size: 1rem; width: 90%; margin-bottom: 1rem;">Upload Patients (Excel)</button><br/>
+
+        <input type="file" id="therapist-upload" accept=".xlsx, .xls" style="display:none" onchange="submitTherapistUpload()" />
+        <button onclick="document.getElementById('therapist-upload').click()" style="padding: 0.6rem 1.2rem; background-color: #32517A; color: white; border: none; border-radius: 6px; font-size: 1rem; width: 90%; margin-bottom: 1rem;">Upload Therapists (Excel)</button>
+        <br/>
+        <input type="file" id="medicalaid-upload" accept=".xlsx, .xls" style="display:none" onchange="submitMedicalAidUpload()" />
+        <button onclick="document.getElementById('medicalaid-upload').click()" style="padding: 0.6rem 1.2rem; background-color: #6A3E74; color: white; border: none; border-radius: 6px; font-size: 1rem; width: 90%; margin-bottom: 1rem;">Upload Medical Aids (Excel)</button>
+      </div>
+    </div>
+    <div style="text-align: center; margin: 2rem 0;">
+      <button onclick="saveSettings()" style="padding: 0.6rem 1.2rem; background-color: #2D6356; color: white; border: none; border-radius: 6px; font-size: 1rem;">Save Settings</button>
+    </div>
+  </main>
+
+  <script src="/static/js/nav-bar.js"></script>
+  <div id="bottom-nav"></div>
+
+<!-- Removed broken/incomplete saveSettings script -->
+
+<div id="toast" style="position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #2D6356; color: white; padding: 1rem 1.5rem; border-radius: 6px; box-shadow: 0px 2px 8px rgba(0,0,0,0.3); display: none; font-size: 1rem; z-index: 9999;">Settings Saved!</div>
+
+<script>
+async function saveSettings() {
+  const startTime = document.getElementById('start-time').value;
+  const endTime = document.getElementById('end-time').value;
+  const slotDuration = parseInt(document.getElementById('slot-duration').value, 10);
+  const darkMode = document.getElementById('dark-mode').checked;
+
+  const weekdayCheckboxes = document.querySelectorAll('input[data-day-checkbox]');
+  const weekdays = [];
+
+  weekdayCheckboxes.forEach((checkbox) => {
+    if (checkbox.checked) {
+      weekdays.push(checkbox.value);
+    }
+  });
+
+  if (weekdays.length === 0) {
+    showToast('Please select at least one weekday.', true);
+    return;
+  }
+
+  const payload = {
+    start_time: startTime,
+    end_time: endTime,
+    slot_duration: slotDuration,
+    weekdays: weekdays,
+    dark_mode: darkMode
+  };
+
+
+  try {
+    const response = await fetch('/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+
+    if (!response.ok) throw new Error('Failed to save settings');
+    showToast('Settings saved successfully!');
+  } catch (error) {
+    showToast('Error: ' + error.message, true);
+  }
+}
+
+function showToast(message, isError = false) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.style.background = isError ? '#96364C' : '#2D6356';
+  toast.style.display = 'block';
+  setTimeout(() => {
+    toast.style.display = 'none';
+  }, 3000);
+}
+</script>
+
+<script>
+async function loadSettings() {
+  try {
+    const res = await fetch('/settings');
+    const settings = await res.json();
+
+    document.getElementById('start-time').value = settings.start_time;
+    document.getElementById('end-time').value = settings.end_time;
+    document.getElementById('slot-duration').value = settings.slot_duration;
+    document.getElementById('dark-mode').checked = settings.dark_mode;
+
+    // Set weekdays
+    const weekdayCheckboxes = document.querySelectorAll('input[data-day-checkbox]');
+    weekdayCheckboxes.forEach(checkbox => {
+      checkbox.checked = settings.weekdays.includes(checkbox.value);
+    });
+
+  } catch (error) {
+    console.error('Failed to load settings:', error);
+  }
+}
+
+// Load settings, professions, and clinics when page loads
+window.onload = function() {
+  loadSettings();
+  loadProfessions();
+  loadClinics();
+};
+</script>
+<html>
+<div id="add-clinic-modal" style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%); background:white; padding:2rem; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.2); z-index:2000; max-width:500px; width:95%; max-height:90vh; overflow-y:auto;">
+  <h2 style="color:#2D6356; margin-bottom:1rem;">Add Clinic</h2>
+
+  <input type="text" id="clinic-name" placeholder="Clinic/Department Name" style="width:100%; margin-bottom:0.75rem; padding:0.5rem;">
+  <input type="text" id="clinic-address" placeholder="Address" style="width:100%; margin-bottom:0.75rem; padding:0.5rem;">
+  <input type="email" id="clinic-email" placeholder="Email" style="width:100%; margin-bottom:0.75rem; padding:0.5rem;">
+  <input type="text" id="clinic-phone" placeholder="Phone Number" style="width:100%; margin-bottom:1.5rem; padding:0.5rem;">
+
+  <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+    <button onclick="submitNewClinic()" style="background-color:#2D6356; color:white; border:none; border-radius:6px; padding:0.7rem 1.5rem;">Save</button>
+    <button onclick="closeAddClinicModal()" style="background-color:#96364C; color:white; border:none; border-radius:6px; padding:0.7rem 1.5rem;">Cancel</button>
+  </div>
+</div>
+</html>
+<script>
+function openAddClinicModal() {
+  document.getElementById('add-clinic-modal').style.display = 'block';
+}
+
+function closeAddClinicModal() {
+  document.getElementById('add-clinic-modal').style.display = 'none';
+}
+
+async function loadClinics() {
+  try {
+    const res = await fetch('/clinics');
+    const clinics = await res.json();
+    const container = document.getElementById('clinics-list');
+    container.innerHTML = "";
+
+    if (clinics.length === 0) {
+      container.innerHTML = "<p style='color:#666;'>No clinics added yet.</p>";
+    } else {
+      clinics.forEach(clinic => {
+        const div = document.createElement('div');
+        div.style.marginBottom = "0.75rem";
+        div.style.padding = "0.75rem";
+        div.style.border = "1px solid #ccc";
+        div.style.borderRadius = "6px";
+        div.style.cursor = "pointer";
+        div.style.backgroundColor = "#fafafa";
+        div.innerHTML = `
+          <strong>${clinic.clinic_name || ''}</strong><br/>
+          <small>${clinic.address || ''}</small>
+        `;
+        div.onclick = () => openClinicModal(clinic);
+        container.appendChild(div);
+      });
+    }
+  } catch (err) {
+    console.error('Failed to load clinics:', err);
+  }
+}
+
+async function submitNewClinic() {
+  const payload = {
+    clinic_name: document.getElementById('clinic-name').value.trim(),
+    address: document.getElementById('clinic-address').value.trim(),
+    email: document.getElementById('clinic-email').value.trim(),
+    phone: document.getElementById('clinic-phone').value.trim()
+  };
+
+  try {
+    const res = await fetch('/add-clinic', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Failed to save clinic');
+    showToast('Clinic added successfully!');
+    closeAddClinicModal();
+    loadClinics();
+  } catch (err) {
+    showToast('Error: ' + err.message, true);
+  }
+}
+</script>
+</script>
+</script>
+<script>
+async function submitPatientUpload() {
+  const fileInput = document.getElementById('patient-upload');
+  if (!fileInput.files.length) return;
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+  
+  try {
+    const res = await fetch('/import-patients', {
+      method: 'POST',
+      body: formData
+    });
+    if (!res.ok) throw new Error('Failed to import patients');
+    showToast('Patients imported successfully!');
+    fileInput.value = "";
+  } catch (err) {
+    showToast('Error: ' + err.message, true);
+  }
+}
+
+async function submitTherapistUpload() {
+  const fileInput = document.getElementById('therapist-upload');
+  if (!fileInput.files.length) return;
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+  
+  try {
+    const res = await fetch('/import-therapists', {
+      method: 'POST',
+      body: formData
+    });
+    if (!res.ok) throw new Error('Failed to import therapists');
+    showToast('Therapists imported successfully!');
+    fileInput.value = "";
+  } catch (err) {
+    showToast('Error: ' + err.message, true);
+  }
+}
+
+async function submitMedicalAidUpload() {
+  const fileInput = document.getElementById('medicalaid-upload');
+  if (!fileInput.files.length) return;
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+  
+  try {
+    const res = await fetch('/import-medical-aids', {
+      method: 'POST',
+      body: formData
+    });
+    if (!res.ok) throw new Error('Failed to import medical aids');
+    showToast('Medical aids imported successfully!');
+    fileInput.value = "";
+
+    // After successful upload, refresh medical aids list if available
+    if (typeof loadMedicalAids === 'function') {
+      loadMedicalAids();
+    }
+  } catch (err) {
+    showToast('Error: ' + err.message, true);
+  }
+}
+</script>
+</body>
+
+<div id="add-profession-modal" style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%); background:white; padding:2rem; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.2); z-index:2000; max-width:500px; width:95%; max-height:90vh; overflow-y:auto;">
+  <h2 style="color:#2D6356; margin-bottom:1rem;">Add Profession</h2>
+
+  <input type="text" id="profession-name" placeholder="Profession Name" style="width:100%; margin-bottom:0.75rem; padding:0.5rem;">
+  <input type="text" id="practice-name" placeholder="Practice Name" style="width:100%; margin-bottom:0.75rem; padding:0.5rem;">
+  <input type="text" id="practice-owner" placeholder="Practice Owner" style="width:100%; margin-bottom:0.75rem; padding:0.5rem;">
+  <input type="text" id="practice-number" placeholder="Practice Number" style="width:100%; margin-bottom:0.75rem; padding:0.5rem;">
+  <input type="email" id="practice-email" placeholder="Practice Email" style="width:100%; margin-bottom:0.75rem; padding:0.5rem;">
+  <div id="clinic-dropdown" style="position:relative; margin-bottom:1.5rem;">
+    <button type="button" onclick="toggleClinicDropdown()" style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:6px; text-align:left; background:white;">
+      <span id="clinic-dropdown-placeholder">Select Clinics</span>
+      <span style="float:right;">⬇️</span>
+    </button>
+    <div id="clinic-options" style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #ccc; border-radius:6px; max-height:200px; overflow-y:auto; z-index:3000; padding:0.5rem;">
+      <!-- Checkboxes will be dynamically loaded here -->
+    </div>
+  </div>
+
+  <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+    <button onclick="submitNewProfession()" style="background-color:#2D6356; color:white; border:none; border-radius:6px; padding:0.7rem 1.5rem;">Save</button>
+    <button onclick="closeAddProfessionModal()" style="background-color:#96364C; color:white; border:none; border-radius:6px; padding:0.7rem 1.5rem;">Cancel</button>
+  </div>
+</div>
+
+<script>
+function toggleClinicDropdown() {
+  const dropdown = document.getElementById('clinic-options');
+  dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+}
+
+async function openAddProfessionModal() {
+  document.getElementById('add-profession-modal').style.display = 'block';
+  const container = document.getElementById('clinic-options');
+  container.innerHTML = "";
+  // Reset placeholder text
+  document.getElementById('clinic-dropdown-placeholder').textContent = "Select Clinics";
+  try {
+    const res = await fetch('/clinics');
+    const clinics = await res.json();
+    clinics.forEach(clinic => {
+      const label = document.createElement('label');
+      label.style.display = 'block';
+      label.style.cursor = 'pointer';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = clinic.clinic_name;
+      checkbox.style.marginRight = "0.5rem";
+      // Update placeholder on selection change
+      checkbox.addEventListener('change', updateClinicDropdownPlaceholder);
+      label.appendChild(checkbox);
+      label.appendChild(document.createTextNode(clinic.clinic_name));
+      container.appendChild(label);
+    });
+  } catch (err) {
+    console.error('Failed to load clinics:', err);
+  }
+}
+
+function updateClinicDropdownPlaceholder() {
+  const selected = Array.from(document.querySelectorAll('#clinic-options input[type="checkbox"]:checked'))
+    .map(cb => cb.value);
+  const placeholder = document.getElementById('clinic-dropdown-placeholder');
+  if (selected.length === 0) {
+    placeholder.textContent = "Select Clinics";
+  } else {
+    placeholder.textContent = selected.join(', ');
+  }
+}
+
+function closeAddProfessionModal() {
+  document.getElementById('add-profession-modal').style.display = 'none';
+}
+
+async function loadProfessions() {
+  try {
+    const res = await fetch('/professions');
+    const professions = await res.json();
+    const container = document.getElementById('professions-list');
+    container.innerHTML = "";
+
+    if (professions.length === 0) {
+      container.innerHTML = "<p style='color:#666;'>No professions added yet.</p>";
+    } else {
+      professions.forEach(prof => {
+        const div = document.createElement('div');
+        div.style.marginBottom = "0.75rem";
+        div.style.padding = "0.75rem";
+        div.style.border = "1px solid #ccc";
+        div.style.borderRadius = "6px";
+        div.style.cursor = "pointer";
+        div.style.backgroundColor = "#fafafa";
+        div.innerHTML = `
+          <strong>${prof.profession_name || ''}</strong><br/>
+          <small>${prof.practice_name || ''}</small><br/>
+          <small>Practice No: ${prof.practice_number || ''}</small>
+        `;
+        div.onclick = () => openProfessionModal(prof);
+        container.appendChild(div);
+      });
+    }
+  } catch (err) {
+    console.error('Failed to load professions:', err);
+  }
+}
+
+async function submitNewProfession() {
+  const selectedClinics = Array.from(document.querySelectorAll('#clinic-options input[type="checkbox"]:checked')).map(cb => cb.value);
+  const payload = {
+    profession_name: document.getElementById('profession-name').value.trim(),
+    practice_name: document.getElementById('practice-name').value.trim(),
+    practice_owner: document.getElementById('practice-owner').value.trim(),
+    practice_number: document.getElementById('practice-number').value.trim(),
+    practice_email: document.getElementById('practice-email').value.trim(),
+    clinics: selectedClinics.join(', ')
+  };
+
+  try {
+    const res = await fetch('/add-profession', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Failed to save profession');
+    showToast('Profession added successfully!');
+    closeAddProfessionModal();
+    loadProfessions();
+  } catch (err) {
+    showToast('Error: ' + err.message, true);
+  }
+}
+</script>
+</body>
+
+</body>
+
+<!-- Profession Details Modal -->
+<div id="profession-details-modal" style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%); background:white; padding:2rem; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.2); z-index:2000; max-width:600px; width:95%; max-height:90vh; overflow-y:auto;">
+  <h2 style="color:#2D6356; margin-bottom:1rem;">Profession Details</h2>
+
+  <input type="text" id="edit-profession-name" placeholder="Profession Name" style="width:100%; margin-bottom:0.75rem; padding:0.5rem;" readonly>
+  <input type="text" id="edit-practice-name" placeholder="Practice Name" style="width:100%; margin-bottom:0.75rem; padding:0.5rem;" readonly>
+  <input type="text" id="edit-practice-owner" placeholder="Practice Owner" style="width:100%; margin-bottom:0.75rem; padding:0.5rem;" readonly>
+  <input type="text" id="edit-practice-number" placeholder="Practice Number" style="width:100%; margin-bottom:0.75rem; padding:0.5rem;" readonly>
+  <input type="email" id="edit-practice-email" placeholder="Practice Email" style="width:100%; margin-bottom:0.75rem; padding:0.5rem;" readonly>
+  <input type="text" id="edit-clinics" placeholder="Clinics" style="width:100%; margin-bottom:1.5rem; padding:0.5rem;" readonly>
+
+  <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+    <button id="edit-profession-button" onclick="enableProfessionEditing()" style="background-color:#32517A; color:white; border:none; border-radius:6px; padding:0.7rem 1.5rem;">Edit</button>
+    <button id="save-profession-button" onclick="saveProfessionEdits()" style="background-color:#2D6356; color:white; border:none; border-radius:6px; padding:0.7rem 1.5rem; display:none;">Save Changes</button>
+    <button onclick="closeProfessionModal()" style="background-color:#999; color:white; border:none; border-radius:6px; padding:0.7rem 1.5rem;">Close</button>
+    <button onclick="deleteProfession()" style="background-color:#96364C; color:white; border:none; border-radius:6px; padding:0.7rem 1.5rem;">Delete</button>
+  </div>
+</div>
+
+<!-- Clinic Details Modal -->
+<div id="clinic-details-modal" style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%); background:white; padding:2rem; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.2); z-index:2000; max-width:600px; width:95%; max-height:90vh; overflow-y:auto;">
+  <h2 style="color:#2D6356; margin-bottom:1rem;">Clinic Details</h2>
+
+  <input type="text" id="edit-clinic-name" placeholder="Clinic/Department Name" style="width:100%; margin-bottom:0.75rem; padding:0.5rem;" readonly>
+  <input type="text" id="edit-clinic-address" placeholder="Address" style="width:100%; margin-bottom:0.75rem; padding:0.5rem;" readonly>
+  <input type="email" id="edit-clinic-email" placeholder="Email" style="width:100%; margin-bottom:0.75rem; padding:0.5rem;" readonly>
+  <input type="text" id="edit-clinic-phone" placeholder="Phone Number" style="width:100%; margin-bottom:1.5rem; padding:0.5rem;" readonly>
+
+  <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+    <button id="edit-clinic-button" onclick="enableClinicEditing()" style="background-color:#32517A; color:white; border:none; border-radius:6px; padding:0.7rem 1.5rem;">Edit</button>
+    <button id="save-clinic-button" onclick="saveClinicEdits()" style="background-color:#2D6356; color:white; border:none; border-radius:6px; padding:0.7rem 1.5rem; display:none;">Save Changes</button>
+    <button onclick="closeClinicModal()" style="background-color:#999; color:white; border:none; border-radius:6px; padding:0.7rem 1.5rem;">Close</button>
+    <button onclick="deleteClinic()" style="background-color:#96364C; color:white; border:none; border-radius:6px; padding:0.7rem 1.5rem;">Delete</button>
+  </div>
+</div>
+
+<script>
+let currentProfessionId = null;
+
+function openProfessionModal(profession) {
+  currentProfessionId = profession.id;
+  document.getElementById('edit-profession-name').value = profession.profession_name || "";
+  document.getElementById('edit-practice-name').value = profession.practice_name || "";
+  document.getElementById('edit-practice-owner').value = profession.practice_owner || "";
+  document.getElementById('edit-practice-number').value = profession.practice_number || "";
+  document.getElementById('edit-practice-email').value = profession.practice_email || "";
+  document.getElementById('edit-clinics').value = profession.clinics || "";
+  // Disable editing by default
+  ['edit-profession-name', 'edit-practice-name', 'edit-practice-owner', 'edit-practice-number', 'edit-practice-email', 'edit-clinics'].forEach(id => {
+    document.getElementById(id).setAttribute('readonly', true);
+  });
+  document.getElementById('edit-profession-button').style.display = 'inline-block';
+  document.getElementById('save-profession-button').style.display = 'none';
+  document.getElementById('profession-details-modal').style.display = 'block';
+}
+
+function closeProfessionModal() {
+  document.getElementById('profession-details-modal').style.display = 'none';
+}
+
+function enableProfessionEditing() {
+  ['edit-profession-name', 'edit-practice-name', 'edit-practice-owner', 'edit-practice-number', 'edit-practice-email', 'edit-clinics'].forEach(id => {
+    document.getElementById(id).removeAttribute('readonly');
+  });
+  document.getElementById('edit-profession-button').style.display = 'none';
+  document.getElementById('save-profession-button').style.display = 'inline-block';
+}
+
+async function saveProfessionEdits() {
+  if (!currentProfessionId) return;
+  const payload = {
+    profession_name: document.getElementById('edit-profession-name').value.trim(),
+    practice_name: document.getElementById('edit-practice-name').value.trim(),
+    practice_owner: document.getElementById('edit-practice-owner').value.trim(),
+    practice_number: document.getElementById('edit-practice-number').value.trim(),
+    practice_email: document.getElementById('edit-practice-email').value.trim(),
+    clinics: document.getElementById('edit-clinics').value.trim()
+  };
+  try {
+    const res = await fetch(`/update-profession/${currentProfessionId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Failed to update profession');
+    showToast('Profession changes saved!');
+    closeProfessionModal();
+    loadProfessions();
+  } catch (err) {
+    showToast('Error: ' + err.message, true);
+  }
+}
+
+async function deleteProfession() {
+  if (!currentProfessionId) return;
+  if (!confirm('Are you sure you want to delete this profession?')) return;
+  try {
+    const res = await fetch(`/delete-profession/${currentProfessionId}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Failed to delete profession');
+    showToast('Profession deleted!');
+    closeProfessionModal();
+    loadProfessions();
+  } catch (err) {
+    showToast('Error: ' + err.message, true);
+  }
+}
+
+// --- Clinic Details Modal Functions ---
+let currentClinicId = null;
+
+function openClinicModal(clinic) {
+  currentClinicId = clinic.id;
+  document.getElementById('edit-clinic-name').value = clinic.clinic_name || "";
+  document.getElementById('edit-clinic-address').value = clinic.address || "";
+  document.getElementById('edit-clinic-email').value = clinic.email || "";
+  document.getElementById('edit-clinic-phone').value = clinic.phone || "";
+  ['edit-clinic-name', 'edit-clinic-address', 'edit-clinic-email', 'edit-clinic-phone'].forEach(id => {
+    document.getElementById(id).setAttribute('readonly', true);
+  });
+  document.getElementById('edit-clinic-button').style.display = 'inline-block';
+  document.getElementById('save-clinic-button').style.display = 'none';
+  document.getElementById('clinic-details-modal').style.display = 'block';
+}
+
+function closeClinicModal() {
+  document.getElementById('clinic-details-modal').style.display = 'none';
+}
+
+function enableClinicEditing() {
+  ['edit-clinic-name', 'edit-clinic-address', 'edit-clinic-email', 'edit-clinic-phone'].forEach(id => {
+    document.getElementById(id).removeAttribute('readonly');
+  });
+  document.getElementById('edit-clinic-button').style.display = 'none';
+  document.getElementById('save-clinic-button').style.display = 'inline-block';
+}
+
+async function saveClinicEdits() {
+  if (!currentClinicId) return;
+  const payload = {
+    clinic_name: document.getElementById('edit-clinic-name').value.trim(),
+    address: document.getElementById('edit-clinic-address').value.trim(),
+    email: document.getElementById('edit-clinic-email').value.trim(),
+    phone: document.getElementById('edit-clinic-phone').value.trim()
+  };
+  try {
+    const res = await fetch(`/update-clinic/${currentClinicId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Failed to update clinic');
+    showToast('Clinic changes saved!');
+    closeClinicModal();
+    loadClinics();
+  } catch (err) {
+    showToast('Error: ' + err.message, true);
+  }
+}
+
+async function deleteClinic() {
+  if (!currentClinicId) return;
+  if (!confirm('Are you sure you want to delete this clinic?')) return;
+  try {
+    const res = await fetch(`/delete-clinic/${currentClinicId}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Failed to delete clinic');
+    showToast('Clinic deleted!');
+    closeClinicModal();
+    loadClinics();
+  } catch (err) {
+    showToast('Error: ' + err.message, true);
+  }
+}
+</script>
+</body>
+</html>

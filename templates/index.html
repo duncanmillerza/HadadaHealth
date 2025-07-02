@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Therapist Dashboard</title>
+  <link rel="stylesheet" href="/static/calendar.css">
+  <link rel="stylesheet" href="/static/nav.css">
+  <link rel="icon" href="/static/favicon.ico" type="image/x-icon" />
+  <link rel="preload" href="/static/fonts/MaterialIcons-Regular.woff2" as="font" type="font/ttf" crossorigin="anonymous">
+</head>
+<body>
+  <script src="/static/js/nav-bar.js"></script>
+  <div id="top-nav"></div>
+  <!-- <div class="therapist-name" id="therapist-name">
+    Therapist: 
+  </div> -->
+  <h1 id="dashboard-heading">Loading...</h1>
+  <div class="dashboard">
+    <div class="section">
+      <h2>Today's Appointments</h2>
+      <ul id="appointments-list"></ul>
+    </div>
+    <div class="section">
+      <h2>Outstanding Notes & Billing</h2>
+      <ul>
+        <li>08 April - Alex Green (No note)</li>
+        <li>10 April - Emily White (No billing info)</li>
+      </ul>
+    </div>
+    <div class="section">
+      <h2>Reminders</h2>
+      <ul>
+        <li>Submit medical aid reports by Friday</li>
+        <li>Team MDT meeting tomorrow at 14:00</li>
+      </ul>
+    </div>
+    <div class="section">
+      <h2>Stats (Last 30 Days)</h2>
+      <div class="stat-block">
+        <strong>42</strong>
+        Patients Seen
+      </div>
+      <div class="stat-block">
+        <strong>52 hrs</strong>
+        Total Contact Time
+      </div>
+      <div class="stat-block">
+        <strong>6 hrs</strong>
+        Avg Time to Complete Notes
+      </div>
+    </div>
+  </div>
+      <script src="/static/js/nav-bar.js"></script>
+      <div id="bottom-nav"></div>
+<script>
+    // Personalise dashboard with therapist name if linked, otherwise username
+    async function personaliseDashboard() {
+      try {
+        const res = await fetch('/check-login');
+        const data = await res.json();
+        if (data.logged_in && data.username) {
+          if (data.linked_therapist_id) {
+            const therapistRes = await fetch(`/therapist/${data.linked_therapist_id}`);
+            const therapist = await therapistRes.json();
+            const displayName = therapist.preferred_name || therapist.name;
+            document.getElementById('dashboard-heading').textContent = displayName + "'s Dashboard";
+          } else {
+            document.getElementById('dashboard-heading').textContent = data.username + "'s Dashboard";
+          }
+        } else {
+          document.getElementById('dashboard-heading').textContent = "Dashboard";
+        }
+      } catch (err) {
+        console.error('Failed to personalise dashboard:', err);
+        document.getElementById('dashboard-heading').textContent = "Dashboard";
+      }
+    }
+
+    // Populate today's appointments
+    async function populateTodaysAppointments() {
+      try {
+        const session = await fetch('/check-login');
+        const sessionData = await session.json();
+        if (!sessionData.logged_in || !sessionData.linked_therapist_id) return;
+
+        const today = new Date().toISOString().split("T")[0];
+        const response = await fetch(`/bookings?therapist_id=${sessionData.linked_therapist_id}`);
+        const bookings = await response.json();
+
+        const appointmentsList = document.getElementById('appointments-list');
+        appointmentsList.innerHTML = "";
+
+        const todaysAppointments = bookings
+          .filter(booking => booking.date === today)
+          .sort((a, b) => a.time.localeCompare(b.time));
+
+        if (todaysAppointments.length === 0) {
+          appointmentsList.innerHTML = "<li>No appointments today</li>";
+        } else {
+          todaysAppointments.forEach(booking => {
+            const li = document.createElement("li");
+            li.textContent = `${booking.time} - ${booking.name}`;
+            appointmentsList.appendChild(li);
+          });
+        }
+      } catch (err) {
+        console.error("Failed to populate today's appointments:", err);
+      }
+    }
+
+    // Call both functions on load
+    window.onload = function() {
+      personaliseDashboard();
+      populateTodaysAppointments();
+    };
+  </script>
+  </body>
+  </html>

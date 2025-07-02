@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Manage Medical Aids</title>
+  <link rel="stylesheet" href="/static/calendar.css" />
+  <link rel="stylesheet" href="/static/nav.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+    .chip-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+      margin-bottom: 0.5rem;
+    }
+    .chip {
+      background: #e0f0e9;
+      padding: 0.25rem 0.5rem;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+    }
+    .chip button {
+      background: transparent;
+      border: none;
+      margin-left: 4px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .plans-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+      max-width: 300px;
+    }
+    .plans-list span {
+      background: #f0f0f0;
+      padding: 0.25rem 0.5rem;
+      border-radius: 12px;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <script src="/static/js/nav-bar.js"></script>
+  <div id="top-nav"></div>
+
+  <main class="form-section">
+    <h2>Manage Medical Aids</h2>
+    <button id="open-modal-btn">Add Medical Aid</button>
+
+    <div id="add-modal" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%); background:#fff; padding:1rem; border:1px solid #ccc; border-radius:8px; z-index:1000;">
+      <h3>Add Medical Aid</h3>
+      <form id="add-form">
+        <label>Name: <input type="text" id="new-name" required /></label><br />
+        <label>Website: <input type="text" id="new-website" /></label><br />
+        <label>Claims Email: <input type="email" id="new-claims-email" /></label><br />
+        <label>Plan Names: <textarea id="new-plans"></textarea></label><br />
+        <label>Claim Tips: <textarea id="new-claim-tips"></textarea></label><br />
+        <label>Administrator:
+          <select id="new-administrator">
+            <option value="">Select administrator</option>
+            <option value="3sixty Health (Pty) Ltd">3sixty Health (Pty) Ltd</option>
+            <option value="Afrocentric Integrated Health Administrators (Pty) Ltd">Afrocentric Integrated Health Administrators (Pty) Ltd</option>
+            <option value="Bestmed Medical Scheme">Bestmed Medical Scheme</option>
+            <option value="Cape Medical Plan">Cape Medical Plan</option>
+            <option value="Chartered Accountants (Sa) Medical Aid Fund">Chartered Accountants (Sa) Medical Aid Fund</option>
+            <option value="De Beers Benefit Society">De Beers Benefit Society</option>
+            <option value="Discovery Administration Services (Pty) Ltd">Discovery Administration Services (Pty) Ltd</option>
+            <option value="Discovery Health (Pty) Ltd">Discovery Health (Pty) Ltd</option>
+            <option value="Er24 Ems (Pty) Ltd - (Limited Administration)">Er24 Ems (Pty) Ltd - (Limited Administration)</option>
+            <option value="Europ Assistance Worldwide Services (South Africa) (Pty) Ltd - (Limited Administration)">Europ Assistance Worldwide Services (South Africa) (Pty) Ltd - (Limited Administration)</option>
+            <option value="Genesis Medical Scheme">Genesis Medical Scheme</option>
+            <option value="Hearconnect (Pty) Ltd - (Limited Administration)">Hearconnect (Pty) Ltd - (Limited Administration)</option>
+            <option value="Iso Leso Optics (Rf) (Pty) Ltd - (Limited Administration)">Iso Leso Optics (Rf) (Pty) Ltd - (Limited Administration)</option>
+            <option value="Kaelo Prime Cure (Pty) Ltd">Kaelo Prime Cure (Pty) Ltd</option>
+            <option value="Medihelp Medical Scheme">Medihelp Medical Scheme</option>
+            <option value="Medscheme Holdings (Pty) Ltd">Medscheme Holdings (Pty) Ltd</option>
+            <option value="Medshield Medical Scheme">Medshield Medical Scheme</option>
+            <option value="Metropolitan Health Corporate (Pty) Ltd">Metropolitan Health Corporate (Pty) Ltd</option>
+            <option value="Momentum Health Pty Ltd">Momentum Health Pty Ltd</option>
+            <option value="Momentum Thebe Ya Bophelo (Pty) Ltd">Momentum Thebe Ya Bophelo (Pty) Ltd</option>
+            <option value="National Health Group (Pty) Ltd">National Health Group (Pty) Ltd</option>
+            <option value="Netcare Limited Administration (Pty) Ltd">Netcare Limited Administration (Pty) Ltd</option>
+            <option value="Opticlear (Pty) Ltd - (Limited Administration)">Opticlear (Pty) Ltd - (Limited Administration)</option>
+            <option value="Platinum Health Medical Scheme">Platinum Health Medical Scheme</option>
+            <option value="Preffered Provider Negotiators (Pty) Ltd - (Limited Administration)">Preffered Provider Negotiators (Pty) Ltd - (Limited Administration)</option>
+            <option value="Private Health Administrators (Pty) Ltd">Private Health Administrators (Pty) Ltd</option>
+            <option value="Professional Provident Society Healthcare Administrators (Pty) Ltd">Professional Provident Society Healthcare Administrators (Pty) Ltd</option>
+            <option value="Rand Water Medical Scheme">Rand Water Medical Scheme</option>
+            <option value="Samwumed">Samwumed</option>
+            <option value="Sedmed Medical Scheme">Sedmed Medical Scheme</option>
+            <option value="Umvuzo Health Medical Scheme">Umvuzo Health Medical Scheme</option>
+            <option value="Universal Healthcare Administrators (Pty) Ltd">Universal Healthcare Administrators (Pty) Ltd</option>
+            <option value="Witbank Coalfields Medical Aid Scheme">Witbank Coalfields Medical Aid Scheme</option>
+            <option value="Self Administered">Self Administered</option>
+          </select>
+        </label><br />
+        <button type="submit">Submit</button>
+        <button type="button" onclick="closeModal()">Cancel</button>
+      </form>
+    </div>
+
+    <h3>Existing Medical Aids</h3>
+    <table id="medical-aid-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Website</th>
+          <th>Claims Email</th>
+          <th>Administrator</th>
+          <th>Claim Tips</th>
+          <th>Plans</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </main>
+
+  <script>
+    async function loadAids() {
+      const res = await fetch("http://127.0.0.1:8000/medical_aids_full");
+      const aids = await res.json();
+
+      const tbody = document.querySelector("#medical-aid-table tbody");
+      tbody.innerHTML = "";
+
+      for (const aid of aids) {
+        const name = aid.name;
+
+        const tr = document.createElement("tr");
+
+        const nameCell = document.createElement("td");
+        const nameInput = document.createElement("input");
+        nameInput.value = aid.name;
+        nameInput.disabled = true;
+        nameCell.appendChild(nameInput);
+
+        const websiteCell = document.createElement("td");
+        const websiteInput = document.createElement("input");
+        websiteInput.value = aid.website || "";
+        websiteInput.disabled = true;
+        websiteCell.appendChild(websiteInput);
+
+        const emailCell = document.createElement("td");
+        const emailInput = document.createElement("input");
+        emailInput.value = aid.claims_email || "";
+        emailInput.disabled = true;
+        emailCell.appendChild(emailInput);
+
+        const plansCell = document.createElement("td");
+        const plansWrapper = document.createElement("div");
+        plansWrapper.className = "plans-list";
+        (aid.plans || []).forEach(plan => {
+          const span = document.createElement("span");
+          span.textContent = plan;
+          plansWrapper.appendChild(span);
+        });
+        plansCell.appendChild(plansWrapper);
+
+        const tipsCell = document.createElement("td");
+        const tipsInput = document.createElement("textarea");
+        tipsInput.value = aid.claim_tips || "";
+        tipsInput.disabled = true;
+        tipsCell.appendChild(tipsInput);
+
+        const adminCell = document.createElement("td");
+        const adminInput = document.createElement("select");
+        adminInput.style.maxWidth = "220px";
+        adminInput.style.fontSize = "0.9rem";
+        [
+          "", "3sixty Health (Pty) Ltd", "Afrocentric Integrated Health Administrators (Pty) Ltd",
+          "Bestmed Medical Scheme", "Cape Medical Plan", "Chartered Accountants (Sa) Medical Aid Fund",
+          "De Beers Benefit Society", "Discovery Administration Services (Pty) Ltd",
+          "Discovery Health (Pty) Ltd", "Er24 Ems (Pty) Ltd - (Limited Administration)",
+          "Europ Assistance Worldwide Services (South Africa) (Pty) Ltd - (Limited Administration)",
+          "Genesis Medical Scheme", "Hearconnect (Pty) Ltd - (Limited Administration)",
+          "Iso Leso Optics (Rf) (Pty) Ltd - (Limited Administration)", "Kaelo Prime Cure (Pty) Ltd",
+          "Medihelp Medical Scheme", "Medscheme Holdings (Pty) Ltd", "Medshield Medical Scheme",
+          "Metropolitan Health Corporate (Pty) Ltd", "Momentum Health Pty Ltd",
+          "Momentum Thebe Ya Bophelo (Pty) Ltd", "National Health Group (Pty) Ltd",
+          "Netcare Limited Administration (Pty) Ltd", "Opticlear (Pty) Ltd - (Limited Administration)",
+          "Platinum Health Medical Scheme", "Preffered Provider Negotiators (Pty) Ltd - (Limited Administration)",
+          "Private Health Administrators (Pty) Ltd", "Professional Provident Society Healthcare Administrators (Pty) Ltd",
+          "Rand Water Medical Scheme", "Samwumed", "Sedmed Medical Scheme",
+          "Umvuzo Health Medical Scheme", "Universal Healthcare Administrators (Pty) Ltd",
+          "Witbank Coalfields Medical Aid Scheme", "Self Administered"
+        ].forEach(optionText => {
+          const opt = document.createElement("option");
+          opt.value = optionText;
+          opt.textContent = optionText || "Select administrator";
+          if (optionText === (aid.administrator || "")) opt.selected = true;
+          adminInput.appendChild(opt);
+        });
+        adminInput.disabled = true;
+        adminCell.appendChild(adminInput);
+
+        const actionsCell = document.createElement("td");
+
+        // No chip logic needed with tag input
+
+        const toggleBtn = document.createElement("button");
+        toggleBtn.textContent = "Edit";
+        let isEditing = false;
+        let editableInput;
+
+        toggleBtn.onclick = async () => {
+          if (!isEditing) {
+            nameInput.disabled = false;
+            websiteInput.disabled = false;
+            emailInput.disabled = false;
+            tipsInput.disabled = false;
+            adminInput.disabled = false;
+            // Replace plans display with editable input
+            editableInput = document.createElement("input");
+            editableInput.value = (aid.plans || []).join(", ");
+            plansCell.innerHTML = "";
+            plansCell.appendChild(editableInput);
+            toggleBtn.textContent = "Save";
+            isEditing = true;
+          } else {
+            const data = {
+              name: nameInput.value.trim(),
+              website: websiteInput.value.trim(),
+              claims_email: emailInput.value.trim(),
+              plans: Array.from(new Set(editableInput.value.split(",").map(p => p.trim()).filter(p => p !== ""))),
+              claim_tips: tipsInput.value.trim(),
+              administrator: adminInput.value.trim()
+            };
+            try {
+              await fetch(`http://127.0.0.1:8000/medical_aids/${encodeURIComponent(name)}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+              });
+              nameInput.disabled = true;
+              websiteInput.disabled = true;
+              emailInput.disabled = true;
+              tipsInput.disabled = true;
+              adminInput.disabled = true;
+              // Replace editable input with tag view
+              plansCell.innerHTML = "";
+              const newPlansWrapper = document.createElement("div");
+              newPlansWrapper.className = "plans-list";
+              data.plans.forEach(plan => {
+                const span = document.createElement("span");
+                span.textContent = plan;
+                newPlansWrapper.appendChild(span);
+              });
+              plansCell.appendChild(newPlansWrapper);
+              toggleBtn.textContent = "Edit";
+              isEditing = false;
+            } catch (error) {
+              alert("Failed to save changes.");
+            }
+          }
+        };
+
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "Delete";
+        delBtn.onclick = async () => {
+          if (!confirm(`Delete ${name}?`)) return;
+          await fetch(`http://127.0.0.1:8000/medical_aids/${encodeURIComponent(name)}`, {
+            method: "DELETE"
+          });
+          loadAids();
+        };
+
+        actionsCell.appendChild(toggleBtn);
+        actionsCell.appendChild(delBtn);
+
+        tr.append(nameCell, websiteCell, emailCell, adminCell, tipsCell, plansCell, actionsCell);
+        tbody.appendChild(tr);
+      }
+    }
+
+    function closeModal() {
+      document.getElementById("add-modal").style.display = "none";
+    }
+    document.getElementById("open-modal-btn").addEventListener("click", () => {
+      document.getElementById("add-modal").style.display = "block";
+    });
+
+    document.getElementById("add-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const data = {
+        name: document.getElementById("new-name").value.trim(),
+        website: document.getElementById("new-website").value.trim(),
+        claims_email: document.getElementById("new-claims-email").value.trim(),
+        plans: document.getElementById("new-plans").value.trim(),
+        claim_tips: document.getElementById("new-claim-tips").value.trim(),
+        administrator: document.getElementById("new-administrator").value.trim()
+      };
+      if (!data.name) return;
+      await fetch("http://127.0.0.1:8000/medical_aids", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      document.getElementById("add-form").reset();
+      closeModal();
+      loadAids();
+    });
+
+    loadAids();
+  </script>
+       <script src="/static/js/nav-bar.js"></script>
+       <div id="bottom-nav"></div>
+  </body>
+  </html>

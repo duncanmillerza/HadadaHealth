@@ -1,0 +1,120 @@
+<!-- Patient Details Modal -->
+<style>
+  @media (max-width: 768px) {
+    /* Hide tab labels on small screens */
+    #patient-modal .tab-button .tab-label {
+      display: none;
+    }
+    /* Ensure icons remain visible and buttons are sized appropriately */
+    #patient-modal .tab-button {
+      padding: 0.5rem;
+      min-width: 2.5rem;
+    }
+  }
+</style>
+<div id="patient-modal" style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%); background:white; padding:1.5rem; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.15); z-index:2000; width: fit-content; max-width: 90vw; min-width: 400px; overflow-y: auto; max-height:90%;">
+  <h2 id="modal-name" style="color:#2D6356;"></h2>
+
+  <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+    <button class="tab-button" onclick="showTab('personal')">
+      <span class="material-icons tab-icon">person</span>
+      <span class="tab-label">Personal</span>
+    </button>
+    <button class="tab-button" onclick="showTab('account')">
+      <span class="material-icons tab-icon">account_balance</span>
+      <span class="tab-label">Account</span>
+    </button>
+    <button class="tab-button" onclick="showTab('icd10')">
+      <span class="material-icons tab-icon">health_and_safety</span>
+      <span class="tab-label" style="white-space: nowrap;">ICD-10</span>
+    </button>
+    <button class="tab-button" onclick="showTab('funding')">
+      <span class="material-icons tab-icon">monetization_on</span>
+      <span class="tab-label">Funding</span>
+    </button>
+    <button class="tab-button" onclick="showTab('important')">
+      <span class="material-icons tab-icon">warning</span>
+      <span class="tab-label">Important</span>
+    </button>
+    <button class="tab-button" onclick="showTab('consent')">
+      <span class="material-icons tab-icon">assignment_turned_in</span>
+      <span class="tab-label">Consent</span>
+    </button>
+  </div>
+
+  <div id="tab-icd10" class="tab-content" style="display:none;">
+    <!-- View Mode -->
+    <div id="icd10-view-mode">
+      <h4>Saved ICD-10 Codes</h4>
+      <ul id="icd10-code-list" style="padding-left: 1rem; list-style-type: disc; min-height: 1rem;"></ul>
+      <p id="icd10-code-empty" style="font-style: italic; color: #666;">No codes saved</p>
+    </div>
+
+    <!-- Edit Mode -->
+    <div id="icd10-edit-mode" style="display:none;">
+      <label for="icd10-search">Search ICD-10:</label>
+      <input type="text" id="icd10-search" placeholder="Start typing a code or condition..." style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem;">
+      <div id="icd10-results" style="border: 1px solid #ccc; max-height: 150px; overflow-y: auto;"></div>
+
+      <h5 style="margin-top: 1rem;">Selected Codes:</h5>
+      <div id="selected-icd10-codes" style="margin-top: 0.5rem;"></div>
+
+      <div id="icd10-validation-message" style="margin-top: 0.75rem; color: red;"></div>
+    </div>
+  </div>
+
+  <div id="tab-personal" class="tab-content">
+    <p><strong>Preferred Name:</strong> <span id="modal-preferred_name"></span></p>
+    <p><strong>Date of Birth:</strong> <span id="modal-date_of_birth"></span></p>
+    <p><strong>Gender:</strong> <span id="modal-gender"></span></p>
+    <p><strong>ID Number:</strong> <span id="modal-id_number"></span></p>
+    <p><strong>Email:</strong> <span id="modal-email"></span></p>
+    <p><strong>Contact Number:</strong> <span id="modal-contact_number"></span></p>
+    <p><strong>Address Line 1:</strong> <span id="modal-address_line1"></span></p>
+    <p><strong>Address Line 2:</strong> <span id="modal-address_line2"></span></p>
+    <p><strong>Town:</strong> <span id="modal-town"></span></p>
+    <p><strong>Postal Code:</strong> <span id="modal-postal_code"></span></p>
+    <p><strong>Country:</strong> <span id="modal-country"></span></p>
+    <p><strong>Clinic:</strong> <span id="modal-clinic"></span></p>
+  </div>
+
+  <div id="tab-account" class="tab-content" style="display:none;">
+    <p><strong>Account Name:</strong> <span id="modal-account_name"></span></p>
+    <p><strong>Account ID Number:</strong> <span id="modal-account_id_number"></span></p>
+    <p><strong>Account Address:</strong> <span id="modal-account_address"></span></p>
+    <p><strong>Account Phone:</strong> <span id="modal-account_phone"></span></p>
+    <p><strong>Account Email:</strong> <span id="modal-account_email"></span></p>
+  </div>
+
+  <div id="tab-funding" class="tab-content" style="display:none;">
+    <p><strong>Funding Option:</strong> <span id="modal-funding_option"></span></p>
+    <p><strong>Medical Aid:</strong> <span id="modal-medical_aid_name"></span></p>
+    <p><strong>Medical Aid Plan:</strong> <span id="modal-plan_name"></span></p>
+    <p><strong>Main Member:</strong> <span id="modal-main_member_name"></span></p>
+    <p><strong>Alternative Funding Source:</strong> <span id="modal-alternative_funding_source"></span></p>
+    <p><strong>Claim Number:</strong> <span id="modal-claim_number"></span></p>
+    <p><strong>Case Manager:</strong> <span id="modal-case_manager"></span></p>
+  </div>
+
+  <div id="tab-important" class="tab-content" style="display:none;">
+    <p><strong>Important Notes:</strong> <span id="modal-patient_important_info"></span></p>
+  </div>
+
+  <div id="tab-consent" class="tab-content" style="display:none;">
+    <p><strong>Consent Treatment:</strong> <span id="modal-consent_treatment"></span></p>
+    <p><strong>Consent Photography:</strong> <span id="modal-consent_photography"></span></p>
+    <p><strong>Consent Data Management:</strong> <span id="modal-consent_data"></span></p>
+    <p><strong>Consent Communication:</strong> <span id="modal-consent_communication"></span></p>
+    <p><strong>Consent Billing:</strong> <span id="modal-consent_billing"></span></p>
+    <p><strong>Consent Terms:</strong> <span id="modal-consent_terms"></span></p>
+    <p><strong>Signature Identity:</strong> <span id="modal-signature_identity"></span></p>
+    <p><strong>Signature Name:</strong> <span id="modal-signature_name"></span></p>
+    <p><strong>Signature Relationship:</strong> <span id="modal-signature_relationship"></span></p>
+    <div id="signature-display" style="margin-top: 1rem; text-align: center;"></div>
+  </div>
+
+  <button id="close-btn" onclick="closePatientModal()" style="margin-top:1rem; background-color:#2D6356; color:white; border:none; padding:0.5rem 1rem; border-radius:6px;">Close</button>
+  <button id="edit-btn" onclick="enablePatientEditing()" style="margin-top:1rem; background-color:#32517A; color:white; border:none; padding:0.5rem 1rem; border-radius:6px;">Edit</button>
+  <button id="cancel-edit-btn" onclick="cancelPatientEditing()" style="display:none; margin-top:1rem; background-color:#96364C; color:white; border:none; padding:0.5rem 1rem; border-radius:6px;">Cancel</button>
+  <button id="delete-btn" onclick="deletePatient()" style="margin-top:1rem; background-color:#96364C; color:white; border:none; padding:0.5rem 1rem; border-radius:6px;">Delete</button>
+</div>

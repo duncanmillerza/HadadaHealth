@@ -1,0 +1,536 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="/static/calendar.css">
+  <link rel="stylesheet" href="/static/nav.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<title>Therapists</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; }
+    th, td { border: 1px solid #ccc; padding: 0.5rem; }
+    th { background-color: #f2f2f2; }
+    input, select { padding: 0.4rem; margin: 0.2rem 0; width: 100%; }
+    .button-group { margin-top: 1rem; }
+    .edit-input { width: 100%; box-sizing: border-box; }
+    #add-modal label { display: block; margin-bottom: 0.5rem; }
+  </style>
+</head>
+<body>
+  <script src="/static/js/nav-bar.js"></script>
+  <div id="top-nav"></div>
+
+<main style="padding: 2rem;">
+  <h1>Therapists</h1>
+
+  <!-- Search input -->
+  <div style="margin-bottom: 1.5rem;">
+    <input
+      type="text"
+      id="therapist-search-input"
+      placeholder="Search therapists by name..."
+      style="width: 100%; max-width: 400px; padding: 0.6rem; font-size: 1rem;"
+    />
+  </div>
+
+  <!-- Add Therapist Button -->
+  <div style="margin-bottom: 1.5rem;">
+    <button onclick="openAddTherapistModal()" style="background-color:#2D6356; color:white; padding:0.6rem 1.2rem; border:none; border-radius:6px; cursor:pointer; font-size:1rem;">Add Therapist</button>
+  </div>
+
+  <!-- Therapist grid -->
+  <div id="therapist-grid" class="patient-grid"></div>
+
+  <!-- Add Therapist Modal (tabbed version) -->
+  <div id="add-therapist-modal" style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%); background:white; padding:2rem; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.2); z-index:2000; max-width:600px; width:95%; max-height:80vh; overflow-y:auto;">
+    <h2 style="color:#2D6356; margin-bottom:1rem;">Add Therapist</h2>
+    <!-- Tab Buttons -->
+    <div style="display:flex; gap:1rem; margin-bottom:1rem;">
+      <button type="button" onclick="showTherapistTab('personal')">Personal</button>
+      <button type="button" onclick="showTherapistTab('admin')">Admin</button>
+      <button type="button" onclick="showTherapistTab('registration')">Registration</button>
+    </div>
+    <!-- Tab Contents -->
+    <div id="tab-personal" class="tab-content">
+      <h4 style="margin-top:1rem;">Personal Information</h4>
+      <input type="text" id="add-name" placeholder="Name" style="width:100%; padding:0.5rem; box-sizing:border-box; margin-bottom:0.75rem;">
+      <input type="text" id="add-surname" placeholder="Surname" style="width:100%; padding:0.5rem; box-sizing:border-box; margin-bottom:0.75rem;">
+      <input type="text" id="add-preferred_name" placeholder="Preferred Name" style="width:100%; padding:0.5rem; box-sizing:border-box; margin-bottom:0.75rem;">
+      <select id="add-profession" style="width:100%; padding:0.5rem; box-sizing:border-box; margin-bottom:0.75rem;">
+        <option value="">Select Profession</option>
+      </select>
+      <input type="text" id="add-cellphone" placeholder="Cellphone" style="width:100%; padding:0.5rem; box-sizing:border-box; margin-bottom:0.75rem;">
+      <select id="add-clinic" style="width:100%; padding:0.5rem; box-sizing:border-box; margin-bottom:1.5rem;">
+        <option value="">Select Clinic</option>
+      </select>
+      <input type="email" id="add-email" placeholder="Email Address" style="width:100%; padding:0.5rem; box-sizing:border-box; margin-bottom:1.5rem;">
+      <label>Date of Birth:</label>
+      <input type="date" id="add-date_of_birth" style="width:100%; padding:0.5rem; box-sizing:border-box; margin-bottom:1.5rem;">
+      
+    </div>
+    <div id="tab-admin" class="tab-content" style="display:none;">
+      <h4>Admin Information</h4>
+      
+      <h4>Permissions</h4>
+      <div id="add-permissions" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:2rem;">
+        <label><input type="checkbox" value="Super Admin"> Super Admin</label>
+        <label><input type="checkbox" value="Admin"> Admin</label>
+        <label><input type="checkbox" value="Manager"> Manager</label>
+        <label><input type="checkbox" value="Clinician"> Clinician</label>
+        <label><input type="checkbox" value="Client"> Client</label>
+        <label><input type="checkbox" value="Read-Only"> Read-Only</label>
+      </div>
+    </div>
+    <div id="tab-registration" class="tab-content" style="display:none;">
+      <h4>Registration</h4>
+      <input type="text" id="add-hpcsa_number" placeholder="HPCSA Number" style="width:100%; padding:0.5rem; box-sizing:border-box; margin-bottom:0.75rem;">
+      <label>HPCSA Expiry:</label>
+      <input type="date" id="add-hpcsa_expiry" style="width:100%; padding:0.5rem; box-sizing:border-box; margin-bottom:0.75rem;">
+      <input type="text" id="add-malpractice_number" placeholder="Malpractice Number" style="width:100%; padding:0.5rem; box-sizing:border-box; margin-bottom:0.75rem;">
+      <label>Malpractice Expiry:</label>
+      <input type="date" id="add-malpractice_expiry" style="width:100%; padding:0.5rem; box-sizing:border-box; margin-bottom:0.75rem;">
+      </div>
+    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+      <button onclick="submitNewTherapist()" style="background-color:#2D6356; color:white; border:none; border-radius:6px; padding:0.7rem 1.5rem;">Save</button>
+      <button onclick="closeAddTherapistModal()" style="background-color:#96364C; color:white; border:none; border-radius:6px; padding:0.7rem 1.5rem;">Cancel</button>
+    </div>
+    <script>
+      function showTherapistTab(tabName) {
+        document.querySelectorAll('#add-therapist-modal .tab-content').forEach(div => div.style.display = 'none');
+        document.getElementById('tab-' + tabName).style.display = 'block';
+      }
+    </script>
+  </div>
+</main>
+
+  <script>
+    // Toast notification
+    function showToast(message, isError = false) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.style.background = isError ? '#96364C' : '#2D6356';
+      toast.style.display = 'block';
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 3000);
+    }
+    // Helper to escape HTML
+    function escapeHtml(text) {
+      if (!text) return '';
+      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    let allTherapists = [];
+    let filteredTherapists = [];
+
+    // Load therapists and render cards
+    async function loadTherapists() {
+      try {
+        const res = await fetch('/therapists');
+        let data = await res.json();
+        // Sort alphabetically by preferred_name or name
+        data.sort((a, b) => {
+          const aName = (a.preferred_name && a.preferred_name.trim()) ? a.preferred_name.trim().toLowerCase() :
+                        ((a.name || a.first_name || "") + " " + (a.surname || "")).trim().toLowerCase();
+          const bName = (b.preferred_name && b.preferred_name.trim()) ? b.preferred_name.trim().toLowerCase() :
+                        ((b.name || b.first_name || "") + " " + (b.surname || "")).trim().toLowerCase();
+          return aName.localeCompare(bName);
+        });
+        allTherapists = data;
+        filteredTherapists = data;
+        renderTherapistCards(data);
+      } catch (err) {
+        document.getElementById('therapist-grid').innerHTML = "<p>Unable to load therapists.</p>";
+      }
+    }
+
+    function renderTherapistCards(therapists) {
+      const grid = document.getElementById('therapist-grid');
+      grid.innerHTML = "";
+      if (!therapists.length) {
+        grid.innerHTML = "<p>No therapists found.</p>";
+        return;
+      }
+      therapists.forEach(t => {
+        const card = document.createElement("div");
+        card.className = "patient-card"; // use patient-card styling for therapists too
+        const displayName = (t.preferred_name && t.preferred_name.trim()) ?
+          escapeHtml(t.preferred_name) :
+          escapeHtml((t.name || t.first_name || "") + " " + (t.surname || ""));
+        const fullName = escapeHtml((t.name || t.first_name || "") + " " + (t.surname || ""));
+        card.innerHTML = `
+          <h3 style="margin:0;">${displayName}</h3>
+          <p style="font-size:0.9rem; color:#666; margin:0 0 0.5rem 0;">${fullName}</p>
+          <p style="margin:0 0 0.3rem 0;"><strong>Profession:</strong> ${escapeHtml(t.profession || "")}</p>
+          <p style="margin:0 0 0.3rem 0;"><strong>Clinic:</strong> ${escapeHtml(t.clinic || "")}</p>
+          <p style="margin:0 0 0.3rem 0;"><strong>Email:</strong> ${escapeHtml(t.email || "")}</p>
+          <p style="margin:0 0 0.3rem 0;"><strong>Phone:</strong> ${escapeHtml(t.cellphone || "")}</p>
+        `;
+        card.style.cursor = "pointer";
+        card.onclick = () => openTherapistModal(t);
+        grid.appendChild(card);
+      });
+    }
+    // Therapist detail modal functions (safer, more robust version)
+    function openTherapistModal(therapist) {
+      currentTherapistId = therapist.id;
+      const displayName = (therapist.preferred_name && therapist.preferred_name.trim()) ||
+                          `${therapist.name || therapist.first_name || ""} ${therapist.surname || ""}`;
+      const header = document.getElementById('modal-therapist-name');
+      if (header) header.textContent = displayName;
+
+      const mappings = {
+        'modal-name': therapist.name,
+        'modal-surname': therapist.surname,
+        'modal-preferred_name': therapist.preferred_name,
+        'modal-email': therapist.email,
+        'modal-cellphone': therapist.cellphone || therapist.contact_number,
+        'modal-profession': therapist.profession,
+        'modal-clinic': therapist.clinic,
+        'modal-date_of_birth': therapist.date_of_birth,
+        'modal-permissions': Array.isArray(therapist.permissions) ? therapist.permissions.join(", ") : (therapist.permissions || "-"),
+        'modal-hpcsa_number': therapist.hpcsa_number,
+        'modal-hpcsa_expiry': therapist.hpcsa_expiry,
+        'modal-malpractice_number': therapist.malpractice_number,
+        'modal-malpractice_expiry': therapist.malpractice_expiry,
+      };
+
+      for (const id in mappings) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = mappings[id] || "-";
+      }
+
+      document.getElementById('therapist-modal').style.display = 'block';
+    }
+
+    function closeTherapistModal() {
+      document.getElementById('therapist-modal').style.display = 'none';
+    }
+
+    // Search/filter logic
+    function filterTherapistList(query) {
+      query = query.trim().toLowerCase();
+      if (!query) {
+        filteredTherapists = allTherapists;
+      } else {
+        filteredTherapists = allTherapists.filter(t => {
+          const fields = [
+            t.preferred_name,
+            t.name,
+            t.first_name,
+            t.surname
+          ].map(x => (x || "").toLowerCase());
+          return fields.some(f => f.includes(query));
+        });
+      }
+      renderTherapistCards(filteredTherapists);
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+      loadTherapists();
+      const searchInput = document.getElementById("therapist-search-input");
+      if (searchInput) {
+        searchInput.addEventListener("input", function(e) {
+          filterTherapistList(e.target.value);
+        });
+      }
+    });
+
+    // Add Therapist Modal controls (improved)
+    async function openAddTherapistModal() {
+      document.getElementById('add-therapist-modal').style.display = 'block';
+
+      const clinicSelect = document.getElementById('add-clinic');
+      if (clinicSelect) {
+        clinicSelect.innerHTML = '<option value="">Select Clinic</option>';
+        try {
+          const res = await fetch('/clinics');
+          const clinics = await res.json();
+          clinics.forEach(clinic => {
+            const option = document.createElement('option');
+            option.value = clinic.clinic_name;
+            option.textContent = clinic.clinic_name;
+            clinicSelect.appendChild(option);
+          });
+        } catch (err) {
+          console.error('Failed to load clinics:', err);
+        }
+      }
+
+      const professionSelect = document.getElementById('add-profession');
+      if (professionSelect) {
+        professionSelect.innerHTML = '<option value="">Select Profession</option>';
+        try {
+          const res = await fetch('/professions');
+          const professions = await res.json();
+          professions.forEach(profession => {
+            const option = document.createElement('option');
+            option.value = profession.profession_name;
+            option.textContent = profession.profession_name;
+            professionSelect.appendChild(option);
+          });
+        } catch (err) {
+          console.error('Failed to load professions:', err);
+        }
+      }
+    }
+    function closeAddTherapistModal() {
+      document.getElementById('add-therapist-modal').style.display = 'none';
+      // Reset all fields
+      document.getElementById('add-name').value = '';
+      document.getElementById('add-surname').value = '';
+      document.getElementById('add-preferred_name').value = '';
+      document.getElementById('add-profession').value = '';
+      document.getElementById('add-cellphone').value = '';
+      document.getElementById('add-email').value = '';
+      document.getElementById('add-clinic').value = '';
+      document.getElementById('add-hpcsa_number').value = '';
+      document.getElementById('add-malpractice_number').value = '';
+      document.getElementById('add-malpractice_expiry').value = '';
+      document.getElementById('add-hpcsa_expiry').value = '';
+      document.getElementById('add-date_of_birth').value = '';
+      document.getElementById('add-permissions').selectedIndex = -1;
+      // Reset to first tab on close
+      if (document.getElementById('tab-personal')) showTherapistTab('personal');
+    }
+    // Submit new therapist (improved)
+    async function submitNewTherapist() {
+      // Collect values from improved modal
+      const name = document.getElementById('add-name').value.trim();
+      const surname = document.getElementById('add-surname').value.trim();
+      const preferred_name = document.getElementById('add-preferred_name').value.trim();
+      const profession = document.getElementById('add-profession').value.trim();
+      const cellphone = document.getElementById('add-cellphone').value.trim();
+      const clinic = document.getElementById('add-clinic').value.trim();
+      const email = document.getElementById('add-email').value.trim();
+      const hpcsa_number = document.getElementById('add-hpcsa_number').value.trim();
+      const malpractice_number = document.getElementById('add-malpractice_number').value.trim();
+      const malpractice_expiry = document.getElementById('add-malpractice_expiry').value;
+      const hpcsa_expiry = document.getElementById('add-hpcsa_expiry').value;
+      const date_of_birth = document.getElementById('add-date_of_birth').value;
+      const permissions = Array.from(document.querySelectorAll('#add-permissions input[type="checkbox"]:checked')).map(cb => cb.value);
+      // Validation (minimal)
+      if (!name || !surname || !profession || !cellphone) {
+        showToast('Please fill in all required fields.', true);
+        return false;
+      }
+      // Compose payload
+      const payload = {
+        name,
+        surname,
+        preferred_name,
+        profession,
+        cellphone,
+        clinic,
+        email,
+        hpcsa_number,
+        malpractice_number,
+        malpractice_expiry,
+        hpcsa_expiry,
+        date_of_birth,
+        permissions
+      };
+      try {
+        const res = await fetch('/save-therapist', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          showToast('Failed to add therapist: ' + (data.detail || res.statusText), true);
+          return false;
+        }
+        closeAddTherapistModal();
+        await loadTherapists();
+        showToast('Therapist added successfully!');
+      } catch (e) {
+        showToast('Error adding therapist.', true);
+      }
+      return false;
+    }
+  </script>
+    <script src="/static/js/nav-bar.js"></script>
+    <div id="bottom-nav"></div>
+</main>
+  <!-- Therapist Modal with tabs (new) -->
+  <div id="therapist-modal" style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%); background:white; padding:1.5rem; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.15); z-index:2000; max-width:500px; overflow-y:auto; max-height:90%;">
+    <h2 id="modal-therapist-name" style="color:#2D6356;"></h2>
+
+    <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+      <button class="tab-button" onclick="showTherapistDetailTab('personal')">Personal</button>
+      <button class="tab-button" onclick="showTherapistDetailTab('admin')">Admin</button>
+      <button class="tab-button" onclick="showTherapistDetailTab('registration')">Registration</button>
+    </div>
+
+    <div id="tab-therapist-personal" class="tab-content">
+      <p><strong>Name:</strong> <span id="modal-name"></span></p>
+      <p><strong>Surname:</strong> <span id="modal-surname"></span></p>
+      <p><strong>Preferred Name:</strong> <span id="modal-preferred_name"></span></p>
+      <p><strong>Email:</strong> <span id="modal-email"></span></p>
+      <p><strong>Cellphone:</strong> <span id="modal-cellphone"></span></p>
+      <p><strong>Clinic:</strong> <span id="modal-clinic"></span></p>
+      <p><strong>Profession:</strong> <span id="modal-profession"></span></p>
+      <p><strong>Date of Birth:</strong> <span id="modal-date_of_birth"></span></p>
+    </div>
+
+    <div id="tab-therapist-admin" class="tab-content" style="display:none;">
+      <p><strong>Permissions:</strong> <span id="modal-permissions"></span></p>
+    </div>
+
+    <div id="tab-therapist-registration" class="tab-content" style="display:none;">
+      <p><strong>HPCSA Number:</strong> <span id="modal-hpcsa_number"></span></p>
+      <p><strong>HPCSA Expiry:</strong> <span id="modal-hpcsa_expiry"></span></p>
+      <p><strong>Malpractice Number:</strong> <span id="modal-malpractice_number"></span></p>
+      <p><strong>Malpractice Expiry:</strong> <span id="modal-malpractice_expiry"></span></p>
+    </div>
+
+    <div style="margin-top:1rem; text-align:right;">
+      <button id="close-therapist-btn" onclick="closeTherapistModal()" style="background-color:#2D6356; color:white; border:none; padding:0.5rem 1rem; border-radius:6px;">Close</button>
+      <button id="edit-therapist-btn" onclick="enableTherapistEditing()" style="background-color:#32517A; color:white; border:none; padding:0.5rem 1rem; border-radius:6px;">Edit</button>
+      <button id="cancel-edit-therapist-btn" onclick="cancelTherapistEditing()" style="display:none; background-color:#96364C; color:white; border:none; padding:0.5rem 1rem; border-radius:6px;">Cancel</button>
+      <button id="delete-therapist-btn" onclick="deleteTherapist()" style="background-color:#96364C; color:white; border:none; padding:0.5rem 1rem; border-radius:6px;">Delete</button>
+    </div>
+  </div>
+
+  <script>
+    function showTherapistDetailTab(tab) {
+      document.querySelectorAll('#therapist-modal .tab-content').forEach(div => div.style.display = 'none');
+      document.getElementById('tab-therapist-' + tab).style.display = 'block';
+    }
+  </script>
+<script>
+  // Therapist editing JS
+  let currentTherapistId = null;
+
+async function fetchProfessions() {
+  try {
+    const res = await fetch('/professions');
+    const data = await res.json();
+    return data.map(p => p.profession_name);
+  } catch (err) {
+    console.error('Failed to fetch professions:', err);
+    return [];
+  }
+}
+
+async function enableTherapistEditing() {
+  // Fetch profession options once for use in all fields if needed
+  const professionOptions = await fetchProfessions();
+
+  document.querySelectorAll('#therapist-modal span').forEach(span => {
+    const field = span.id.replace('modal-', '');
+    let input;
+
+    if (['date_of_birth', 'malpractice_expiry', 'hpcsa_expiry'].includes(field)) {
+      input = document.createElement('input');
+      input.type = 'date';
+      input.value = span.textContent !== '-' ? span.textContent : '';
+    } else if (field === 'profession') {
+      input = document.createElement('select');
+      const options = professionOptions;
+      options.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p;
+        opt.textContent = p;
+        if (p === span.textContent) opt.selected = true;
+        input.appendChild(opt);
+      });
+    } else if (field === 'permissions') {
+      input = document.createElement('div');
+      input.style.display = 'flex';
+      input.style.flexWrap = 'wrap';
+      input.style.gap = '0.5rem';
+      const perms = ['Super Admin', 'Admin', 'Manager', 'Clinician', 'Client', 'Read-Only'];
+      const selected = span.textContent.split(',').map(s => s.trim());
+      perms.forEach(p => {
+        const label = document.createElement('label');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = p;
+        if (selected.includes(p)) checkbox.checked = true;
+        label.appendChild(checkbox);
+        label.append(' ' + p);
+        input.appendChild(label);
+      });
+    } else {
+      input = document.createElement('input');
+      input.type = 'text';
+      input.value = span.textContent !== '-' ? span.textContent : '';
+    }
+    input.dataset.originalId = span.id;
+    span.replaceWith(input);
+  });
+
+  const editBtn = document.getElementById('edit-therapist-btn');
+  editBtn.textContent = 'Save Changes';
+  editBtn.onclick = saveTherapistEdits;
+
+  const cancelBtn = document.getElementById('cancel-edit-therapist-btn');
+  cancelBtn.style.display = 'inline-block';
+
+  document.getElementById('close-therapist-btn').style.display = 'none';
+}
+
+  async function saveTherapistEdits() {
+    const updatedData = {};
+    // Handle normal fields
+    document.querySelectorAll('#therapist-modal input, #therapist-modal div, #therapist-modal select').forEach(el => {
+      if (el.dataset && el.dataset.originalId) {
+        const cleanKey = el.dataset.originalId.replace('modal-', '');
+        if (cleanKey === 'permissions') {
+          // Collect checked permissions from checkboxes inside this div
+          const checked = Array.from(el.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+          updatedData[cleanKey] = checked;
+        } else if (el.tagName === 'SELECT') {
+          updatedData[cleanKey] = el.value;
+        } else if (el.type === 'date' || el.type === 'text') {
+          updatedData[cleanKey] = el.value.trim();
+        }
+      }
+    });
+
+    try {
+      const res = await fetch(`/update-therapist/${currentTherapistId}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(updatedData)
+      });
+      if (!res.ok) throw new Error('Failed to update therapist');
+      showToast('Therapist updated successfully!');
+      closeTherapistModal();
+      loadTherapists();
+    } catch (err) {
+      showToast('Error: ' + err.message, true);
+    }
+  }
+
+</script>
+<script>
+  // Therapist delete JS
+  async function deleteTherapist() {
+    if (!confirm("Are you sure you want to delete this therapist? This cannot be undone.")) return;
+    try {
+      const res = await fetch(`/delete-therapist/${currentTherapistId}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) throw new Error('Failed to delete therapist');
+      showToast('Therapist deleted successfully!');
+      closeTherapistModal();
+      loadTherapists();
+    } catch (err) {
+      showToast('Error: ' + err.message, true);
+    }
+  }
+
+  function cancelTherapistEditing() {
+  closeTherapistModal();
+  loadTherapists();
+}
+</script>
+</script>
+<div id="toast" style="position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #2D6356; color: white; padding: 1rem 1.5rem; border-radius: 6px; box-shadow: 0px 2px 8px rgba(0,0,0,0.3); display: none; font-size: 1rem; z-index: 9999;">Notification</div>
+</body>
+</html>

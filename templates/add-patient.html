@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Add New Patient</title>
+  <link rel="stylesheet" href="/static/calendar.css">
+  <link rel="stylesheet" href="/static/nav.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+    .form-grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      align-items: start;
+    }
+    .form-grid label {
+      display: flex;
+      flex-direction: column;
+      font-weight: 500;
+      font-size: 0.95rem;
+      color: #2D6356;
+    }
+    fieldset {
+      margin-bottom: 2rem;
+    }
+    /*
+    input:invalid, textarea:invalid {
+      border: 2px solid #d9534f;
+      background-color: #fff0f0;
+    }
+    */
+    /* #account-details-section {
+      display: none;
+    } */
+    #medical-aid-details-section {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <script src="/static/js/nav-bar.js"></script>
+  <div id="top-nav"></div>
+  <main class="form-section">
+    <h2>Add New Patient</h2>
+    <form id="patient-form" class="treatment-form" novalidate>
+      <fieldset>
+        <legend>Personal Information</legend>
+        <div class="form-grid">
+          <label>Title
+            <select name="title" required>
+              <option value="">Select</option>
+              <option value="Mx.">Mx.</option>
+              <option value="Ms.">Ms.</option>
+              <option value="Mrs.">Mrs.</option>
+              <option value="Miss">Miss</option>
+              <option value="Mr.">Mr.</option>
+              <option value="Dr.">Dr.</option>
+              <option value="Prof.">Prof.</option>
+              <option value="Rev.">Rev.</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+          <label>First Name<input type="text" name="first_name" required /></label>
+          <label>Surname<input type="text" name="surname" required /></label>
+          <label>Preferred Name<input type="text" name="preferred_name" required /></label>
+          <label>ID Number<input type="text" name="id_number" id="id_number" required /></label>
+          <label>Date of Birth<input type="date" name="date_of_birth" id="date_of_birth" required /></label>
+          <label>Gender
+            <select name="gender" required>
+              <option value="">Select</option>
+              <option value="Female">Female</option>
+              <option value="Male">Male</option>
+              <option value="Non-binary">Non-binary</option>
+              <option value="Transgender">Transgender</option>
+              <option value="Intersex">Intersex</option>
+              <option value="Prefer not to say">Prefer not to say</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+          <label>Address Line 1<input type="text" name="address_line1" required /></label>
+          <label>Address Line 2<input type="text" name="address_line2" /></label>
+          <label>Town/City<input type="text" name="town" required /></label>
+          <label>Postal Code<input type="text" name="postal_code" required /></label>
+          <label>Country
+            <select name="country" required>
+              <option value="South Africa">South Africa</option>
+              <option value="Afghanistan">Afghanistan</option>
+              <option value="Albania">Albania</option>
+              <option value="Algeria">Algeria</option>
+              <option value="Andorra">Andorra</option>
+              <option value="Angola">Angola</option>
+              <option value="Argentina">Argentina</option>
+              <option value="Australia">Australia</option>
+              <option value="Austria">Austria</option>
+              <option value="Bangladesh">Bangladesh</option>
+              <option value="Belgium">Belgium</option>
+              <option value="Botswana">Botswana</option>
+              <option value="Brazil">Brazil</option>
+              <option value="Cameroon">Cameroon</option>
+              <option value="Canada">Canada</option>
+              <option value="China">China</option>
+              <option value="Denmark">Denmark</option>
+              <option value="Egypt">Egypt</option>
+              <option value="Ethiopia">Ethiopia</option>
+              <option value="France">France</option>
+              <option value="Germany">Germany</option>
+              <option value="Ghana">Ghana</option>
+              <option value="India">India</option>
+              <option value="Ireland">Ireland</option>
+              <option value="Italy">Italy</option>
+              <option value="Kenya">Kenya</option>
+              <option value="Lesotho">Lesotho</option>
+              <option value="Malawi">Malawi</option>
+              <option value="Mozambique">Mozambique</option>
+              <option value="Namibia">Namibia</option>
+              <option value="Netherlands">Netherlands</option>
+              <option value="New Zealand">New Zealand</option>
+              <option value="Nigeria">Nigeria</option>
+              <option value="Norway">Norway</option>
+              <option value="Pakistan">Pakistan</option>
+              <option value="Portugal">Portugal</option>
+              <option value="Rwanda">Rwanda</option>
+              <option value="Singapore">Singapore</option>
+              <option value="Spain">Spain</option>
+              <option value="Sweden">Sweden</option>
+              <option value="Switzerland">Switzerland</option>
+              <option value="Tanzania">Tanzania</option>
+              <option value="Uganda">Uganda</option>
+              <option value="United Kingdom">United Kingdom</option>
+              <option value="United States">United States</option>
+              <option value="Zambia">Zambia</option>
+              <option value="Zimbabwe">Zimbabwe</option>
+            </select>
+          </label>
+          <label>Email<input type="email" name="email" required /></label>
+          <label>Contact Number<input type="text" name="contact_number" required /></label>
+          <label>Unit
+            <select name="clinic" id="clinic-select" required>
+              <option value="">Loading units...</option>
+            </select>
+          </label>
+  <script>
+    async function loadClinicOptions() {
+      const select = document.getElementById('clinic-select');
+      select.innerHTML = '<option value="">Select Unit</option>';
+      try {
+        const res = await fetch('http://127.0.0.1:8000/clinics');
+        if (!res.ok) throw new Error('Failed to load units');
+        const data = await res.json();
+        data.forEach(clinic => {
+          const option = document.createElement('option');
+          option.value = clinic.clinic_name;
+          option.textContent = clinic.clinic_name;
+          select.appendChild(option);
+        });
+      } catch (err) {
+        console.error('Could not load units:', err);
+        select.innerHTML = '<option value="">Failed to load units</option>';
+      }
+    }
+
+    loadClinicOptions();
+  </script>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Account Information</legend>
+        <div style="margin-bottom: 1rem;">
+          <span style="font-weight: 500; color: #2D6356;">Who is responsible for the account?</span><br>
+          <label style="margin-right: 1rem;">
+            <input type="radio" name="account_responsibility" value="yes" /> Patient
+          </label>
+          <label>
+            <input type="radio" name="account_responsibility" value="no" /> Someone else
+          </label>
+        </div>
+        <div id="account-details-section">
+          <div class="form-grid">
+            <label>Name (Account)<input type="text" name="account_name" required /></label>
+            <label>ID Number (Account)<input type="text" name="account_id_number" required /></label>
+            <label>Address (Account)<input type="text" name="account_address" required /></label>
+            <label>Phone (Account)<input type="text" name="account_phone" required /></label>
+            <label>Email (Account)<input type="email" name="account_email" required /></label>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Medical Aid Details</legend>
+        <div style="margin-bottom: 1rem;">
+          <span style="font-weight: 500; color: #2D6356;">How will the patient be funding their care?</span><br>
+          <label style="margin-right: 1rem;">
+            <input type="radio" name="funding_option" value="medical_aid" /> Medical Aid
+          </label>
+          <label style="margin-right: 1rem;">
+            <input type="radio" name="funding_option" value="private" /> Private Paying
+          </label>
+          <label>
+            <input type="radio" name="funding_option" value="other" /> Alternative Funding
+          </label>
+        </div>
+        <div id="medical-aid-details-section">
+          <div class="form-grid">
+            <label>Name of Main Member<input type="text" name="main_member_name" required /></label>
+            <label>Medical Aid Name
+              <select name="medical_aid_name" id="medical_aid_name" required>
+                <option value="">Loading options...</option>
+              </select>
+            </label>
+            <label id="other-medical-aid-label" style="display:none;">Please specify<input type="text" name="medical_aid_other" /></label>
+            <label>Plan Name
+              <select name="plan_name" id="plan_name" required>
+                <option value="">Please select a medical aid first</option>
+              </select>
+            </label>
+            <label>Medical Aid Number<input type="text" name="medical_aid_number" required /></label>
+            <label>Dependent Number<input type="text" name="dependent_number" required /></label>
+  <script>
+    async function loadMedicalAidOptions() {
+      const select = document.getElementById('medical_aid_name');
+      select.innerHTML = '<option value="">Select</option>';
+      try {
+        const res = await fetch('http://127.0.0.1:8000/medical_aids');
+        if (!res.ok) throw new Error('Failed to load medical aid options');
+        const data = await res.json();
+        data.forEach(name => {
+          const option = document.createElement('option');
+          option.value = name;
+          option.textContent = name;
+          select.appendChild(option);
+        });
+        // Re-append "Other" option manually
+        const other = document.createElement('option');
+        other.value = 'Other';
+        other.textContent = 'Other';
+        select.appendChild(other);
+      } catch (err) {
+        console.error('Could not load medical aids:', err);
+        select.innerHTML = '<option value="">Failed to load options</option>';
+      }
+    }
+
+    loadMedicalAidOptions();
+  </script>
+  <script>
+    document.getElementById("medical_aid_name").addEventListener("change", async function () {
+      const otherField = document.getElementById("other-medical-aid-label");
+      otherField.style.display = this.value === "Other" ? "block" : "none";
+
+      const planSelect = document.getElementById("plan_name");
+      planSelect.innerHTML = '<option value="">Loading plans...</option>';
+      const selectedAid = this.value;
+      if (!selectedAid || selectedAid === "Other") {
+        planSelect.innerHTML = '<option value="">Please enter manually</option>';
+        return;
+      }
+
+      try {
+        const res = await fetch(`http://127.0.0.1:8000/medical_aid_plans/${encodeURIComponent(selectedAid)}`);
+        if (!res.ok) throw new Error("Failed to load plans");
+        const plans = await res.json();
+
+        planSelect.innerHTML = '<option value="">Select a plan</option>';
+        plans.forEach(plan => {
+          const opt = document.createElement("option");
+          opt.value = plan;
+          opt.textContent = plan;
+          planSelect.appendChild(opt);
+        });
+      } catch (err) {
+        console.error("Error loading plans:", err);
+        planSelect.innerHTML = '<option value="">Failed to load plans</option>';
+      }
+    });
+  </script>
+          </div>
+        </div>
+        <div id="alternative-funding-section" style="display:none;">
+          <div class="form-grid">
+            <label>If using alternative funding, please specify:
+              <select name="alternative_funding_source" id="alternative_funding_source" required>
+                <option value="">Select</option>
+                <option value="WCA">WCA</option>
+                <option value="RAF">RAF</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
+            <label id="other-funding-label" style="display: none;">Please describe:<input type="text" name="alternative_funding_other" required /></label>
+            <label>Claim Number<input type="text" name="claim_number" required /></label>
+            <label>Case Manager Name<input type="text" name="case_manager" /></label>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Important Information</legend>
+        <div class="form-grid">
+          <label>Is there any important information we should know about the patient? (e.g. allergies, precautions, etc.)
+            <textarea name="patient_important_info" rows="4"></textarea>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Consent</legend>
+        <div class="form-grid">
+          <label style="display: flex; align-items: flex-start; gap: 0.5rem;">
+            <input type="checkbox" name="consent_treatment" required />
+            <span><strong>Consent for treatment:</strong> I understand and agree to receive therapeutic interventions as deemed appropriate by the healthcare team.</span>
+          </label>
+
+          <label style="display: flex; align-items: flex-start; gap: 0.5rem;">
+            <input type="checkbox" name="consent_photography" />
+            <span><strong>Consent for photography:</strong> I consent to the use of photographs for clinical documentation or education purposes.</span>
+          </label>
+
+          <label style="display: flex; align-items: flex-start; gap: 0.5rem;">
+            <input type="checkbox" name="consent_data" required />
+            <span><strong>Consent for data management:</strong> I agree to the storage and processing of my information through electronic systems used by Hadada Health.</span>
+          </label>
+
+          <label style="display: flex; align-items: flex-start; gap: 0.5rem;">
+            <input type="checkbox" name="consent_communication" required />
+            <span><strong>Consent for interdisciplinary communication:</strong> I consent to my information being shared with relevant members of the healthcare team for coordinated care.</span>
+          </label>
+
+          <label id="billing-consent-label" style="display: flex; align-items: flex-start; gap: 0.5rem;">
+            <input type="checkbox" name="consent_billing" required />
+            <span><strong>Consent to submit billing:</strong> I authorise Hadada Health to submit my billing details to the medical aid or funding body for payment processing.</span>
+          </label>
+
+          <label style="display: flex; align-items: flex-start; gap: 0.5rem;">
+            <input type="checkbox" name="consent_terms" required />
+            <span><strong>Agreement to terms:</strong> I have read and understood the terms and conditions of treatment and use of services.</span>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Signature</legend>
+        <p>Please sign below to confirm your consent and agreement:</p>
+        <div style="margin-bottom: 1rem;">
+          <label style="font-weight: 500; color: #2D6356;">Who is signing?</label><br>
+          <label style="margin-right: 1rem;">
+            <input type="radio" name="signature_identity" value="patient" required /> Patient
+          </label>
+          <label>
+            <input type="radio" name="signature_identity" value="other" required /> Someone else
+          </label>
+        </div>
+        <div id="signature-other-details" style="display: none; margin-bottom: 1rem;">
+          <label>Name of Signatory<input type="text" name="signature_name" /></label>
+          <label>Relationship to Patient<input type="text" name="signature_relationship" /></label>
+        </div>
+        <canvas id="signature-pad" style="border:1px solid #ccc; width:100%; height:150px;"></canvas>
+        <button type="button" onclick="clearSignature()">Clear Signature</button>
+      </fieldset>
+  <script>
+    document.querySelectorAll('input[name="signature_identity"]').forEach(radio => {
+      radio.addEventListener('change', function () {
+        const details = document.getElementById('signature-other-details');
+        details.style.display = this.value === 'other' ? 'block' : 'none';
+      });
+    });
+  </script>
+      <input type="hidden" name="signature_data" id="signature_data">
+      <button type="submit">Save Patient</button>
+      <div style="height: 2rem;"></div>
+    </form>
+    <fieldset style="margin-bottom: 2rem;">
+      <legend>Import Patients from Excel</legend>
+      <form id="excel-form" enctype="multipart/form-data">
+        <label style="display: flex; align-items: center; gap: 1rem;">
+          <input type="file" id="excel-file" name="file" accept=".xlsx" required />
+          <button type="submit">Upload Excel</button>
+        </label>
+      </form>
+      <div style="margin-top: 1rem;">
+        <a href="patient_template.xlsx" download style="text-decoration: none; font-weight: bold; color: #2D6356;">⬇️ Download Excel Template</a>
+      </div>
+    </fieldset>
+  </main>
+
+  <script>
+    function validatePatientForm(form) {
+      // Disable required on hidden fields
+      ['account-details-section', 'medical-aid-details-section', 'alternative-funding-section'].forEach(id => {
+        const section = document.getElementById(id);
+        if (section && section.style.display === 'none') {
+          section.querySelectorAll('[required]').forEach(field => field.removeAttribute('required'));
+        } else if (section) {
+          section.querySelectorAll('input, select, textarea').forEach(field => {
+            const origRequired = field.dataset.origRequired;
+            if (origRequired === 'true') {
+              field.setAttribute('required', 'required');
+            }
+          });
+        }
+      });
+
+      form.classList.add("validated");
+      const requiredFields = ['first_name', 'surname', 'date_of_birth'];
+      let valid = true;
+
+      requiredFields.forEach(name => {
+        const field = form[name];
+        if (!field.value.trim()) {
+          field.style.border = "2px solid #d9534f";
+          field.style.backgroundColor = "#fff0f0";
+          valid = false;
+        } else {
+          field.style.border = "";
+          field.style.backgroundColor = "";
+        }
+      });
+
+      if (!valid) {
+        alert("Please fill in the required fields.");
+        return false;
+      }
+
+      const email = form.email.value.trim();
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (email && !emailPattern.test(email)) {
+        form.email.style.border = "2px solid #d9534f";
+        form.email.style.backgroundColor = "#fff0f0";
+        alert("Please enter a valid email address.");
+        return false;
+      } else {
+        form.email.style.border = "";
+        form.email.style.backgroundColor = "";
+      }
+
+      const accountEmail = form.account_email.value.trim();
+      if (accountEmail && !emailPattern.test(accountEmail)) {
+        form.account_email.style.border = "2px solid #d9534f";
+        form.account_email.style.backgroundColor = "#fff0f0";
+        alert("Please enter a valid account email address.");
+        return false;
+      } else {
+        form.account_email.style.border = "";
+        form.account_email.style.backgroundColor = "";
+      }
+
+      return true;
+    }
+  </script>
+  <script>
+    document.getElementById('patient-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      if (!validatePatientForm(this)) return;
+      const formData = new FormData(this);
+      // Capture the signature as dataURL and send it as signature_data
+      const dataURL = canvas.toDataURL();
+      formData.set("signature_data", dataURL); // Correctly capture the canvas signature
+      const patientData = Object.fromEntries(formData.entries());
+
+      // Capture unit manually if needed
+      const clinicSelect = document.getElementById('clinic-select');
+      if (clinicSelect) {
+        patientData.clinic = clinicSelect.value || null;
+      }
+
+      console.log("Submitting patient data:", patientData);  // Optional debug
+
+      try {
+        const res = await fetch('http://127.0.0.1:8000/patients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patientData),
+        });
+        if (!res.ok) throw new Error('Failed to save patient');
+        alert('Patient saved successfully!');
+        this.reset();
+        clearSignature(); // Clear the signature pad after saving
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    });
+    // Prevent Enter key from submitting the form accidentally
+    document.getElementById('patient-form').addEventListener('keydown', function(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+      }
+    });
+  </script>
+  <script>
+    document.getElementById('id_number').addEventListener('input', function () {
+      const id = this.value.trim();
+      if (/^\d{13}$/.test(id)) {
+        const year = parseInt(id.slice(0, 2), 10);
+        const month = id.slice(2, 4);
+        const day = id.slice(4, 6);
+        const currentYear = new Date().getFullYear() % 100;
+        const fullYear = year > currentYear ? 1900 + year : 2000 + year;
+
+        const dobField = document.getElementById('date_of_birth');
+        const formatted = `${fullYear}-${month}-${day}`;
+        const isValidDate = !isNaN(new Date(formatted).getTime());
+        if (isValidDate) {
+          dobField.value = formatted;
+        }
+      }
+    });
+  </script>
+  <script>
+    document.querySelectorAll('input[name="account_responsibility"]').forEach(radio => {
+      radio.addEventListener("change", function () {
+        const section = document.getElementById("account-details-section");
+        section.style.display = this.value === "no" ? "block" : "none";
+      });
+    });
+    // Trigger default visibility state on page load
+    document.querySelector('input[name="account_responsibility"]:checked')?.dispatchEvent(new Event('change'));
+  </script>
+  <script>
+    document.querySelectorAll('input[name="funding_option"]').forEach(radio => {
+      radio.addEventListener("change", function () {
+        const medSection = document.getElementById("medical-aid-details-section");
+        const altSection = document.getElementById("alternative-funding-section");
+
+        medSection.style.display = this.value === "medical_aid" ? "block" : "none";
+        altSection.style.display = this.value === "other" ? "block" : "none";
+      });
+    });
+  </script>
+  <script>
+    document.getElementById("alternative_funding_source").addEventListener("change", function () {
+      const otherLabel = document.getElementById("other-funding-label");
+      otherLabel.style.display = this.value === "Other" ? "block" : "none";
+    });
+  </script>
+  <script>
+    document.querySelectorAll('#account-details-section [required], #medical-aid-details-section [required], #alternative-funding-section [required]').forEach(field => {
+      field.dataset.origRequired = 'true';
+    });
+  </script>
+  <script>
+    // Signature pad script
+    const canvas = document.getElementById('signature-pad');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+
+    function resizeCanvas() {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    let lastX, lastY;
+
+    canvas.addEventListener('mousedown', function(e) {
+      drawing = true;
+      const rect = canvas.getBoundingClientRect();
+      lastX = e.clientX - rect.left;
+      lastY = e.clientY - rect.top;
+      ctx.beginPath();
+      ctx.moveTo(lastX, lastY);
+    });
+    canvas.addEventListener('mouseup', function() {
+      drawing = false;
+      ctx.beginPath();
+    });
+    canvas.addEventListener('mouseout', function() {
+      drawing = false;
+      ctx.beginPath();
+    });
+    canvas.addEventListener('mousemove', function(e) {
+      if (!drawing) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#000';
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+    });
+
+    // Touch events
+    canvas.addEventListener('touchstart', function(e) {
+      drawing = true;
+      const rect = canvas.getBoundingClientRect();
+      const touch = e.touches[0];
+      lastX = touch.clientX - rect.left;
+      lastY = touch.clientY - rect.top;
+      ctx.beginPath();
+      ctx.moveTo(lastX, lastY);
+      e.preventDefault();
+    });
+    canvas.addEventListener('touchend', function(e) {
+      drawing = false;
+      ctx.beginPath();
+    });
+    canvas.addEventListener('touchcancel', function(e) {
+      drawing = false;
+      ctx.beginPath();
+    });
+    canvas.addEventListener('touchmove', function(e) {
+      if (!drawing) return;
+      const rect = canvas.getBoundingClientRect();
+      const touch = e.touches[0];
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#000';
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      e.preventDefault();
+    });
+
+    function clearSignature() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      document.getElementById('signature_data').value = '';
+    }
+
+    // capture signature on submit (handled in main submit handler above)
+  </script>
+</body>
+</html>
+  <script>
+    document.querySelectorAll('input[name="funding_option"]').forEach(radio => {
+      radio.addEventListener("change", function () {
+        const billingConsent = document.getElementById("billing-consent-label");
+        billingConsent.style.display = this.value === "private" ? "none" : "block";
+      });
+    });
+</script>
+<script>
+  document.getElementById('excel-form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const fileInput = document.getElementById('excel-file');
+    if (!fileInput.files.length) {
+      alert("Please select an Excel file first.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+
+    try {
+      const res = await fetch('http://127.0.0.1:8000/import-patients', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.detail || "Upload failed");
+
+      alert('✅ ' + result.detail);
+      fileInput.value = ''; // reset the file input
+    } catch (err) {
+      alert('❌ Error uploading: ' + err.message);
+    }
+  });
+</script>
+<script src="/static/js/nav-bar.js"></script>
+      <div id="bottom-nav"></div>
+</body>
+</html>

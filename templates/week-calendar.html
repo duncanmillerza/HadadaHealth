@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Weekly Calendar</title>
+  <link rel="stylesheet" href="/static/calendar.css">
+  <link rel="stylesheet" href="/static/nav.css">
+  <link rel="preload" href="/static/fonts/MaterialIcons-Regular.woff2" as="font" type="font/woff2" crossorigin="anonymous">
+  <link rel="icon" href="/static/favicon.ico" type="image/x-icon" />
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+  <div id="loading-overlay">
+    <div class="spinner"></div>
+  </div>
+  <div id="top-nav">
+    {% include "fragments/nav.html" %}
+  </div>
+  <h2 style="text-align: center;">Weekly Calendar</h2>
+  <div id="admin-therapist-switch" style="text-align:center; margin-bottom: 1rem; display: none;">
+    <label for="therapist-switch-dropdown">View Calendar for:</label>
+    <select id="therapist-switch-dropdown" onchange="switchTherapist()"></select>
+  </div>
+  <div style="text-align: center; margin-bottom: 1rem;">
+    <div class="week-nav-buttons">
+      <button onclick="changeWeek(-1)">Previous</button>
+      <button onclick="goToToday()">Today</button>
+      <button onclick="changeWeek(1)">Next</button>
+    </div>
+    <div id="week-display" style="margin: 0.5rem;"></div>
+    <div class="day-toggle" id="day-toggle" style="display:none; justify-content: center; margin-bottom: 1rem;">
+      <button onclick="selectDay('Mon')">Mon</button>
+      <button onclick="selectDay('Tue')">Tue</button>
+      <button onclick="selectDay('Wed')">Wed</button>
+      <button onclick="selectDay('Thu')">Thu</button>
+      <button onclick="selectDay('Fri')">Fri</button>
+      <button onclick="selectDay('Sat')">Sat</button>
+      <button onclick="selectDay('Sun')">Sun</button>
+    </div>
+  </div>
+  <div class="calendar" id="calendar" style="display: grid; grid-template-columns: 60px repeat(7, 1fr);"></div>
+
+  <div id="booking-modal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:white; padding:1rem; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,0.3); z-index:1000;">
+    <label>
+      Date:
+      <input type="date" id="booking-date">
+    </label><br/><br/>
+    <label>
+      Patient Name:
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <select id="patient-name" style="flex: 1;"></select>
+        <button type="button" onclick="openPatientSelectModal()">Search</button>
+      </div>
+    </label><br/><br/>
+    <label>
+      Profession:
+      <select id="therapist-profession" onchange="filterTherapistByProfession()"></select>
+    </label><br/><br/>
+    <label>
+      Therapist:
+      <select id="therapist-name"></select>
+    </label><br/><br/>
+    <label>
+      Duration (minutes): <input type="number" id="booking-duration" value="15" step="5" min="5">
+    </label><br/><br/>
+    <label>
+      Start Time: <input type="text" id="start-time">
+    </label><br/><br/>
+    <label>
+      End Time: <input type="text" id="end-time">
+    </label><br/><br/>
+    <label>
+      Notes: <textarea id="booking-notes" rows="2" style="width: 100%;"></textarea>
+    </label><br/><br/>
+    <label>
+      Colour:
+      <select id="booking-colour">
+        <option value="">Default</option>
+        <option value="red">Red</option>
+        <option value="orange">Orange</option>
+        <option value="yellow">Yellow</option>
+        <option value="green">Green</option>
+        <option value="blue">Blue</option>
+        <option value="purple">Purple</option>
+        <option value="grey">Grey</option>
+      </select>
+    </label><br/><br/>
+    <input type="hidden" id="editing-appt-id" />
+    <div id="modal-buttons">
+      <button id="submit-button" onclick="submitBooking()">Add Booking</button>
+      <button id="delete-button" onclick="deleteBooking()" style="display:none;">Delete</button>
+      <button onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+  <div id="myAppt" data-duration="60">...</div>
+  <script>
+    let justResized = false;
+    const calendar = document.getElementById("calendar");
+    // Dynamic schedule settings
+    let days = [];
+    let hours = [];
+    // Global variable for slot duration
+    let slotDuration = 15;
+    let selectedCell = null;
+    let selectedDayOverride = null;
+    let currentStartDate = getMonday(new Date());
+    let bookings = [];
+    // Store the last selected day for responsive/mobile view
+    let lastSelectedDay = "Mon";
+
+    // Generate time slots based on settings
+    function generateTimeSlots(start, end, intervalMinutes) {
+      const result = [];
+      let [h, m] = start.split(":").map(Number);
+      let [eh, em] = end.split(":").map(Number);
+      let current = h * 60 + m;
+      const endMinutes = eh * 60 + em;
+      while (current <= endMinutes) {
+        const hour = String(Math.floor(current / 60)).padStart(2, '0');
+        const min = String(current % 60).padStart(2, '0');
+        result.push(`${hour}:${min}`);
+        current += intervalMinutes;
+      }
+      return result;
+    }
+
+    // Fetch settings and initialize calendar
+    async function fetchSettings() {
+      try {
+        const res = await fetch("/settings");
+        const data = await res.json();
+        slotDuration = data.slot_duration; // Set global slot duration
+        // Dynamically apply dark mode class to <body> based on settings
+        if (data.dark_mode) {
+          document.body.classList.add('dark-mode');
+        } else {
+          document.body.classList.remove('dark-mode');
+        }
+        hours = generateTimeSlots(data.start_time, data.end_time, slotDuration);
+        days = data.weekdays.map(d => d.trim().slice(0, 3));  // Ensures Mon, Tue, Wed...
+        renderCalendarGrid();
+        updateCalendarHeader();
+        updateResponsiveView(); // <-- Ensure this happens after rendering
+        await getSessionInfo();
+        await fetchBookings();
+      } catch (error) {
+        console.error("Failed to load settings:", error);
+      }
+    }
+    let currentTherapistId = null;
+
+    async function getSessionInfo() {
+      const res = await fetch("/session-info");
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.role === "Admin") {
+        document.getElementById("admin-therapist-switch").style.display = "block";
+        const dropdown = document.getElementById("therapist-switch-dropdown");
+        dropdown.innerHTML = "";
+        therapists.forEach(t => {
+          const opt = document.createElement("option");
+          opt.value = t.id;
+          opt.textContent = t.preferred_name || `${t.name} ${t.surname}`;
+          dropdown.appendChild(opt);
+        });
+        dropdown.value = data.linked_therapist_id;
+        currentTherapistId = data.linked_therapist_id;
+      } else {
+        currentTherapistId = data.linked_therapist_id;
+      }
+    }
+
+    async function switchTherapist() {
+      const dropdown = document.getElementById("therapist-switch-dropdown");
+      currentTherapistId = dropdown.value;
+      fetchBookings();
+    }
+
+    async function fetchBookings() {
+        // Show loading overlay when fetching bookings
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) overlay.style.display = 'flex';
+      try {
+        const startISO = currentStartDate.toISOString().split('T')[0];
+        const endDate = new Date(currentStartDate);
+        endDate.setDate(endDate.getDate() + 7);
+        const endISO = endDate.toISOString().split('T')[0];
+        const res = await fetch(`/bookings?therapist_id=${currentTherapistId}&start=${startISO}&end=${endISO}`);
+        if (!res.ok) throw new Error("Failed to fetch bookings");
+        bookings = await res.json();
+        // Map raw bookings and apply note flag from booking response
+        bookings = bookings.map(b => ({
+          ...b,
+          date: new Date(b.date),
+          hasTreatmentNote: Boolean(b.has_note)
+        }));
+        renderBookings();
+        // Hide loading overlay after bookings loaded
+        if (overlay) overlay.style.display = 'none';
+      } catch (err) {
+        console.error("Error loading bookings:", err);
+      }
+    }
+    let resizingId = null;
+
+    function getMonday(d) {
+      d = new Date(d);
+      const day = d.getDay(),
+            diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      return new Date(d.setDate(diff));
+    }
+
+    function formatDate(date) {
+      return `${date.getDate().toString().padStart(2, '0')} ${date.toLocaleString('default', { month: 'short' })}`;
+    }
+
+    function updateCalendarHeader() {
+      days.forEach((day, i) => {
+        const date = new Date(currentStartDate);
+        date.setDate(currentStartDate.getDate() + i);
+        const today = new Date();
+        const isToday =
+          date.getDate() === today.getDate() &&
+          date.getMonth() === today.getMonth() &&
+          date.getFullYear() === today.getFullYear();
+
+        const headerCell = document.getElementById(`day-${i}`);
+        headerCell.textContent = `${day} ${formatDate(date)}`;
+        headerCell.classList.toggle("today-header", isToday);
+
+        document.querySelectorAll(`.day-cell[data-day="${day}"]`).forEach(cell => {
+          cell.classList.toggle("today-column", isToday);
+        });
+      });
+
+      const endDate = new Date(currentStartDate);
+      endDate.setDate(endDate.getDate() + 6);
+      document.getElementById("week-display").textContent = `Week of ${formatDate(currentStartDate)} - ${formatDate(endDate)}`;
+    }
+
+    async function changeWeek(offset) {
+      currentStartDate.setDate(currentStartDate.getDate() + (7 * offset));
+      updateCalendarHeader();
+      await fetchBookings();
+    }
+
+    async function goToToday() {
+      currentStartDate = getMonday(new Date());
+      updateCalendarHeader();
+      await fetchBookings();
+    }
+
+    // --- Patient fetching ---
+    let patients = [];
+
+    async function fetchPatients() {
+      try {
+        const res = await fetch("http://127.0.0.1:8000/patients");
+        if (!res.ok) throw new Error("Failed to fetch patients");
+        patients = await res.json();
+        populatePatientDropdown();
+      } catch (err) {
+        console.error("Error loading patients:", err);
+      }
+    }
+
+    function populatePatientDropdown() {
+      const patientSelect = document.getElementById("patient-name");
+      patientSelect.innerHTML = ""; // Clear existing
+      patients.forEach(p => {
+        const option = document.createElement("option");
+        option.value = p.id;
+        option.textContent = p.preferred_name && p.preferred_name.trim() !== ""
+          ? `${p.preferred_name} (${p.first_name} ${p.surname})`
+          : `${p.first_name} ${p.surname}`;
+        patientSelect.appendChild(option);
+      });
+    }
+
+    // --- Therapist fetching ---
+    let therapists = [];
+
+    async function fetchTherapists() {
+      try {
+        const res = await fetch("http://127.0.0.1:8000/therapists");
+        if (!res.ok) throw new Error("Failed to fetch therapists");
+        therapists = await res.json();
+
+        const professions = [...new Set(therapists.map(t => t.profession).filter(Boolean))];
+        const professionSelect = document.getElementById("therapist-profession");
+        professionSelect.innerHTML = "<option value=''>Select profession</option>";
+        professions.forEach(prof => {
+          const option = document.createElement("option");
+          option.value = prof;
+          option.textContent = prof;
+          professionSelect.appendChild(option);
+        });
+
+        filterTherapistByProfession(); // Populate therapist dropdown initially
+      } catch (err) {
+        console.error("Error loading therapists:", err);
+      }
+    }
+
+    function filterTherapistByProfession() {
+      const selectedProf = document.getElementById("therapist-profession").value;
+      const therapistSelect = document.getElementById("therapist-name");
+      therapistSelect.innerHTML = "";
+      therapists
+        .filter(t => !selectedProf || t.profession === selectedProf)
+        .forEach(t => {
+          const option = document.createElement("option");
+          option.value = t.preferred_name || `${t.name} ${t.surname}`;
+          option.textContent = t.preferred_name || `${t.name} ${t.surname}`;
+          therapistSelect.appendChild(option);
+        });
+    }
+
+
+// Initialize data in parallel
+async function initData() {
+  try {
+    // Kick off settings and session-info in parallel
+    const settingsP = fetch("/settings").then(r => r.json());
+    const sessionP  = fetch("/session-info").then(r => r.json());
+
+    // Wait for settings to build grid
+    const settings = await settingsP;
+    slotDuration = settings.slot_duration;
+    hours = generateTimeSlots(settings.start_time, settings.end_time, slotDuration);
+    days = settings.weekdays.map(d => d.trim().slice(0,3));
+    if (settings.dark_mode) {
+      document.body.classList.add('dark-mode');
+    } else {
+      document.body.classList.remove('dark-mode');
+    }
+    renderCalendarGrid();
+    updateCalendarHeader();
+    updateResponsiveView();
+
+    // Now await session info
+    const sess = await sessionP;
+    if (sess.role === "Admin") {
+      document.getElementById("admin-therapist-switch").style.display = "block";
+      const dropdown = document.getElementById("therapist-switch-dropdown");
+      therapists.forEach(t => {
+        const opt = document.createElement("option");
+        opt.value = t.id;
+        opt.textContent = t.preferred_name || `${t.name} ${t.surname}`;
+        dropdown.appendChild(opt);
+      });
+      dropdown.value = sess.linked_therapist_id;
+      currentTherapistId = sess.linked_therapist_id;
+    } else {
+      currentTherapistId = sess.linked_therapist_id;
+    }
+
+    // Finally fetch bookings & notes
+    await fetchBookings();
+    // (overlay hide is now handled by fetchBookings)
+  } catch (err) {
+    console.error("Initialization error:", err);
+  }
+}
+
+// Run initialization on load
+window.onload = initData;
+
+function openModal(cell, appt = null, dayOverride = null) {
+  selectedCell = cell;
+  selectedDayOverride = dayOverride;
+  document.getElementById("booking-modal").style.display = "block";
+  document.getElementById("submit-button").textContent = appt ? "Update Booking" : "Add Booking";
+  document.getElementById("delete-button").style.display = appt ? "inline-block" : "none";
+  document.getElementById("start-time").value = cell.dataset.time;
+
+  const bookingDate = appt
+    ? (appt.date instanceof Date ? appt.date : new Date(appt.date))
+    : new Date(currentStartDate.getTime() + (days.findIndex(d => d === cell.dataset.day) * 24 * 60 * 60 * 1000));
+  document.getElementById("booking-date").value = bookingDate.toISOString().split('T')[0];
+
+  if (appt) {
+    const booking = appt;
+    // Patient dropdown selection logic
+    const patientDropdown = document.getElementById("patient-name");
+    const exists = Array.from(patientDropdown.options).some(o => o.value === String(booking.patient_id));
+    if (exists) {
+      patientDropdown.value = booking.patient_id;
+    } else {
+      const fallback = document.createElement("option");
+      fallback.value = booking.patient_id;
+      fallback.textContent = booking.name || `Patient ${booking.patient_id}`;
+      patientDropdown.appendChild(fallback);
+      patientDropdown.value = booking.patient_id;
+    }
+    document.getElementById("booking-duration").value = booking?.duration || 15;
+    // Set therapist dropdown value to preferred_name or "First Last" as in dropdown population
+    const therapistObj = therapists.find(t => t.id == booking?.therapist);
+    document.getElementById("therapist-name").value = therapistObj?.preferred_name || `${therapistObj?.name} ${therapistObj?.surname}` || "";
+    document.getElementById("editing-appt-id").value = booking?.id;
+    document.getElementById("booking-notes").value = booking?.notes || "";
+    document.getElementById("booking-colour").value = booking?.colour || "";
+    document.getElementById("start-time").value = booking?.time || cell.dataset.time;
+
+    const duration = booking?.duration || 15;
+    const [h, m] = (booking?.time || "00:00").split(":").map(Number);
+    const startMinutes = h * 60 + m;
+    const endMinutes = startMinutes + duration;
+    const endHour = String(Math.floor(endMinutes / 60)).padStart(2, '0');
+    const endMin = String(endMinutes % 60).padStart(2, '0');
+    document.getElementById("end-time").value = `${endHour}:${endMin}`;
+  } else {
+    document.getElementById("patient-name").value = "";
+    document.getElementById("booking-duration").value = "15";
+    document.getElementById("therapist-name").value = "Duncan";
+    document.getElementById("editing-appt-id").value = "";
+    document.getElementById("booking-notes").value = "";
+    document.getElementById("booking-colour").value = "";
+
+    const startTimeValue = cell.dataset.time;
+    document.getElementById("start-time").value = startTimeValue;
+    const duration = parseInt(document.getElementById("booking-duration").value);
+    const [h, m] = startTimeValue.split(":").map(Number);
+    const startMinutes = h * 60 + m;
+    const endMinutes = startMinutes + duration;
+    const endHour = String(Math.floor(endMinutes / 60)).padStart(2, '0');
+    const endMin = String(endMinutes % 60).padStart(2, '0');
+    document.getElementById("end-time").value = `${endHour}:${endMin}`;
+  }
+}
+
+function closeModal() {
+  document.getElementById("booking-modal").style.display = "none";
+  selectedCell = null;
+  selectedDayOverride = null;
+}
+
+    function deleteBooking() {
+      const apptId = document.getElementById("editing-appt-id").value;
+      if (!apptId) return;
+
+      if (!confirm("Are you sure you want to permanently delete this booking?")) return;
+
+      fetch(`/bookings/${apptId}`, {
+        method: "DELETE"
+      })
+      .then(res => {
+        if (!res.ok) {
+          console.error("Failed to delete booking:", res.statusText);
+          throw new Error("Failed to delete booking");
+        }
+        return res.json();
+      })
+      .then(data => {
+        closeModal();
+        fetchBookings(); // Refresh calendar
+      })
+      .catch(err => {
+        alert("Delete request failed to reach server: " + err.message);
+        console.error("Fetch error:", err);
+      });
+    }
+
+    function updateEndTime() {
+      const start = document.getElementById("start-time").value;
+      const duration = parseInt(document.getElementById("booking-duration").value);
+      if (!start || !duration) return;
+
+      const [h, m] = start.split(":").map(Number);
+      const startMinutes = h * 60 + m;
+      const endMinutes = startMinutes + duration;
+      const endHour = String(Math.floor(endMinutes / 60)).padStart(2, '0');
+      const endMin = String(endMinutes % 60).padStart(2, '0');
+      document.getElementById("end-time").value = `${endHour}:${endMin}`;
+    }
+
+    document.getElementById("booking-duration").addEventListener("input", updateEndTime);
+
+    async function submitBooking() {
+      const patientId = document.getElementById("patient-name").value;
+      const patient = patients.find(p => p.id == patientId);
+      const name = patient && patient.first_name && patient.surname
+        ? `${patient.first_name} ${patient.surname}`
+        : document.getElementById("patient-name").selectedOptions[0]?.textContent || "Unknown";
+      const duration = parseInt(document.getElementById("booking-duration").value);
+      // Get the therapist as the ID, not the name, and ensure it's a string
+      const therapistDropdown = document.getElementById("therapist-name");
+      const therapist = String(
+        therapists.find(t => {
+          return t.preferred_name === therapistDropdown.value ||
+                 `${t.name} ${t.surname}` === therapistDropdown.value;
+        })?.id || currentTherapistId
+      );
+      const notes = document.getElementById("booking-notes").value;
+      const apptId = document.getElementById("editing-appt-id").value;
+      const time = document.getElementById("start-time").value;
+      const date = new Date(document.getElementById("booking-date").value);
+      let day = selectedCell?.dataset.day || bookings.find(b => b.id === apptId)?.day || selectedDayOverride;
+      if (!day) {
+        const index = (date.getDay() + 6) % 7; // converts Sunday=0 to index 6
+        day = days[index];
+      }
+      
+      // Get the profession value from the dropdown
+      const profession = document.getElementById("therapist-profession").value;
+      
+      const bookingData = {
+        id: apptId || `appt-${Date.now()}`,
+        name,
+        therapist,
+        date: date.toISOString(),
+        day,
+        time,
+        duration,
+        notes,
+        patient_id: patientId,
+        colour: document.getElementById("booking-colour").value,
+        profession,
+      };
+
+      const method = apptId ? "PUT" : "POST";
+      const endpoint = apptId ? `/bookings/${bookingData.id}` : "/bookings";
+
+      try {
+        const res = await fetch(`http://127.0.0.1:8000${endpoint}`, {
+          method: method,
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(bookingData)
+        });
+
+        if (!res.ok) throw new Error("Failed to save booking");
+
+        await res.json();
+        closeModal();
+        await fetchBookings();
+      } catch (err) {
+        alert("Booking failed: " + err.message);
+        console.error(err);
+      }
+    }
+
+    function renderBookings() {
+      const allAppointments = document.querySelectorAll('.appointment');
+      allAppointments.forEach(appt => appt.remove());
+
+      const colourMap = {
+        red: "#96364C",       // soft red
+        orange: "#D9832F",    // warm muted orange
+        yellow: "#E5C17C",    // earthy yellow
+        green: "#2D6356",     // brand green
+        blue: "#32517A",      // brand blue
+        purple: "#7A5C94",    // gentle purple
+        grey: "#CDD3CE"       // soft grey
+      };
+
+      bookings.forEach(booking => {
+        // Ensure comparison is done by date only (ignoring time-of-day)
+        const bookingDate = new Date(booking.date);
+        const weekStart = new Date(currentStartDate);
+        weekStart.setHours(0, 0, 0, 0);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 7);
+        if (bookingDate >= weekStart && bookingDate < weekEnd) {
+          // Normalize day and time for selector and all logic
+          const normalizedDay = (booking.day || "").trim().slice(0, 3);
+          const normalizedTime = (booking.time || "").slice(0, 5);
+          let cell = document.querySelector(`[data-day="${normalizedDay}"][data-time="${normalizedTime}"]`);
+          let offsetMinutes = 0;
+
+          if (!cell) {
+            const fallbackTime = hours[0]; // First available time in your grid
+            cell = document.querySelector(`[data-day="${normalizedDay}"][data-time="${fallbackTime}"]`);
+
+            if (cell) {
+              const [baseH, baseM] = fallbackTime.split(":").map(Number);
+              const [apptH, apptM] = normalizedTime.split(":").map(Number);
+              offsetMinutes = (apptH * 60 + apptM) - (baseH * 60 + baseM);
+            } else {
+              console.warn("No fallback cell found for:", normalizedDay);
+              return;
+            }
+          }
+          const appt = document.createElement("div");
+          appt.className = "appointment";
+          if (booking.hasTreatmentNote) {
+            appt.classList.add("greyed-out");
+          }
+          if (booking.colour && colourMap[booking.colour]) {
+            appt.style.backgroundColor = colourMap[booking.colour];
+          }
+          appt.id = booking.id;
+          appt.draggable = !booking.hasTreatmentNote;
+          const [h, m] = normalizedTime.split(":").map(Number);
+          const startMinutes = h * 60 + m;
+          const endMinutes = startMinutes + booking.duration;
+          const endHour = String(Math.floor(endMinutes / 60)).padStart(2, '0');
+          const endMin = String(endMinutes % 60).padStart(2, '0');
+          const endTime = `${endHour}:${endMin}`;
+          appt.innerHTML = `${booking.name}<br><span style="font-size: 0.85em;">${normalizedTime} - ${endTime}</span>`;
+          appt.dataset.duration = booking.duration;
+          appt.style.height = `${(booking.duration / slotDuration) * 40}px`;
+          appt.style.marginTop = `${(offsetMinutes / slotDuration) * 40}px`;
+          appt.style.position = 'absolute';
+          appt.style.top = '0';
+          appt.style.left = '0';
+          appt.style.right = '0';
+
+          const notesDiv = document.createElement("div");
+          notesDiv.style.fontSize = "0.8em";
+          notesDiv.style.marginTop = "0.25rem";
+          notesDiv.textContent = booking.notes;
+          appt.appendChild(notesDiv);
+
+          if (!booking.hasTreatmentNote) {
+            const resizeHandle = document.createElement('div');
+            resizeHandle.style.position = 'absolute';
+            resizeHandle.style.bottom = '0';
+            resizeHandle.style.left = '0';
+            resizeHandle.style.right = '0';
+            resizeHandle.style.height = '8px';
+            resizeHandle.style.cursor = 'ns-resize';
+            resizeHandle.style.backgroundColor = 'rgba(0,0,0,0.1)';
+            appt.appendChild(resizeHandle);
+
+            resizeHandle.addEventListener('mousedown', (e) => {
+              e.stopPropagation();
+              resizingId = appt.id;
+              const startY = e.clientY;
+              const startHeight = appt.offsetHeight;
+
+              function onMouseMove(e) {
+                const diffY = e.clientY - startY;
+                const newHeight = Math.max(40, startHeight + diffY);
+                const newSlots = Math.round(newHeight / 40);
+                appt.style.height = `${newSlots * 40}px`;
+              }
+
+              function onMouseUp(e) {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+                const newSlots = Math.round(appt.offsetHeight / 40);
+                const confirmResize = confirm("Are you sure you want to change the appointment duration?");
+                if (confirmResize) {
+                  const booking = bookings.find(b => b.id === appt.id);
+                  if (booking) {
+                    booking.duration = newSlots * slotDuration;
+                    // Persist to backend
+                    fetch(`http://127.0.0.1:8000/bookings/${booking.id}`, {
+                      method: "PUT",
+                      headers: {
+                        "Content-Type": "application/json"
+                      },
+                      body: JSON.stringify(booking)
+                    }).then(res => {
+                      if (!res.ok) throw new Error("Failed to save resize update");
+                      return res.json();
+                    }).then(() => {
+                    }).catch(err => {
+                      console.error("Error updating booking after resize:", err);
+                    });
+                    const [h, m] = (booking.time || "").slice(0, 5).split(":").map(Number);
+                    const startMinutes = h * 60 + m;
+                    const endMinutes = startMinutes + booking.duration;
+                    const endHour = String(Math.floor(endMinutes / 60)).padStart(2, '0');
+                    const endMin = String(endMinutes % 60).padStart(2, '0');
+                    const endTime = `${endHour}:${endMin}`;
+
+                    // Redraw the appointment card with new time and notes and resize handle
+                    appt.innerHTML = `
+                      ${booking.name}<br><span style="font-size: 0.85em;">${(booking.time || "").slice(0,5)} - ${endTime}</span>
+                    `;
+                    const notesDiv = document.createElement("div");
+                    notesDiv.style.fontSize = "0.8em";
+                    notesDiv.style.marginTop = "0.25rem";
+                    notesDiv.textContent = booking.notes;
+                    appt.appendChild(notesDiv);
+                    if (!booking.hasTreatmentNote) {
+                      const resizeHandle = document.createElement("div");
+                      resizeHandle.style.position = "absolute";
+                      resizeHandle.style.bottom = "0";
+                      resizeHandle.style.left = "0";
+                      resizeHandle.style.right = "0";
+                      resizeHandle.style.height = "8px";
+                      resizeHandle.style.cursor = "ns-resize";
+                      resizeHandle.style.backgroundColor = "rgba(0,0,0,0.1)";
+                      appt.appendChild(resizeHandle);
+                      // Re-attach resize event
+                      resizeHandle.addEventListener('mousedown', arguments.callee);
+                    }
+                  }
+                } else {
+                  renderBookings();
+                }
+                resizingId = null;
+                document.body.style.userSelect = '';
+              }
+
+              document.addEventListener('mousemove', onMouseMove);
+              document.addEventListener('mouseup', onMouseUp);
+              document.body.style.userSelect = 'none';
+            });
+          }
+
+          appt.addEventListener("dragstart", e => {
+            if (resizingId) {
+              e.preventDefault();
+              return;
+            }
+            e.dataTransfer.setData("text/plain", appt.id);
+          });
+          appt.addEventListener("click", (e) => {
+            e.stopPropagation();
+            if (justResized || e.button !== 0) return;
+            const booking = bookings.find(b => b.id === appt.id);
+            if (booking) {
+              openSummaryModal(booking);
+            }
+          });
+
+          let container = cell.querySelector('.appt-container');
+          if (!container) {
+            container = document.createElement('div');
+            container.className = 'appt-container';
+            cell.appendChild(container);
+          }
+          container.appendChild(appt);
+        }
+      });
+    }
+
+    // Render the calendar grid based on current days and hours
+    function renderCalendarGrid() {
+      // Clear the calendar container
+      calendar.innerHTML = "";
+      // Header row
+      calendar.appendChild(document.createElement("div")); // empty top-left corner
+      days.forEach((day, index) => {
+        const cell = document.createElement("div");
+        cell.className = "time-label";
+        cell.id = `day-${index}`;
+        calendar.appendChild(cell);
+      });
+      // Time rows
+      hours.forEach(time => {
+        const label = document.createElement("div");
+        label.className = "time-label";
+        label.textContent = time;
+        calendar.appendChild(label);
+        days.forEach(day => {
+          const cell = document.createElement("div");
+          cell.className = "day-cell droppable";
+          cell.dataset.day = day;
+          cell.dataset.time = time;
+          cell.addEventListener("dragover", e => {
+            e.preventDefault();
+            cell.classList.add("drag-over");
+          });
+          cell.addEventListener("dragleave", () => {
+            cell.classList.remove("drag-over");
+          });
+          cell.addEventListener("drop", e => {
+            if (!confirm("Are you sure you want to move this booking?")) {
+              renderBookings(); // Re-render to return it to its original place
+              return;
+            }
+            e.preventDefault();
+            const id = e.dataTransfer.getData("text/plain");
+            const el = document.getElementById(id);
+            const booking = bookings.find(b => b.id === id);
+            const duration = booking ? booking.duration : slotDuration;
+            const rowHeight = 40; // matches grid-auto-rows
+            el.style.height = `${(duration / slotDuration) * rowHeight}px`;
+            el.dataset.duration = duration;
+            el.style.position = 'absolute';
+            el.style.top = '0';
+            el.style.left = '0';
+            el.style.right = '0';
+            // --- Recalculate marginTop based on time and first slot ---
+            const [h, m] = cell.dataset.time.split(":").map(Number);
+            const startMinutes = h * 60 + m;
+            const [baseH, baseM] = hours[0].split(":").map(Number);
+            const baseMinutes = baseH * 60 + baseM;
+            const offsetMinutes = startMinutes - baseMinutes;
+            el.style.marginTop = `${(offsetMinutes / slotDuration) * 40}px`;
+            cell.appendChild(el);
+            cell.classList.remove("drag-over");
+            // Update booking data
+            const bookingIndex = bookings.findIndex(b => b.id === id);
+            if (bookingIndex !== -1) {
+              bookings[bookingIndex].time = cell.dataset.time;
+              bookings[bookingIndex].day = cell.dataset.day;
+              // Update date field before persisting to backend
+              bookings[bookingIndex].date = new Date(currentStartDate);
+              bookings[bookingIndex].date.setDate(currentStartDate.getDate() + days.findIndex(d => d === cell.dataset.day));
+              // Then persist the updated booking with explicit payload including patient_id
+              const updatedBooking = bookings[bookingIndex];
+              const payload = {
+                id: updatedBooking.id,
+                name: updatedBooking.name,
+                therapist: updatedBooking.therapist,
+                date: updatedBooking.date.toISOString(),
+                day: updatedBooking.day,
+                time: updatedBooking.time,
+                duration: updatedBooking.duration,
+                notes: updatedBooking.notes,
+                colour: updatedBooking.colour,
+                profession: updatedBooking.profession,
+                patient_id: updatedBooking.patient_id
+              };
+              fetch(`http://127.0.0.1:8000/bookings/${updatedBooking.id}`, {
+                method: "PUT",
+                headers: {
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+              }).then(res => {
+                if (!res.ok) throw new Error("Failed to save drag update");
+                return res.json();
+              }).then(() => {
+                // Force a full re-render of bookings to ensure correct placement after drag
+                renderBookings();
+              }).catch(err => {
+                console.error("Error updating booking after drag:", err);
+              });
+              const booking = bookings[bookingIndex];
+              // --- Recalculate vertical offset for arbitrary start times ---
+              // Already handled above; do not reapply marginTop here
+              const endMinutes = startMinutes + booking.duration;
+              const endHour = String(Math.floor(endMinutes / 60)).padStart(2, '0');
+              const endMin = String(endMinutes % 60).padStart(2, '0');
+              const endTime = `${endHour}:${endMin}`;
+              // Clear existing children and update appointment card content
+              el.innerHTML = `
+  ${booking.name}<br><span style="font-size: 0.85em;">${booking.time} - ${endTime}</span>
+`;
+              const notesDiv = document.createElement("div");
+              notesDiv.style.fontSize = "0.8em";
+              notesDiv.style.marginTop = "0.25rem";
+              notesDiv.textContent = booking.notes;
+              el.appendChild(notesDiv);
+              if (!booking.hasTreatmentNote) {
+                const resizeHandle = document.createElement("div");
+                resizeHandle.style.position = "absolute";
+                resizeHandle.style.bottom = "0";
+                resizeHandle.style.left = "0";
+                resizeHandle.style.right = "0";
+                resizeHandle.style.height = "8px";
+                resizeHandle.style.cursor = "ns-resize";
+                resizeHandle.style.backgroundColor = "rgba(0,0,0,0.1)";
+                el.appendChild(resizeHandle);
+                resizeHandle.addEventListener('mousedown', (e) => {
+                  e.stopPropagation();
+                  resizingId = el.id;
+                  const startY = e.clientY;
+                  const startHeight = el.offsetHeight;
+                  function onMouseMove(e) {
+                    const diffY = e.clientY - startY;
+                    const newHeight = Math.max(40, startHeight + diffY);
+                    const newSlots = Math.round(newHeight / 40);
+                    el.style.height = `${newSlots * 40}px`;
+                  }
+                  function onMouseUp(e) {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                    const newSlots = Math.round(el.offsetHeight / 40);
+                    const confirmResize = confirm("Are you sure you want to change the appointment duration?");
+                    if (confirmResize) {
+                      if (booking) {
+                        booking.duration = newSlots * slotDuration;
+                        // Persist to backend
+                        const payload = {
+                          id: booking.id,
+                          name: booking.name,
+                          therapist: booking.therapist,
+                          date: booking.date.toISOString(),
+                          day: booking.day,
+                          time: booking.time,
+                          duration: booking.duration,
+                          notes: booking.notes,
+                          colour: booking.colour,
+                          profession: booking.profession,
+                          patient_id: booking.patient_id
+                        };
+                        fetch(`http://127.0.0.1:8000/bookings/${booking.id}`, {
+                          method: "PUT",
+                          headers: {
+                            "Content-Type": "application/json"
+                          },
+                          body: JSON.stringify(payload)
+                        }).then(res => {
+                          if (!res.ok) throw new Error("Failed to save resize update");
+                          return res.json();
+                        }).then(() => {
+                          renderBookings();
+                        }).catch(err => {
+                          console.error("Error updating booking after resize:", err);
+                        });
+                      }
+                    } else {
+                      renderBookings();
+                    }
+                    resizingId = null;
+                    document.body.style.userSelect = '';
+                  }
+                  document.addEventListener('mousemove', onMouseMove);
+                  document.addEventListener('mouseup', onMouseUp);
+                  document.body.style.userSelect = 'none';
+                });
+              }
+            }
+          });
+          cell.addEventListener("click", () => {
+            if (!justResized) {
+              openModal(cell);
+            }
+          });
+          calendar.appendChild(cell);
+        });
+      });
+    }
+
+    // const testAppt = {
+    //   id: `appt-${Date.now()}`,
+    //   name: "John Doe",
+    //   duration: 30,
+    //   therapist: "Duncan",
+    //   date: new Date(currentStartDate),
+    //   day: "Mon",
+    //   time: "09:00",
+    //   notes: ""
+    // };
+    // bookings.push(testAppt);
+    // renderBookings();
+
+let contextTarget = null;
+
+function openModalFromContext() {
+  if (!contextTarget) return;
+  const cell = contextTarget.closest(".day-cell");
+  const booking = bookings.find(b => b.id === contextTarget.id);
+  if (cell && booking) {
+    openModal(cell, { ...booking, id: contextTarget.id });
+  }
+}
+
+function handleContextAction(action) {
+  if (!contextTarget) return;
+  const id = contextTarget.id;
+  if (action === "edit") {
+    openModalFromContext();
+  } else if (action === "cancel") {
+    document.getElementById("cancel-modal").style.display = "block";
+  } else if (action === "profile") {
+    window.location.href = "Patient Profile.html";
+  } else if (action === "session") {
+    window.location.href = "treatment-notes-page";
+  } else {
+    alert(`Action '${action}' selected for ${id}`);
+  }
+  document.getElementById("context-menu").style.display = "none";
+}
+
+document.addEventListener("click", () => {
+  const menu = document.getElementById("context-menu");
+  if (menu) menu.style.display = "none";
+});
+
+    document.addEventListener("contextmenu", e => {
+      const appt = e.target.closest(".appointment");
+      if (appt) {
+        e.preventDefault();
+        contextTarget = appt;
+        const menu = document.getElementById("context-menu");
+        menu.style.display = "block";
+        menu.style.left = `${e.pageX}px`;
+        menu.style.top = `${e.pageY}px`;
+      } else {
+        const contextMenu = document.getElementById("context-menu");
+        if (contextMenu) {
+          contextMenu.style.display = "none";
+        }
+      }
+    });
+
+function confirmCancellation() {
+  const reason = document.getElementById("cancel-reason").value.trim();
+  if (!reason) {
+    alert("Please enter a reason.");
+    return;
+  }
+
+  if (contextTarget) {
+    const id = contextTarget.id;
+    const index = bookings.findIndex(b => b.id === id);
+    if (index !== -1) {
+      bookings.splice(index, 1); // remove booking
+    }
+  }
+
+  closeCancelModal();
+  renderBookings();
+}
+
+function closeCancelModal() {
+  document.getElementById("cancel-modal").style.display = "none";
+  document.getElementById("cancel-reason").value = "";
+}
+
+// Responsive view: show only one day at a time on small screens
+function selectDay(day) {
+  // Remember the last selected day
+  lastSelectedDay = day;
+  document.querySelectorAll(".day-toggle button").forEach(btn => {
+    btn.classList.remove("active");
+    if (btn.textContent === day) btn.classList.add("active");
+  });
+  document.querySelectorAll(".day-cell").forEach(cell => {
+    cell.style.display = cell.dataset.day === day ? "" : "none";
+  });
+  // Only show the selected day's header above the appointment column (mobile)
+  days.forEach((d, i) => {
+    const header = document.getElementById(`day-${i}`);
+    if (!header) return;
+    if (d === day) {
+      const date = new Date(currentStartDate);
+      date.setDate(currentStartDate.getDate() + i);
+      header.textContent = `${d} ${formatDate(date)}`;
+      if (header.style) header.style.display = "";
+    } else {
+      if (header.style) header.style.display = "none";
+    }
+  });
+}
+
+function updateResponsiveView() {
+  const showToggle = window.innerWidth <= 768;
+  const calendarElem = document.getElementById("calendar");
+  if (showToggle) {
+    document.getElementById("day-toggle").style.display = "flex";
+    selectDay(lastSelectedDay);
+    calendarElem.style.gridTemplateColumns = "60px 1fr";
+  } else {
+    document.getElementById("day-toggle").style.display = "none";
+    calendarElem.style.gridTemplateColumns = `60px repeat(${days.length}, 1fr)`;
+    document.querySelectorAll(".day-cell").forEach(cell => {
+      cell.style.display = "";
+    });
+    // Restore all day headers when switching back to desktop view
+    days.forEach((d, i) => {
+      const header = document.getElementById(`day-${i}`);
+      if (header) header.style.display = "";
+    });
+  }
+}
+
+window.addEventListener("resize", updateResponsiveView);
+window.addEventListener("load", updateResponsiveView);
+</script>
+<!-- Patient Search Modal -->
+<div id="patient-select-modal" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%); background:white; padding:1.5rem; border-radius:8px; width:90%; max-width:600px; box-shadow:0 0 12px rgba(0,0,0,0.3); z-index:1100;">
+  <h3>Select a Patient</h3>
+  <input type="text" id="patient-search-input" placeholder="Search by name, surname, preferred name..." style="width: 100%; padding: 0.5rem; margin-bottom: 1rem;" />
+  <div id="patient-search-results" style="max-height: 300px; overflow-y: auto; border-top: 1px solid #ccc; padding-top: 0.5rem;"></div>
+  <div style="margin-top: 1rem; text-align: right;">
+    <button onclick="closePatientSelectModal()">Cancel</button>
+  </div>
+</div>
+<script>
+function openPatientSelectModal() {
+  document.getElementById("patient-select-modal").style.display = "block";
+  document.getElementById("patient-search-input").value = "";
+  updatePatientSearchResults("");
+}
+
+function closePatientSelectModal() {
+  document.getElementById("patient-select-modal").style.display = "none";
+}
+
+function updatePatientSearchResults(query) {
+  const resultsDiv = document.getElementById("patient-search-results");
+  resultsDiv.innerHTML = "";
+  const q = query.toLowerCase();
+  const matched = patients.filter(p => (
+    p.first_name.toLowerCase().includes(q) ||
+    p.surname.toLowerCase().includes(q) ||
+    (p.preferred_name && p.preferred_name.toLowerCase().includes(q))
+  ));
+  if (matched.length === 0) {
+    resultsDiv.innerHTML = "<p>No patients found.</p>";
+  } else {
+    matched.forEach(p => {
+      const btn = document.createElement("button");
+      btn.style.display = "block";
+      btn.style.width = "100%";
+      btn.style.textAlign = "left";
+      btn.style.marginBottom = "0.25rem";
+      btn.textContent = p.preferred_name && p.preferred_name.trim() !== ""
+        ? `${p.preferred_name} (${p.first_name} ${p.surname})`
+        : `${p.first_name} ${p.surname}`;
+      btn.onclick = () => {
+        document.getElementById("patient-name").value = p.id;
+        closePatientSelectModal();
+      };
+      resultsDiv.appendChild(btn);
+    });
+  }
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+  const input = document.getElementById("patient-search-input");
+  if (input) {
+    input.addEventListener("input", (e) => {
+      updatePatientSearchResults(e.target.value);
+    });
+  }
+});
+</script>
+
+</script>
+<script>
+  // Lazy-load heavy data when needed
+  document.addEventListener('DOMContentLoaded', () => {
+    const patientSelect = document.getElementById('patient-name');
+    if (patientSelect) {
+      patientSelect.addEventListener('focus', () => {
+        if (patients.length === 0) fetchPatients();
+      });
+    }
+    const professionSelect = document.getElementById('therapist-profession');
+    if (professionSelect) {
+      professionSelect.addEventListener('focus', () => {
+        if (therapists.length === 0) fetchTherapists();
+      });
+    }
+  });
+</script>
+<div id="bottom-nav">
+  {% include "fragments/nav.html" %}
+</div>
+<script src="/static/js/summary-modal.js"></script>
+</body>
+</html>

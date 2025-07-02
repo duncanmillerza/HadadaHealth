@@ -1,0 +1,77 @@
+<link rel="stylesheet" href="/static/nav.css">
+<link rel="icon" href="/static/favicon.ico" type="image/x-icon" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<header id="combined-top-nav">
+  <div class="logo">
+    <button onclick="history.back()" style="background: none; border: none; padding: 0; margin-right: 0.5rem; cursor: pointer;">
+      <span class="material-icons nav-link" style="font-size: 24px; color: white;">arrow_back_ios</span>
+    </button>
+    <img src="/static/logo_small_green.png" alt="Logo" />
+    <h1>Hadada Health</h1>
+  </div>
+  <div style="margin-left: auto; margin-right: 1rem;">
+    <button onclick="logout()" style="background-color: #2D6356; color: white; padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer;">
+      Logout
+    </button>
+  </div>
+  <nav id="ipb5qw-2-3">
+    <a href="/" class="nav-link">
+      <div style="display: flex; flex-direction: column; align-items: center;">
+        <span class="material-icons">dashboard</span>
+        <span>Dashboard</span>
+      </div>
+    </a>
+    <a href="/week-calendar-page" class="nav-link">
+      <div style="display: flex; flex-direction: column; align-items: center;">
+        <span class="material-icons">calendar_today</span>
+        <span>Calendar</span>
+      </div>
+    </a>
+    <a href="/patients-page" class="nav-link">
+      <div style="display: flex; flex-direction: column; align-items: center;">
+        <span class="material-icons">groups</span>
+        <span>Patients</span>
+      </div>
+    </a>
+    <div class="nav-link" style="position: relative;">
+      <button onclick="toggleAdminMenu()" style="background: none; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; color: white; font-weight: 500;">
+        <span class="material-icons">admin_panel_settings</span>
+        <span>Admin</span>
+      </button>
+      <div id="admin-dropdown">
+        <a href="/therapists-page" style="display: block; padding: 0.5rem 1rem; text-decoration: none; color: #333;">Therapists</a>
+        <a href="/medical-aid-page" style="display: block; padding: 0.5rem 1rem; text-decoration: none; color: #333;">Medical Aids</a>
+        <a href="/settings-page" style="display: block; padding: 0.5rem 1rem; text-decoration: none; color: #333;">Settings</a>
+        <a href="/manage-users-page" style="display: block; padding: 0.5rem 1rem; text-decoration: none; color: #333;">Manage Users</a>
+      </div>
+    </div>
+  </nav>
+</header>
+
+
+
+<link rel="stylesheet" href="/static/nav.css">
+<nav class="navbar" id="combined-bottom-nav">
+  <div class="nav-items">
+    <a href="/" class="nav-link">
+      <span class="material-icons">dashboard</span>
+    </a>
+    <a href="/week-calendar-page" class="nav-link">
+      <span class="material-icons">calendar_today</span>
+    </a>
+    <a href="/patients-page" class="nav-link">
+      <span class="material-icons">groups</span>
+    </a>
+    <div class="nav-link" style="position: relative;">
+      <a href="javascript:void(0);" onclick="toggleBottomAdminMenu()">
+        <span class="material-icons">admin_panel_settings</span>
+      </a>
+      <div id="bottom-admin-dropdown" style="display: none;">
+        <a href="/therapists-page" style="display: block; padding: 0.5rem 1rem; text-decoration: none; color: #333;">Therapists</a>
+        <a href="/medical-aid-page" style="display: block; padding: 0.5rem 1rem; text-decoration: none; color: #333;">Medical Aids</a>
+        <a href="/settings-page" style="display: block; padding: 0.5rem 1rem; text-decoration: none; color: #333;">Settings</a>
+        <a href="/manage-users-page" style="display: block; padding: 0.5rem 1rem; text-decoration: none; color: #333;">Manage Users</a>
+      </div>
+    </div>
+  </div>
+</nav>

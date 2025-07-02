@@ -1,0 +1,47 @@
+<div id="booking-modal" class="modal" style="display: none;">
+  <div class="modal-content">
+    <span class="close-button" id="close-booking-modal">&times;</span>
+    <h2>Booking Details</h2>
+    <!-- Modal Patient Name Display -->
+    <div id="modal-patient-name"></div>
+    <form id="booking-form">
+      <label>
+        Patient:
+        <select id="patient-name"></select>
+      </label>
+      <label>
+        Therapist:
+        <select id="therapist-name"></select>
+      </label>
+      <label>
+        Name:
+        <input type="text" id="booking-name" required />
+      </label>
+      <label>
+        Date:
+        <input type="date" id="booking-date" required />
+      </label>
+      <label>
+        Time:
+        <input type="time" id="start-time" required />
+      </label>
+      <label>
+        Duration (minutes):
+        <input type="number" id="booking-duration" required />
+      </label>
+      <label>
+        End:
+        <input type="time" id="end-time" readonly />
+      </label>
+      <label>
+        Notes:
+        <textarea id="booking-notes"></textarea>
+      </label>
+      <input type="hidden" id="editing-appt-id" />
+      <button type="submit" id="submit-button">Save</button>
+      <button type="button" id="delete-button" style="display:none;">Delete</button>
+      <input type="hidden" id="booking-colour" />
+    </form>
+  </div>
+</div>
+<div id="booking-modal-backdrop" class="modal-backdrop" style="display: none;"></div>

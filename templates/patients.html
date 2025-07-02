@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Patients</title>
+  <link rel="stylesheet" href="/static/calendar.css">
+  <link rel="stylesheet" href="/static/nav.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+  <script src="/static/js/nav-bar.js"></script>
+  <div id="top-nav"></div>
+  <header>
+    <h1>Patient List</h1>
+    <button onclick="location.href='/add-patient-page'" style="margin-bottom: 1rem;">➕ Add New Patient</button>
+  </header>
+  <main>
+    <input type="text" id="search-name" placeholder="Search by patient name..." style="padding: 0.5rem; margin-bottom: 1rem; width: 100%;" oninput="filterPatients()">
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+      <select id="filter-medical-aid" onchange="filterPatients()" style="padding: 0.5rem;">
+        <option value="">All Medical Aids</option>
+      </select>
+
+      <select id="filter-clinic" onchange="filterPatients()" style="padding: 0.5rem;">
+        <option value="">All Clinics</option>
+      </select>
+    </div>
+    <div class="patient-grid" id="patient-grid"></div>
+  </main>
+  <script>
+    let allPatients = [];
+
+
+
+    async function loadPatients() {
+      const res = await fetch('/patients');
+      const data = await res.json();
+      // Sort alphabetically by first_name + surname
+      data.sort((a, b) => {
+        const nameA = `${a.first_name} ${a.surname}`.toLowerCase();
+        const nameB = `${b.first_name} ${b.surname}`.toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+      allPatients = data;
+      populateFilters();
+      displayPatients(data);
+    }
+
+    function populateFilters() {
+      const medicalAidSet = new Set();
+      const clinicSet = new Set();
+      allPatients.forEach(p => {
+        if (p.medical_aid_name) medicalAidSet.add(p.medical_aid_name);
+        if (p.clinic) clinicSet.add(p.clinic);
+      });
+
+      const medAidSelect = document.getElementById('filter-medical-aid');
+      const clinicSelect = document.getElementById('filter-clinic');
+      medAidSelect.innerHTML = '<option value="">All Medical Aids</option>';
+      clinicSelect.innerHTML = '<option value="">All Clinics</option>';
+
+      medicalAidSet.forEach(med => {
+        medAidSelect.innerHTML += `<option value="${med}">${med}</option>`;
+      });
+      clinicSet.forEach(clinic => {
+        clinicSelect.innerHTML += `<option value="${clinic}">${clinic}</option>`;
+      });
+    }
+
+    function displayPatients(patients) {
+      const grid = document.getElementById('patient-grid');
+      grid.innerHTML = "";
+      patients.forEach(p => {
+        const icdLine = p.icd10_codes ? `<p><strong>ICD-10:</strong> ${JSON.parse(p.icd10_codes).join(", ")}</p>` : "";
+
+        const card = document.createElement('div');
+        card.className = "patient-card";
+        card.innerHTML = `
+          <h3>${p.first_name} ${p.surname}</h3>
+          <p><strong>DOB:</strong> ${p.date_of_birth || "-"}</p>
+          <p><strong>Gender:</strong> ${p.gender || "-"}</p>
+          <p><strong>Medical Aid:</strong> ${p.medical_aid_name || "-"}</p>
+          <p><strong>Clinic:</strong> ${p.clinic || "-"}</p>
+          ${icdLine}
+        `;
+        card.onclick = () => {
+          if (typeof openPatientModal === "function") {
+            openPatientModal(p);
+          } else {
+            const interval = setInterval(() => {
+              if (typeof openPatientModal === "function") {
+                clearInterval(interval);
+                openPatientModal(p);
+              }
+            }, 100);
+          }
+        };
+        grid.appendChild(card);
+      });
+    }
+
+    function filterPatients() {
+      const selectedAid = document.getElementById('filter-medical-aid').value;
+      const selectedClinic = document.getElementById('filter-clinic').value;
+      const searchName = document.getElementById('search-name').value.toLowerCase();
+
+      const filtered = allPatients.filter(p => {
+        const matchesAid = selectedAid ? p.medical_aid_name === selectedAid : true;
+        const matchesClinic = selectedClinic ? p.clinic === selectedClinic : true;
+        const matchesName = `${p.first_name} ${p.surname}`.toLowerCase().includes(searchName);
+        return matchesAid && matchesClinic && matchesName;
+      });
+
+      displayPatients(filtered);
+    }
+
+    loadPatients();
+
+
+    // Modal-related functions (openPatientModal, closePatientModal, showTab) are now loaded from patient-modal.js
+
+  </script>
+      <script src="/static/js/nav-bar.js"></script>
+      <div id="bottom-nav"></div>
+  <div id="modal-backdrop" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1999;"></div>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/static/fragments/patient-modal.html")
+        .then(res => res.text())
+        .then(html => {
+          const container = document.createElement('div');
+          container.innerHTML = html;
+          document.body.appendChild(container);
+
+          // Dynamically load patient-modal.js after modal is in DOM
+          const script = document.createElement('script');
+          script.src = "/static/js/patient-modal.js";
+          script.onload = () => {
+            console.log("patient-modal.js loaded");
+          };
+          document.body.appendChild(script);
+        });
+    });
+  </script>
+</body>
+
+<script>
+  async function deletePatient() {
+    if (!confirm("Are you sure you want to delete this patient? This cannot be undone.")) return;
+    try {
+      const res = await fetch(`/delete-patient/${currentPatientId}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) throw new Error('Failed to delete patient');
+      alert('Patient deleted successfully!');
+      closePatientModal();
+      loadPatients(); // Refresh patient grid
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+  }
+</script>
+</html>
+</html>
