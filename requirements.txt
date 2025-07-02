@@ -4,3 +4,4 @@ pandas
 bcrypt
 python-multipart
 gpt4all
+itsdangerous
