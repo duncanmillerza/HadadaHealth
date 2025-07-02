@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+pandas
+bcrypt
+python-multipart
+gpt4all
