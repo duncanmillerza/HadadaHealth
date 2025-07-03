@@ -13,9 +13,8 @@
   <div id="loading-overlay">
     <div class="spinner"></div>
   </div>
-  <div id="top-nav">
-    {% include "fragments/nav.html" %}
-  </div>
+  <script src="/static/js/nav-bar.js"></script>
+  <div id="top-nav"></div>
   <h2 style="text-align: center;">Weekly Calendar</h2>
   <div id="admin-therapist-switch" style="text-align:center; margin-bottom: 1rem; display: none;">
     <label for="therapist-switch-dropdown">View Calendar for:</label>
@@ -1136,9 +1135,8 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   });
 </script>
-<div id="bottom-nav">
-  {% include "fragments/nav.html" %}
-</div>
+<script src="/static/js/nav-bar.js"></script>
+<div id="bottom-nav"></div>
 <script src="/static/js/summary-modal.js"></script>
 </body>
 </html>
