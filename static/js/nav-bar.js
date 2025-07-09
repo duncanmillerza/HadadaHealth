@@ -48,3 +48,16 @@ document.addEventListener('click', (event) => {
     dropdown.style.display = 'none';
   }
 });
+
+// Logout handler: calls the backend and redirects to login page
+function logout() {
+  fetch('/logout', { credentials: 'include' })
+    .then(res => {
+      if (res.ok) {
+        window.location.href = '/';
+      } else {
+        console.error('Logout failed');
+      }
+    })
+    .catch(err => console.error('Logout error:', err));
+}

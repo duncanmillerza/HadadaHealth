@@ -6,17 +6,30 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Login - HadadaHealth</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Montserrat:wght@600;700&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --brand-primary: #2D6356;
+      --brand-accent: #F9F8F8;
+      --text-base: #333333;
+      --text-light: #555555;
+      --font-sans: 'Inter', sans-serif;
+      --font-display: 'Montserrat', sans-serif;
+    }
     body {
-      font-family: Arial, sans-serif;
-      background: #f8f8f8;
+      font-family: var(--font-sans);
+      color: var(--text-base);
+      background: var(--brand-accent);
       display: flex;
       justify-content: center;
-      align-items: center;
-      height: 100vh;
+      align-items: flex-start;
+      padding-top: 2rem;
+      min-height: 100vh;
     }
     .login-container {
-      background: white;
+      background: #F9F8F8;
       padding: 2rem;
       border-radius: 8px;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -51,17 +64,92 @@
       text-align: center;
       margin-bottom: 1rem;
     }
+
+    .landing-wrapper {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 2rem;
+      padding: 2rem;
+    }
+    .info-container {
+      max-width: 400px;
+      background: #F9F8F8;
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .info-container h1 {
+      margin-top: 0;
+    }
+    .info-container ul {
+      padding-left: 1.2rem;
+    }
+    h1, h2 {
+      font-family: var(--font-display);
+      color: var(--brand-primary);
+      margin: 0 0 1rem;
+    }
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+    }
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+    p, li {
+      font-family: var(--font-sans);
+      font-weight: 300;
+      line-height: 1.5;
+      color: var(--text-light);
+    }
+    button {
+      background-color: var(--brand-primary);
+      font-family: var(--font-display);
+      font-weight: 600;
+    }
+    a {
+      color: var(--brand-primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
-
-<div class="login-container">
-  <h2>Login</h2>
-  <div id="error" class="error"></div>
-  <input type="text" id="username" placeholder="Username" required>
-  <input type="password" id="password" placeholder="Password" required>
-  <button onclick="submitLogin()">Login</button>
-</div>
+  <div class="landing-wrapper">
+    <div class="info-container">
+      <img
+        src="/static/hadada_health_logo.svg"
+        alt="HadadaHealth logo"
+        style="width:200px; height:auto; margin-bottom:1rem; display:block; margin-left:auto; margin-right:auto;"
+      >
+      <h1>Welcome to HadadaHealth</h1>
+      <p>HadadaHealth is a collaborative practice management platform currently in development. It enables health professionals across different practices to work together seamlessly on shared patient care. Our complete solution includes:</p>
+      <ul>
+        <li>Scheduling and appointment management</li>
+        <li>Invoicing and billing workflows</li>
+        <li>Comprehensive patient notes and documentation</li>
+        <li>Secure MDT (multidisciplinary team) communication</li>
+        <li>Real-time collaboration across practices</li>
+      </ul>
+      <p>If you have any questions or would like to learn more, please contact:</p>
+      <p><strong>Email:</strong> <a href="mailto:duncan@hadadahealth.com">duncan@hadadahealth.com</a></p>
+      <p><strong>Phone:</strong> +27 84 561 2171 </p>
+      <p><em>We appreciate your patience as we continue development!</em></p>
+    </div>
+    <div class="login-container">
+      <h2>Login</h2>
+      <div id="error" class="error"></div>
+      <input type="text" id="username" placeholder="Username" required>
+      <input type="password" id="password" placeholder="Password" required>
+      <button onclick="submitLogin()">Login</button>
+    </div>
+  </div>
 
 <script>
 async function submitLogin() {
