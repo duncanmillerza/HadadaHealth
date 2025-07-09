@@ -118,6 +118,24 @@
     a:hover {
       text-decoration: underline;
     }
+  /* Mobile responsive adjustments */
+  @media (max-width: 768px) {
+    .landing-wrapper {
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem;
+      gap: 1.5rem;
+    }
+    .info-container,
+    .login-container {
+      width: 100%;
+      max-width: 400px;
+    }
+    .info-container img {
+      width: 150px;
+      margin-bottom: 1rem;
+    }
+  }
   </style>
 </head>
 <body>
