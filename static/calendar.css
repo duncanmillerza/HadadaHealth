@@ -733,3 +733,77 @@ div.appointment.greyed-out {
   max-width: 700px;
   width: 90%;
 }
+
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-content {
+  background: #fff;
+  padding: 2rem 1.5rem 1.5rem 1.5rem;
+  border-radius: 12px;
+  max-width: 700px;
+  width: 98%;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.19);
+  position: relative;
+}
+.billing-modal-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+.billing-modal-table th, .billing-modal-table td {
+  border: 1px solid #e0e0e0;
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  font-size: 0.97rem;
+}
+.billing-modal-table th {
+  background: #f8f8f8;
+}
+.billing-modal-entry input[type="number"], .billing-modal-entry input[type="text"], .billing-entry select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.2rem 0.3rem;
+  font-size: 0.96rem;
+}
+.billing-modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+.add-row-btn, .remove-row-btn, .close-modal-btn {
+  background: #32517A;
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1.1rem;
+  border-radius: 5px;
+  font-size: 0.97rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.add-row-btn:hover, .close-modal-btn:hover {
+  background: #2D6356;
+}
+.remove-row-btn {
+  background: #d14e4e;
+  font-size: 1.1rem;
+  padding: 0.25rem 0.75rem;
+}
+.remove-row-btn:hover {
+  background: #b93a3a;
+}
+
+
+.billing-modal-table .description-cell {
+  max-width: 250px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

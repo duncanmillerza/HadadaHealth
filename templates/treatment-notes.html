@@ -48,7 +48,14 @@
             </label>
           </div>
 
-          <div id="billing-section" style="margin-top: 2rem; width: 100%; grid-column: 1 / -1;">
+          <!-- Existing Billing Codes Display -->
+          <div id="existing-billing-codes" style="margin-top:1rem; display:none;">
+            <h3>Existing Billing Codes</h3>
+            <ul id="billing-codes-list"></ul>
+          </div>
+
+          <button type="button" id="show-billing-button" onclick="showBillingSection()">Add Billing</button>
+          <div id="billing-section" style="display:none; margin-top: 2rem; width: 100%; grid-column: 1 / -1;">
             <h3>Billing</h3>
             <table class="billing-table">
               <thead>
@@ -121,34 +128,20 @@
         const params = new URLSearchParams(window.location.search);
         const bookingId = params.get("booking_id");
 
-        // Gather billing data first
-        const billingRows = document.querySelectorAll("#billing-table-body .billing-entry");
-        const billingEntries = Array.from(billingRows).map(row => ({
-          code_id: row.querySelector("input[name='code_id[]']").value.split(" - ")[0],
-          billing_modifier: row.querySelector("select[name='billing_modifier[]']").value || "",
-          final_fee: parseFloat(row.querySelector(".total-cell").textContent) || 0
-        }));
-
-        // 1. Before billingPayload: debug log
-        console.log("Preparing billing submission");
-        // Safeguard for appt before building billingPayload
-        if (!appt) {
-          console.warn("❌ No appointment data found. Skipping billing submission.");
-          return;
+        // Check if billing section is visible
+        const billingSectionVisible = document.getElementById("billing-section").style.display !== "none";
+        // Gather billing data only if billing section is visible and at least one code is entered
+        let billingEntries = [];
+        if (billingSectionVisible) {
+          const billingRows = document.querySelectorAll("#billing-table-body .billing-entry");
+          billingEntries = Array.from(billingRows)
+            .map(row => ({
+              code_id: row.querySelector("input[name='code_id[]']").value.split(" - ")[0],
+              billing_modifier: row.querySelector("select[name='billing_modifier[]']").value || "",
+              final_fee: parseFloat(row.querySelector(".total-cell").textContent) || 0
+            }))
+            .filter(entry => entry.code_id && entry.code_id.trim().length > 0);
         }
-        const billingPayload = {
-          session: {
-            id: bookingId,
-            patient_id: appt.patient_id,
-            therapist_id: therapistId,
-            session_date: appt?.date || new Date().toISOString().split("T")[0],
-            notes: formData.get("treatment") || "",
-            total_amount: parseFloat(document.getElementById("overall-total").textContent) || 0
-          },
-          entries: billingEntries
-        };
-        // 2. After billingPayload: debug log
-        console.log("Billing payload:", billingPayload);
 
         // Prepare treatment note payload
         const payload = {
@@ -173,19 +166,46 @@
         };
 
         try {
-          // 3. Before fetch: debug log
-          console.log("Sending billing data to /submit-billing...");
-          const billingRes = await fetch("/submit-billing", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(billingPayload)
-          });
-          // 4. After fetch: debug log
-          console.log("Billing response status:", billingRes.status);
+          let billingSubmitted = false;
+          // Only build and submit billing payload if section is visible and at least one code is entered
+          if (billingSectionVisible && billingEntries.length > 0) {
+            // 1. Before billingPayload: debug log
+            console.log("Preparing billing submission");
+            // Safeguard for appt before building billingPayload
+            if (!appt) {
+              console.warn("❌ No appointment data found. Skipping billing submission.");
+              return;
+            }
+            const billingPayload = {
+              session: {
+                id: bookingId,
+                patient_id: appt.patient_id,
+                therapist_id: therapistId,
+                session_date: appt?.date || new Date().toISOString().split("T")[0],
+                notes: formData.get("treatment") || "",
+                total_amount: parseFloat(document.getElementById("overall-total").textContent) || 0
+              },
+              entries: billingEntries
+            };
+            // 2. After billingPayload: debug log
+            console.log("Billing payload:", billingPayload);
+            // 3. Before fetch: debug log
+            console.log("Sending billing data to /submit-billing...");
+            const billingRes = await fetch("/submit-billing", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify(billingPayload)
+            });
+            // 4. After fetch: debug log
+            console.log("Billing response status:", billingRes.status);
 
-          if (!billingRes.ok) throw new Error("Failed to save billing");
+            if (!billingRes.ok) throw new Error("Failed to save billing");
+            billingSubmitted = true;
+          } else {
+            console.log("Billing section hidden or no billing entries; skipping billing submission.");
+          }
 
           // Now submit treatment note
           const response = await fetch("/submit-treatment-note", {
@@ -199,7 +219,9 @@
           if (!response.ok) throw new Error("Failed to save treatment note");
 
           // Success: show notification
-          showToast("Billing submitted successfully.", "#2D6356");
+          if (billingSubmitted) {
+            showToast("Billing submitted successfully.", "#2D6356");
+          }
           showToast("Treatment note saved successfully.", "#32517A");
           // After success, go back after 3 seconds
           setTimeout(() => {
@@ -392,6 +414,27 @@ function updateOverallTotal(skipRule008 = false) {
           therapistName = appt.therapist || '';
           therapistId = appt.therapist_id ? String(appt.therapist_id) : '';
           populateBillingCodes(); // ensure profession is available before loading codes
+
+          // Fetch and display existing billing codes for this appointment
+          try {
+            const billingRes = await fetch(`/billing-sessions/${appt.patient_id}`);
+            const billingSessions = await billingRes.json();
+            const session = billingSessions.find(s => String(s.id) === String(bookingId));
+            if (session && session.entries && session.entries.length) {
+              const container = document.getElementById("existing-billing-codes");
+              const list = document.getElementById("billing-codes-list");
+              list.innerHTML = "";
+              session.entries.forEach(e => {
+                const li = document.createElement("li");
+                li.textContent = `${e.code_id} - ${e.billing_modifier || "No Modifier"} - R${e.final_fee}`;
+                list.appendChild(li);
+              });
+              container.style.display = "block";
+            }
+          } catch (err) {
+            // Fail silently, do not block page
+            console.warn("Could not load existing billing codes:", err);
+          }
         } catch (err) {
           console.error("Failed to fetch appointment", err);
         }
@@ -457,3 +500,9 @@ function updateOverallTotal(skipRule008 = false) {
   </script>
     </body>
     </html>
+    <script>
+      function showBillingSection() {
+        document.getElementById("billing-section").style.display = "block";
+        document.getElementById("show-billing-button").style.display = "none";
+      }
+    </script>

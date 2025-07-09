@@ -17,6 +17,12 @@ function openSummaryModal(booking) {
   console.log("openSummaryModal called with booking:", booking);
   document.getElementById("summary-modal").dataset.bookingId = booking.id;
   document.getElementById("summary-modal").dataset.patientId = booking.patient_id || "";
+  document.getElementById("summary-modal").dataset.booking = JSON.stringify(booking);
+  // Set billing button text depending on whether billing is completed
+  const billingBtn = document.querySelector('#summary-modal .summary-actions button[onclick="addBillingFromSummary()"]');
+  if (billingBtn) {
+    billingBtn.textContent = booking.billing_completed ? "Edit Billing" : "Add Billing";
+  }
   const modal = document.getElementById("summary-modal");
   // Ensure booking.date is a Date object
   const dateObj = booking.date instanceof Date ? booking.date : new Date(booking.date);
@@ -52,8 +58,11 @@ function openSummaryModal(booking) {
           html += `<strong>Plan:</strong> ${data.treatment.plan || "None"}<br>`;
         }
         if (data.billing && data.billing.length) {
-          const codes = data.billing.map(e => e.code).join(", ");
-          html += `<strong>Billed Codes:</strong> ${codes}<br>`;
+          const codes = data.billing.map(e => {
+            const modifier = e.billing_modifier ? ` (${e.billing_modifier})` : "";
+            return `${e.code || e.code_id}${modifier}`;
+          }).join(", ");
+          html += `<strong>Billing:</strong> ${codes}<br>`;
         }
         if (data.supplementary && data.supplementary.length) {
           html += `<hr><strong>Supplementary Notes:</strong><ul>`;
@@ -192,3 +201,45 @@ function closeCancelModal() {
   document.getElementById("cancel-reason").value = "";
 }
 window.closeCancelModal = closeCancelModal;
+function addBillingFromSummary() {
+  const bookingId = document.getElementById("summary-modal").dataset.bookingId;
+  const bookingJson = document.getElementById("summary-modal").dataset.booking;
+  if (!bookingJson) {
+    alert("Booking not found.");
+    return;
+  }
+  const booking = JSON.parse(bookingJson);
+
+  // Store context globally
+  window.currentBookingId = bookingId;
+  window.currentPatientId = booking.patient_id;
+  window.currentTherapistId = booking.therapist_id || booking.therapist;
+  window.currentProfession = booking.profession || "";
+
+  if (!document.getElementById("billing-modal")) {
+    fetch("/static/fragments/add-billing.html")
+      .then(res => res.text())
+      .then(html => {
+        const container = document.createElement('div');
+        container.innerHTML = html;
+        document.body.appendChild(container);
+
+        const script = document.createElement("script");
+        script.src = "/static/js/add-billing.js";
+        script.onload = () => {
+          document.getElementById("billing-modal").style.display = "block";
+          // Call after a small delay
+          setTimeout(() => {
+            loadExistingBillingEntries(window.currentBookingId);
+          }, 0);
+        };
+        document.body.appendChild(script);
+      })
+      .catch(err => {
+        console.error("Failed to load billing modal:", err);
+        alert("Could not load billing form.");
+      });
+  } else {
+    document.getElementById("billing-modal").style.display = "block";
+  }
+}

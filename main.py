@@ -106,7 +106,7 @@ def create_billing_session(data: dict):
         ))
         for entry in entries_data:
             cursor.execute("""
-                INSERT INTO billing_entries (session_id, code_id, billing_modifier, final_fee)
+                INSERT INTO billing_entries (appointment_id, code_id, billing_modifier, final_fee)
                 VALUES (?, ?, ?, ?)
             """, (
                 session_id,
@@ -156,6 +156,11 @@ def submit_billing(data: dict):
                 entry.get("billing_modifier", ""),
                 entry["final_fee"]
             ))
+        # Also update the booking to mark billing as completed
+        cursor.execute(
+            "UPDATE bookings SET billing_completed = 1 WHERE id = ?",
+            (session_data["id"],)
+        )
 
     return {"detail": "Billing saved successfully"}
 
@@ -170,7 +175,7 @@ def get_billing_sessions(patient_id: int):
 
         for session in sessions:
             entry_cursor = conn.execute("""
-                SELECT * FROM billing_entries WHERE session_id = ?
+                SELECT * FROM billing_entries WHERE appointment_id = ?
             """, (session["id"],))
             session["entries"] = [dict(zip([col[0] for col in entry_cursor.description], row)) for row in entry_cursor.fetchall()]
     return sessions
@@ -645,6 +650,7 @@ class Booking(BaseModel):
     profession: Optional[str] = None
     patient_id: Optional[int] = None
     has_note: bool = False
+    billing_completed: bool = False
 
 # Patient model
 class Patient(BaseModel):
@@ -741,10 +747,14 @@ def get_bookings(request: Request, therapist_id: Optional[int] = None, start: st
       b.colour,
       b.profession,
       b.patient_id,
-      CASE WHEN tn.appointment_id IS NOT NULL THEN 1 ELSE 0 END AS has_note
+      CASE WHEN tn.appointment_id IS NOT NULL THEN 1 ELSE 0 END AS has_note,
+      CASE WHEN be.appointment_id IS NOT NULL THEN 1 ELSE 0 END AS has_billing,
+      b.billing_completed
     FROM bookings b
     LEFT JOIN treatment_notes tn
       ON b.id = tn.appointment_id
+    LEFT JOIN billing_entries be
+      ON b.id = be.appointment_id
     WHERE b.therapist = ?
     """
     params = [target_id]
@@ -755,7 +765,15 @@ def get_bookings(request: Request, therapist_id: Optional[int] = None, start: st
         cursor = conn.execute(base_sql, params)
         columns = [col[0] for col in cursor.description]
         rows = cursor.fetchall()
-        return [Booking(**dict(zip(columns, row))) for row in rows]
+        bookings = []
+        for row in rows:
+            d = dict(zip(columns, row))
+            # Map has_billing (int) to hasBilling (bool) for JS
+            d['hasBilling'] = bool(d.pop('has_billing', 0))
+            # Map billing_completed (may be None or 0/1) to bool for JS
+            d['billing_completed'] = bool(d.get('billing_completed', 0))
+            bookings.append(Booking(**d))
+        return bookings
 
 # GET single booking by booking_id (backward compatibility route)
 @app.get("/bookings/{booking_id}")
@@ -790,6 +808,9 @@ def get_booking(booking_id: str):
                 patient_display = preferred_name or f"{first_name} {surname}"
                 booking["patient"] = patient_display
                 booking["clinic"] = clinic
+
+        # Ensure billing_completed is returned as boolean
+        booking["billing_completed"] = bool(booking.get("billing_completed", 0))
 
         return booking
 # Session info endpoint for frontend to get user/role/therapist
@@ -1738,17 +1759,56 @@ def delete_billing_code(code_id: int):
         conn.commit()
     return {"detail": "Billing code deleted successfully"}
 
-# --- New endpoint: create a billing code ---
-from fastapi import Body
 
+# --- New endpoint: get full treatment note, billing, and supplementary notes for an appointment ---
+@app.get("/api/treatment-notes/full/{appointment_id}")
+def get_full_treatment_note(appointment_id: str):
+    with sqlite3.connect("data/bookings.db") as conn:
+        # Treatment note
+        treatment_row = conn.execute("""
+            SELECT *
+            FROM treatment_notes
+            WHERE appointment_id = ?
+        """, (appointment_id,)).fetchone()
 
+        treatment = None
+        if treatment_row:
+            columns = [col[1] for col in conn.execute("PRAGMA table_info(treatment_notes)")]
+            treatment = dict(zip(columns, treatment_row))
 
-@app.post("/billing-codes")
-def create_billing_code(data: dict = Body(...)):
-    required_fields = ["code", "description", "base_fee", "profession"]
-    for field in required_fields:
-        if field not in data:
-            raise HTTPException(status_code=400, detail=f"{field} is required")
+        # Billing entries (include billing_modifier)
+        billing_rows = conn.execute("""
+            SELECT be.code_id, be.final_fee, bc.code, bc.description, be.billing_modifier
+            FROM billing_entries be
+            LEFT JOIN billing_codes bc ON be.code_id = bc.id
+            WHERE be.appointment_id = ?
+        """, (appointment_id,)).fetchall()
+
+        billing = []
+        for row in billing_rows:
+            billing.append({
+                "code_id": row[0],
+                "final_fee": row[1],
+                "code": row[2],
+                "description": row[3],
+                "billing_modifier": row[4]
+            })
+
+        # Supplementary notes
+        supp_rows = conn.execute("""
+            SELECT note, timestamp
+            FROM supplementary_notes
+            WHERE appointment_id = ?
+            ORDER BY timestamp ASC
+        """, (appointment_id,)).fetchall()
+
+        supplementary = [{"note": r[0], "timestamp": r[1]} for r in supp_rows]
+
+    return {
+        "treatment": treatment,
+        "billing": billing,
+        "supplementary": supplementary
+    }
 
     with sqlite3.connect("data/bookings.db") as conn:
         # Check for duplicate billing code for the same profession
@@ -2035,3 +2095,168 @@ def get_full_notes(appointment_id: str):
             "supplementary": supplementary,
             "billing": [{"code": code} for code in billing_codes],
         }
+# --- NEW ENDPOINT: GET /api/unbilled-treatment-notes ---
+# Returns all treatment notes that have not yet been billed (billing_completed = 0 or NULL)
+@app.get("/api/unbilled-treatment-notes")
+def get_unbilled_treatment_notes():
+    with sqlite3.connect("data/bookings.db") as conn:
+        cursor = conn.execute("""
+            SELECT tn.*, b.name as booking_name, b.therapist as booking_therapist, b.date as booking_date
+            FROM treatment_notes tn
+            LEFT JOIN bookings b ON b.id = tn.appointment_id
+            WHERE IFNULL(tn.billing_completed, 0) = 0
+        """)
+        columns = [col[0] for col in cursor.description]
+        notes = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        return notes
+
+# --- NEW ENDPOINT: POST /api/billing-for-appointment ---
+# Accepts: { "appointment_id": "string", "billing_entries": [ ... ] }
+# Updates billing tables and marks treatment note as billed
+from fastapi import Body
+@app.post("/api/billing-for-appointment")
+def billing_for_appointment(payload: dict = Body(...)):
+    appointment_id = payload.get("appointment_id")
+    billing_entries = payload.get("billing_entries", [])
+    if not appointment_id or not billing_entries:
+        raise HTTPException(status_code=400, detail="appointment_id and billing_entries required")
+    with sqlite3.connect("data/bookings.db") as conn:
+        cursor = conn.cursor()
+        # Find patient_id and therapist_id from bookings or treatment_notes
+        booking = cursor.execute("SELECT patient_id, therapist FROM bookings WHERE id = ?", (appointment_id,)).fetchone()
+        if booking:
+            patient_id, therapist_id = booking
+        else:
+            # fallback: try treatment_notes
+            note = cursor.execute("SELECT patient_id FROM treatment_notes WHERE appointment_id = ?", (appointment_id,)).fetchone()
+            patient_id = note[0] if note else None
+            therapist_id = None
+        # Compose session_date from bookings or today
+        session_date = cursor.execute("SELECT date FROM bookings WHERE id = ?", (appointment_id,)).fetchone()
+        session_date = session_date[0] if session_date else None
+        # Insert or replace billing_session
+        cursor.execute("""
+            INSERT OR REPLACE INTO billing_sessions (id, patient_id, therapist_id, session_date, notes, total_amount)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            appointment_id,
+            patient_id,
+            therapist_id,
+            session_date,
+            payload.get("notes", ""),
+            payload.get("total_amount", 0)
+        ))
+        # Remove previous billing_entries for this appointment
+        cursor.execute("DELETE FROM billing_entries WHERE appointment_id = ?", (appointment_id,))
+        # Insert billing_entries
+        for entry in billing_entries:
+            cursor.execute("""
+                INSERT INTO billing_entries (id, appointment_id, code_id, billing_modifier, final_fee)
+                VALUES (?, ?, ?, ?, ?)
+            """, (
+                f"{appointment_id}-{entry['code_id']}",
+                appointment_id,
+                entry["code_id"],
+                entry.get("billing_modifier", ""),
+                entry["final_fee"]
+            ))
+        # Mark treatment_note as billed
+        cursor.execute("UPDATE treatment_notes SET billing_completed = 1 WHERE appointment_id = ?", (appointment_id,))
+    return {"detail": "Billing saved and appointment marked as billed"}
+
+# --- INVOICE MANAGEMENT ENDPOINTS ---
+from fastapi import Path
+from datetime import datetime
+
+# GET /invoices — Return all invoices.
+@app.get("/invoices")
+def get_invoices():
+    with sqlite3.connect("data/bookings.db") as conn:
+        cursor = conn.execute("""
+            SELECT * FROM invoices
+        """)
+        columns = [col[0] for col in cursor.description]
+        invoices = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        # Optionally, add patient/therapist names if needed
+    return invoices
+
+# POST /invoices — Create invoice and assign billing entries.
+@app.post("/invoices")
+def create_invoice(data: dict = Body(...)):
+    invoice_data = data.get("invoice")
+    entry_ids = data.get("entry_ids", [])
+    if not invoice_data or not entry_ids:
+        raise HTTPException(status_code=400, detail="Invoice and entry_ids are required")
+    invoice_id = invoice_data.get("id")
+    if not invoice_id:
+        invoice_id = f"INV-{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
+    with sqlite3.connect("data/bookings.db") as conn:
+        cursor = conn.cursor()
+        # Insert invoice
+        cursor.execute("""
+            INSERT INTO invoices (id, patient_id, therapist_id, invoice_date, due_date, status, notes, total_amount)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            invoice_id,
+            invoice_data["patient_id"],
+            invoice_data["therapist_id"],
+            invoice_data["invoice_date"],
+            invoice_data.get("due_date"),
+            invoice_data.get("status", "Draft"),
+            invoice_data.get("notes", ""),
+            invoice_data.get("total_amount", 0)
+        ))
+        # Assign billing entries to this invoice
+        for entry_id in entry_ids:
+            cursor.execute("""
+                UPDATE billing_entries SET invoice_id = ? WHERE id = ?
+            """, (invoice_id, entry_id))
+    return {"detail": "Invoice created", "invoice_id": invoice_id}
+
+# GET /invoices/{invoice_id} — Return invoice details and entries.
+@app.get("/invoices/{invoice_id}")
+def get_invoice(invoice_id: str = Path(...)):
+    with sqlite3.connect("data/bookings.db") as conn:
+        cursor = conn.execute("SELECT * FROM invoices WHERE id = ?", (invoice_id,))
+        invoice = cursor.fetchone()
+        if not invoice:
+            raise HTTPException(status_code=404, detail="Invoice not found")
+        columns = [col[0] for col in cursor.description]
+        invoice_dict = dict(zip(columns, invoice))
+        # Get associated billing entries
+        entry_cursor = conn.execute("SELECT * FROM billing_entries WHERE invoice_id = ?", (invoice_id,))
+        entry_columns = [col[0] for col in entry_cursor.description]
+        entries = [dict(zip(entry_columns, row)) for row in entry_cursor.fetchall()]
+        invoice_dict["entries"] = entries
+    return invoice_dict
+
+# PUT /invoices/{invoice_id} — Update invoice status.
+@app.put("/invoices/{invoice_id}")
+def update_invoice(invoice_id: str, update_data: dict = Body(...)):
+    allowed_fields = {"status", "notes", "due_date", "total_amount"}
+    fields = []
+    values = []
+    for key, value in update_data.items():
+        if key in allowed_fields:
+            fields.append(f"{key} = ?")
+            values.append(value)
+    if not fields:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    values.append(invoice_id)
+    with sqlite3.connect("data/bookings.db") as conn:
+        cur = conn.execute(f"UPDATE invoices SET {', '.join(fields)} WHERE id = ?", values)
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Invoice not found")
+    return {"detail": "Invoice updated"}
+
+# DELETE /invoices/{invoice_id} — Delete invoice and unassign billing entries.
+@app.delete("/invoices/{invoice_id}")
+def delete_invoice(invoice_id: str):
+    with sqlite3.connect("data/bookings.db") as conn:
+        # Unassign billing entries
+        conn.execute("UPDATE billing_entries SET invoice_id = NULL WHERE invoice_id = ?", (invoice_id,))
+        # Delete invoice
+        cur = conn.execute("DELETE FROM invoices WHERE id = ?", (invoice_id,))
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Invoice not found")
+    return {"detail": "Invoice deleted"}

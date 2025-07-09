@@ -1,0 +1,528 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Billing & Invoices - HadadaHealth</title>
+  <link rel="stylesheet" href="/static/calendar.css">
+  <style>
+    .billing-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+    .billing-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      overflow: hidden;
+      margin-bottom: 2rem;
+    }
+    .billing-table th, .billing-table td {
+      padding: 0.8rem 1rem;
+      border-bottom: 1px solid #e0e0e0;
+      text-align: left;
+      font-size: 1rem;
+    }
+    .billing-table th {
+      background: #f8f8f8;
+      color: #2D6356;
+      font-weight: bold;
+    }
+    .billing-table tr:last-child td {
+      border-bottom: none;
+    }
+    .btn-create-invoice {
+      background: #2D6356;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      padding: 0.7rem 1.5rem;
+      cursor: pointer;
+      transition: background 0.18s;
+    }
+    .btn-create-invoice:hover {
+      background: #214c43;
+    }
+    .billing-actions button {
+      margin-right: 0.5rem;
+      padding: 0.4rem 0.9rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: background 0.16s;
+    }
+    .billing-actions .view-btn {
+      background: #F0F4F3;
+      color: #2D6356;
+    }
+    .billing-actions .view-btn:hover {
+      background: #E3EBE9;
+    }
+    .billing-actions .delete-btn {
+      background: #d14e4e;
+      color: #fff;
+    }
+    .billing-actions .delete-btn:hover {
+      background: #b93a3a;
+    }
+    /* Modal overlay and content */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.35);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-content {
+      background: #fff;
+      padding: 2rem 1.5rem 1.5rem 1.5rem;
+      border-radius: 12px;
+      max-width: 700px;
+      width: 98%;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.19);
+      position: relative;
+    }
+    .modal-content h2 {
+      margin-top: 0;
+      color: #2D6356;
+      font-size: 1.15rem;
+      margin-bottom: 1rem;
+    }
+    .close-modal-btn {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      background: none;
+      border: none;
+      font-size: 1.7rem;
+      color: #666;
+      cursor: pointer;
+    }
+    .close-modal-btn:hover {
+      color: #b93a3a;
+    }
+    .billing-modal-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1rem;
+    }
+    .billing-modal-table th, .billing-modal-table td {
+      border: 1px solid #e0e0e0;
+      padding: 0.5rem 0.6rem;
+      text-align: left;
+      font-size: 0.97rem;
+    }
+    .billing-modal-table th {
+      background: #f8f8f8;
+    }
+    .billing-modal-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+      margin-top: 0.5rem;
+    }
+    .add-row-btn, .remove-row-btn, .close-modal-btn {
+      background: #32517A;
+      color: #fff;
+      border: none;
+      padding: 0.5rem 1.1rem;
+      border-radius: 5px;
+      font-size: 0.97rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .add-row-btn:hover, .close-modal-btn:hover {
+      background: #2D6356;
+    }
+    .remove-row-btn {
+      background: #d14e4e;
+      font-size: 1.1rem;
+      padding: 0.25rem 0.75rem;
+    }
+    .remove-row-btn:hover {
+      background: #b93a3a;
+    }
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .modal-footer .save-btn {
+      background: #2D6356;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 0.5rem 1.2rem;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    .modal-footer .save-btn:hover {
+      background: #214c43;
+    }
+    .modal-footer .cancel-btn {
+      background: #eee;
+      color: #2D6356;
+      border: none;
+      border-radius: 6px;
+      padding: 0.5rem 1.2rem;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    .modal-footer .cancel-btn:hover {
+      background: #e3ebe9;
+    }
+    .total-amount-label {
+      font-weight: bold;
+      color: #2D6356;
+      font-size: 1.1rem;
+      margin-top: 1rem;
+      display: block;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 0.2em 0.75em;
+      border-radius: 12px;
+      font-size: 0.95em;
+      font-weight: 500;
+      background: #f0f4f3;
+      color: #2D6356;
+    }
+    .status-badge.paid {
+      background: #2D6356;
+      color: #fff;
+    }
+    .status-badge.unpaid {
+      background: #f5dada;
+      color: #96364C;
+    }
+    .status-badge.cancelled {
+      background: #eee;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <div class="billing-header">
+    <h1>Invoices & Billing</h1>
+    <button class="btn-create-invoice" onclick="openCreateInvoiceModal()">Create New Invoice</button>
+  </div>
+  <table class="billing-table" id="invoices-table">
+    <thead>
+      <tr>
+        <th>Invoice ID</th>
+        <th>Patient Name</th>
+        <th>Date</th>
+        <th>Total Amount</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="invoices-tbody">
+      <!-- Populated by JS -->
+      <tr><td colspan="6" style="text-align:center; color:#888;">Loading invoices...</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Create Invoice Modal -->
+  <div id="create-invoice-modal" style="display:none;">
+    <div class="modal-overlay" onclick="closeCreateInvoiceModal(event)">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <button class="close-modal-btn" onclick="closeCreateInvoiceModal(event)">&times;</button>
+        <h2>Create New Invoice</h2>
+        <form id="create-invoice-form" autocomplete="off">
+          <div style="margin-bottom:1rem;">
+            <label for="select-patient">Select Patient:</label>
+            <select id="select-patient" required style="width:100%;margin-top:0.3rem;margin-bottom:0.7rem;"></select>
+          </div>
+          <div>
+            <label>Billing Entries:</label>
+            <table class="billing-modal-table" id="billing-entries-table">
+              <thead>
+                <tr>
+                  <th>Select</th>
+                  <th>Code</th>
+                  <th>Description</th>
+                  <th>Fee</th>
+                </tr>
+              </thead>
+              <tbody id="billing-entries-tbody">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+          <span class="total-amount-label">Total: R<span id="create-invoice-total">0.00</span></span>
+          <div class="modal-footer">
+            <button type="button" class="cancel-btn" onclick="closeCreateInvoiceModal(event)">Cancel</button>
+            <button type="submit" class="save-btn">Save Invoice</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Invoice Modal -->
+  <div id="view-invoice-modal" style="display:none;">
+    <div class="modal-overlay" onclick="closeViewInvoiceModal(event)">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <button class="close-modal-btn" onclick="closeViewInvoiceModal(event)">&times;</button>
+        <h2>Invoice Details</h2>
+        <div>
+          <div><b>Invoice ID:</b> <span id="view-invoice-id"></span></div>
+          <div><b>Patient:</b> <span id="view-invoice-patient"></span></div>
+          <div><b>Date:</b> <span id="view-invoice-date"></span></div>
+          <div><b>Status:</b> <span id="view-invoice-status"></span></div>
+        </div>
+        <table class="billing-modal-table" style="margin-top:1rem;">
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Description</th>
+              <th>Fee</th>
+            </tr>
+          </thead>
+          <tbody id="view-invoice-entries">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+        <span class="total-amount-label">Total: R<span id="view-invoice-total"></span></span>
+        <div class="modal-footer">
+          <button type="button" class="cancel-btn" onclick="closeViewInvoiceModal(event)">Close</button>
+          <button type="button" class="save-btn" id="mark-paid-btn" onclick="markInvoicePaid()">Mark as Paid</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let invoices = [];
+    let patients = [];
+    let billingCodes = [];
+    let selectedInvoice = null;
+
+    // Fetch all data on page load
+    document.addEventListener('DOMContentLoaded', async function() {
+      await fetchPatients();
+      await fetchBillingCodes();
+      await fetchInvoices();
+    });
+
+    // Fetch patients for dropdown
+    async function fetchPatients() {
+      const resp = await fetch('/patients');
+      patients = await resp.json();
+      const select = document.getElementById('select-patient');
+      select.innerHTML = '<option value="">Select...</option>' +
+        patients.map(p =>
+          `<option value="${p.id}">${p.preferred_name || p.first_name + ' ' + p.surname}</option>`
+        ).join('');
+    }
+
+    // Fetch billing codes for billing entry selection
+    async function fetchBillingCodes() {
+      const resp = await fetch('/static/billing_codes.json');
+      if (resp.ok) {
+        billingCodes = await resp.json();
+      } else {
+        // fallback: empty
+        billingCodes = [];
+      }
+    }
+
+    // Fetch invoices from backend
+    async function fetchInvoices() {
+      // For demo, fetch all billing sessions
+      const resp = await fetch('/billing-sessions/0'); // 0 = all patients for now
+      if (!resp.ok) {
+        document.getElementById('invoices-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;">Failed to load invoices.</td></tr>';
+        return;
+      }
+      invoices = await resp.json();
+      renderInvoicesTable();
+    }
+
+    // Render the invoices table
+    function renderInvoicesTable() {
+      const tbody = document.getElementById('invoices-tbody');
+      if (!invoices.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">No invoices found.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = '';
+      invoices.forEach(inv => {
+        const patient = patients.find(p => p.id == inv.patient_id);
+        const patientName = patient ? (patient.preferred_name || (patient.first_name + ' ' + patient.surname)) : 'Unknown';
+        const status = inv.status || (inv.paid ? 'Paid' : 'Unpaid');
+        let statusClass = 'status-badge';
+        if (status.toLowerCase() === 'paid') statusClass += ' paid';
+        else if (status.toLowerCase() === 'unpaid') statusClass += ' unpaid';
+        else statusClass += ' cancelled';
+        tbody.innerHTML += `
+          <tr>
+            <td>${inv.id}</td>
+            <td>${patientName}</td>
+            <td>${inv.session_date ? inv.session_date.substring(0,10) : ''}</td>
+            <td>R${Number(inv.total_amount || 0).toFixed(2)}</td>
+            <td><span class="${statusClass}">${status.charAt(0).toUpperCase() + status.slice(1)}</span></td>
+            <td class="billing-actions">
+              <button class="view-btn" onclick="openViewInvoiceModal('${inv.id}')">View</button>
+              <button class="delete-btn" onclick="deleteInvoice('${inv.id}')">Delete</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    // Open Create Invoice modal
+    function openCreateInvoiceModal() {
+      // Populate billing entries
+      const tbody = document.getElementById('billing-entries-tbody');
+      tbody.innerHTML = billingCodes.map(code =>
+        `<tr>
+          <td><input type="checkbox" data-code-id="${code.id}" data-fee="${code.base_fee}" onchange="updateCreateInvoiceTotal()"></td>
+          <td>${code.code}</td>
+          <td>${code.description}</td>
+          <td>R${Number(code.base_fee).toFixed(2)}</td>
+        </tr>`
+      ).join('');
+      document.getElementById('create-invoice-total').textContent = '0.00';
+      document.getElementById('create-invoice-form').reset();
+      document.getElementById('create-invoice-modal').style.display = '';
+    }
+    function closeCreateInvoiceModal(e) {
+      if (e) e.preventDefault();
+      document.getElementById('create-invoice-modal').style.display = 'none';
+    }
+    function updateCreateInvoiceTotal() {
+      const checkboxes = document.querySelectorAll('#billing-entries-tbody input[type="checkbox"]:checked');
+      let total = 0;
+      checkboxes.forEach(cb => total += parseFloat(cb.getAttribute('data-fee')));
+      document.getElementById('create-invoice-total').textContent = total.toFixed(2);
+    }
+    document.getElementById('create-invoice-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const patientId = document.getElementById('select-patient').value;
+      if (!patientId) {
+        alert('Please select a patient.');
+        return;
+      }
+      const checked = Array.from(document.querySelectorAll('#billing-entries-tbody input[type="checkbox"]:checked'));
+      if (!checked.length) {
+        alert('Please select at least one billing entry.');
+        return;
+      }
+      const entries = checked.map(cb => {
+        const codeId = cb.getAttribute('data-code-id');
+        const code = billingCodes.find(c => c.id == codeId);
+        return {
+          code_id: code.id,
+          billing_modifier: "",
+          final_fee: code.base_fee
+        };
+      });
+      // Generate a new invoice/session id (could use Date.now())
+      const invoiceId = 'INV' + Date.now();
+      const total_amount = entries.reduce((sum, e) => sum + Number(e.final_fee), 0);
+      // For demo, assign therapist_id = 1
+      const payload = {
+        session: {
+          id: invoiceId,
+          patient_id: patientId,
+          therapist_id: 1,
+          session_date: new Date().toISOString(),
+          notes: "",
+          total_amount: total_amount
+        },
+        entries: entries
+      };
+      const resp = await fetch('/billing-sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (resp.ok) {
+        closeCreateInvoiceModal();
+        await fetchInvoices();
+      } else {
+        alert('Failed to save invoice.');
+      }
+    });
+
+    // Open View Invoice modal
+    function openViewInvoiceModal(invoiceId) {
+      selectedInvoice = invoices.find(inv => inv.id == invoiceId);
+      if (!selectedInvoice) return;
+      const patient = patients.find(p => p.id == selectedInvoice.patient_id);
+      document.getElementById('view-invoice-id').textContent = selectedInvoice.id;
+      document.getElementById('view-invoice-patient').textContent = patient ? (patient.preferred_name || (patient.first_name + ' ' + patient.surname)) : 'Unknown';
+      document.getElementById('view-invoice-date').textContent = selectedInvoice.session_date ? selectedInvoice.session_date.substring(0,10) : '';
+      const status = selectedInvoice.status || (selectedInvoice.paid ? 'Paid' : 'Unpaid');
+      document.getElementById('view-invoice-status').innerHTML = `<span class="status-badge${status.toLowerCase()==='paid'?' paid':(status.toLowerCase()==='unpaid'?' unpaid':'')}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>`;
+      // Entries
+      const tbody = document.getElementById('view-invoice-entries');
+      if (!selectedInvoice.entries || !selectedInvoice.entries.length) {
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No line items</td></tr>`;
+      } else {
+        tbody.innerHTML = selectedInvoice.entries.map(entry => {
+          const code = billingCodes.find(c => c.id == entry.code_id);
+          return `<tr>
+            <td>${code ? code.code : entry.code_id}</td>
+            <td>${code ? code.description : ''}</td>
+            <td>R${Number(entry.final_fee).toFixed(2)}</td>
+          </tr>`;
+        }).join('');
+      }
+      document.getElementById('view-invoice-total').textContent =
+        Number(selectedInvoice.total_amount || 0).toFixed(2);
+      // Show/hide Mark as Paid button
+      document.getElementById('mark-paid-btn').style.display =
+        (status.toLowerCase() === 'paid') ? 'none' : '';
+      document.getElementById('view-invoice-modal').style.display = '';
+    }
+    function closeViewInvoiceModal(e) {
+      if (e) e.preventDefault();
+      document.getElementById('view-invoice-modal').style.display = 'none';
+      selectedInvoice = null;
+    }
+    async function markInvoicePaid() {
+      if (!selectedInvoice) return;
+      // For demo, just set status to Paid in backend (simulate PUT)
+      // In real app, backend should support status update endpoint
+      const updatedSession = { ...selectedInvoice, status: 'Paid' };
+      const resp = await fetch(`/billing-sessions/${selectedInvoice.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedSession)
+      });
+      if (resp.ok) {
+        closeViewInvoiceModal();
+        await fetchInvoices();
+      } else {
+        alert('Failed to update invoice status.');
+      }
+    }
+
+    // Delete invoice
+    async function deleteInvoice(invoiceId) {
+      if (!confirm('Are you sure you want to delete this invoice?')) return;
+      // For demo, send DELETE to /billing-sessions/{id}
+      const resp = await fetch(`/billing-sessions/${invoiceId}`, { method: 'DELETE' });
+      if (resp.ok) {
+        await fetchInvoices();
+      } else {
+        alert('Failed to delete invoice.');
+      }
+    }
+  </script>
+</body>
+</html>
