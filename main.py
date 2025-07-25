@@ -2,11 +2,6 @@
 
 from fastapi import Request
 from fastapi import Query
-
-# --- BILLING SESSIONS ENDPOINTS ---
-
-
-
 from fastapi import Body
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi import UploadFile, File
@@ -18,7 +13,14 @@ import sqlite3
 import json
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.responses import StreamingResponse
+from io import BytesIO
+from reportlab.pdfgen import canvas
+import textwrap
 import os
+import logging
+from datetime import datetime
+logging.basicConfig(level=logging.INFO)
 
 # --- Sessions ---
 from starlette.middleware.sessions import SessionMiddleware
@@ -83,12 +85,17 @@ def check_treatment_notes(ids: str = Query(..., description="Comma separated app
 
 # POST endpoint to create a new billing session with associated billing entries
 @app.post("/billing-sessions")
-def create_billing_session(data: dict):
+def create_billing_session(data: dict, request: Request):
     session_data = data.get("session")
     entries_data = data.get("entries", [])
 
     if not session_data or not entries_data:
         raise HTTPException(status_code=400, detail="Session and entries are required")
+
+    # ensure we have a therapist_id (fall back to session-linked therapist)
+    therapist_id = session_data.get("therapist_id") or request.session.get("linked_therapist_id")
+    if not therapist_id:
+        raise HTTPException(status_code=400, detail="Therapist ID is required")
 
     with sqlite3.connect("data/bookings.db") as conn:
         cursor = conn.cursor()
@@ -99,22 +106,54 @@ def create_billing_session(data: dict):
         """, (
             session_id,
             session_data["patient_id"],
-            session_data["therapist_id"],
+            therapist_id,
             session_data["session_date"],
             session_data.get("notes", ""),
             session_data.get("total_amount", 0)
         ))
         for entry in entries_data:
             cursor.execute("""
-                INSERT INTO billing_entries (appointment_id, code_id, billing_modifier, final_fee)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO billing_entries (id, appointment_id, code_id, billing_modifier, final_fee)
+                VALUES (?, ?, ?, ?, ?)
             """, (
-                session_id,
-                entry["code_id"],
-                entry.get("billing_modifier", ""),
-                entry["final_fee"]
+                f"{session_id}-{entry['code_id']}",  # unique entry ID
+                session_id,                          # appointment reference
+                entry["code_id"],                    # billing code foreign key
+                entry.get("billing_modifier", ""),   # any modifier
+                entry["final_fee"]                   # final fee charged
             ))
+        # Also insert into invoices table for this session
+        cursor.execute("""
+            INSERT OR REPLACE INTO invoices (
+                id,
+                appointment_id,
+                patient_id,
+                therapist_id,
+                invoice_date,
+                due_date,
+                status,
+                notes,
+                total_amount
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            "INV" + session_id[4:],         # invoice id as "INV" + session_id[4:]
+            session_id,                  # appointment reference
+            session_data["patient_id"],
+            therapist_id,
+            session_data["session_date"],
+            None,                        # due_date blank for now
+            'Draft',                     # initial status
+            session_data.get("notes", ""),
+            session_data.get("total_amount", 0)
+        ))
+        # Mark booking as billing completed
+        cursor.execute(
+            "UPDATE bookings SET billing_completed = 1 WHERE id = ?",
+            (session_id,)
+        )
+        conn.commit()
     return {"detail": "Billing session and entries created successfully"}
+
 
 # --- New: POST endpoint to submit a full billing payload (overwrite session and entries) ---
 @app.post("/submit-billing")
@@ -156,13 +195,72 @@ def submit_billing(data: dict):
                 entry.get("billing_modifier", ""),
                 entry["final_fee"]
             ))
+        # Also upsert invoice for this session
+        cursor.execute("""
+            INSERT OR REPLACE INTO invoices (
+                id,
+                appointment_id,
+                patient_id,
+                therapist_id,
+                invoice_date,
+                due_date,
+                status,
+                notes,
+                total_amount
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            "INV" + session_data["id"][4:],  # invoice id as "INV" + session_data["id"][4:]
+            session_data["id"],
+            session_data["patient_id"],
+            session_data["therapist_id"],
+            session_data["session_date"],
+            None,
+            'Draft',
+            session_data.get("notes", ""),
+            session_data.get("total_amount", 0)
+        ))
         # Also update the booking to mark billing as completed
         cursor.execute(
             "UPDATE bookings SET billing_completed = 1 WHERE id = ?",
             (session_data["id"],)
         )
 
+        # Also create or update an invoice record for this billing session
+        cursor.execute("""
+            INSERT OR REPLACE INTO invoices (
+                id,
+                appointment_id,
+                patient_id,
+                therapist_id,
+                invoice_date,
+                due_date,
+                status,
+                notes,
+                total_amount
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            "INV-" + session_data["id"],     # invoice id
+            session_data["id"],              # appointment reference
+            session_data["patient_id"],
+            session_data["therapist_id"],
+            session_data["session_date"],
+            None,                            # due_date blank
+            'Draft',                         # initial status
+            session_data.get("notes", ""),
+            session_data.get("total_amount", 0)
+        ))
+        conn.commit()
+
     return {"detail": "Billing saved successfully"}
+
+
+# --- GET: Return all billing codes as JSON ---
+@app.get("/api/billing_codes")
+def get_billing_codes():
+    with sqlite3.connect("data/bookings.db") as conn:
+        cursor = conn.execute("SELECT id, code, description, base_fee, profession FROM billing_codes;")
+        cols = [col[0] for col in cursor.description]
+        return [dict(zip(cols, row)) for row in cursor.fetchall()]
 
 # GET endpoint to retrieve billing sessions with their entries for a patient
 @app.get("/billing-sessions/{patient_id}")
@@ -179,6 +277,230 @@ def get_billing_sessions(patient_id: int):
             """, (session["id"],))
             session["entries"] = [dict(zip([col[0] for col in entry_cursor.description], row)) for row in entry_cursor.fetchall()]
     return sessions
+
+# --- New endpoint: List all invoices with their entries and therapist profession ---
+@app.get("/invoices")
+def list_invoices():
+    with sqlite3.connect("data/bookings.db") as conn:
+        cursor = conn.execute("""
+            SELECT i.*, t.profession AS therapist_profession
+            FROM invoices i
+            LEFT JOIN therapists t ON i.therapist_id = t.id
+        """)
+        cols = [col[0] for col in cursor.description]
+        invoices = [dict(zip(cols, row)) for row in cursor.fetchall()]
+        for inv in invoices:
+            entry_cursor = conn.execute(
+                "SELECT code_id, billing_modifier, final_fee FROM billing_entries WHERE appointment_id = ?",
+                (inv["appointment_id"],)
+            )
+            inv["entries"] = [
+                {"code_id": row[0], "billing_modifier": row[1], "final_fee": row[2]}
+                for row in entry_cursor.fetchall()
+            ]
+    return invoices
+
+# --- PDF endpoint for invoices ---
+@app.get("/invoices/{invoice_id}/pdf")
+def invoice_pdf(invoice_id: str):
+    """
+    Generate and return a PDF of the specified invoice.
+    """
+    # Fetch invoice header
+    with sqlite3.connect("data/bookings.db") as conn:
+        cur = conn.execute("SELECT id, appointment_id, patient_id, therapist_id, invoice_date, status, total_amount FROM invoices WHERE id = ?", (invoice_id,))
+        inv = cur.fetchone()
+        if not inv:
+            raise HTTPException(status_code=404, detail="Invoice not found")
+        # Unpack invoice tuple into descriptive variables
+        invoice_id, appointment_id, patient_id_val, therapist_id_val, invoice_date, status, total_amount = inv
+        # Fetch patient details
+        pcur = conn.execute("""
+            SELECT id AS patient_table_id, medical_aid_name, plan_name, dependent_number, claim_number, main_member_name,
+                   first_name, surname, icd10_codes
+            FROM patients WHERE id = ?
+        """, (patient_id_val,))
+        prow = pcur.fetchone()
+        if prow:
+            patient_table_id = prow[0]
+            med_aid = prow[1] or ""
+            plan = prow[2] or ""
+            dependent_no = prow[3] or ""
+            membership_no = prow[4] or ""
+            principal_member = prow[5] or ""
+            first_name = prow[6] or ""
+            surname = prow[7] or ""
+            patient_icd10_codes = prow[8] or ""
+            # patient_name_full: combine first_name and full surname
+            patient_name_full = f"{first_name} {surname}"
+        else:
+            patient_table_id = ""
+            med_aid = plan = dependent_no = membership_no = principal_member = patient_name_full = patient_icd10_codes = ""
+        # Fetch therapist details
+        tcur = conn.execute("""
+            SELECT name, surname, profession
+            FROM therapists WHERE id = ?
+        """, (therapist_id_val,))
+        trow = tcur.fetchone()
+        if trow:
+            name, t_surname, provider_profession = trow
+            provider_name = f"{name} {t_surname}"
+        else:
+            provider_name = ""
+            provider_profession = ""
+        # Lookup practice number from professions table
+        prof_cur = conn.execute("""
+            SELECT practice_number FROM professions WHERE profession_name = ?
+        """, (provider_profession,))
+        prof_row = prof_cur.fetchone()
+        practice_number = prof_row[0] if prof_row and prof_row[0] else ""
+        # fetch billing entries along with code and description, matching either by id or code string
+        entry_rows = conn.execute(
+            """
+            SELECT
+              be.code_id,
+              COALESCE(bc.code, CAST(be.code_id AS TEXT)) AS code,
+              COALESCE(bc.description, '') AS description,
+              be.billing_modifier,
+              be.final_fee
+            FROM billing_entries be
+            LEFT JOIN billing_codes bc
+              ON be.code_id = bc.id
+              OR CAST(be.code_id AS TEXT) = bc.code
+            WHERE be.appointment_id = ?
+            """,
+            (appointment_id,)
+        ).fetchall()
+        logging.info(f"👉 Entry rows for invoice {appointment_id}: {entry_rows}")
+        entries = []
+        for code_id, code_str, desc_str, modifier, fee in entry_rows:
+            entries.append((code_id, code_str or "", desc_str or "", modifier or "", fee or 0))
+    # Create PDF in memory
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer)
+    pdf.setTitle(f"{provider_profession} Invoice - {invoice_id}")
+    # Set up fonts and margins
+    pdf.setFont("Helvetica-Bold", 16)
+    left_margin = 50
+    right_margin = 550
+    line_height = 24
+    y_start = 800
+    y = y_start
+    # Colored header background
+    pdf.setFillColorRGB(45/255, 99/255, 86/255)  # Brand accent color
+    pdf.rect(left_margin, y - (line_height * 0.3), right_margin - left_margin, line_height * 1.5, fill=True, stroke=False)
+    # White text for header
+    pdf.setFillColorRGB(1, 1, 1)
+    pdf.setFont("Helvetica-Bold", 16)
+    # Draw header
+    pdf.drawString(left_margin, y, f"{provider_profession} Invoice - {invoice_id}")
+    y -= line_height * 2
+    # Reset to default text color and font
+    pdf.setFillColorRGB(0, 0, 0)
+    pdf.setFont("Helvetica", 12)
+    # Two-column patient and service details
+    mid_x = (left_margin + right_margin) / 2
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(left_margin, y, "Patient Details:")
+    pdf.drawString(mid_x, y, "Therapist Details:")
+    y -= line_height
+    pdf.setFont("Helvetica", 12)
+    # Patient column (left)
+    pdf.drawString(left_margin, y, f"Patient: {patient_name_full}")
+    pdf.drawString(left_margin, y - line_height, f"Patient ID: {patient_table_id}")
+    pdf.drawString(left_margin, y - line_height * 2, f"Medical Aid: {med_aid}")
+    pdf.drawString(left_margin, y - line_height * 3, f"Plan: {plan}")
+    pdf.drawString(left_margin, y - line_height * 4, f"Dependent No.: {dependent_no}")
+    pdf.drawString(left_margin, y - line_height * 5, f"Main Member: {principal_member}")
+    # Therapist column (right)
+    pdf.drawString(mid_x, y, f"Name: {provider_name}")
+    pdf.drawString(mid_x, y - line_height, f"Profession: {provider_profession}")
+    pdf.drawString(mid_x, y - line_height * 2, f"Practice No.: {practice_number}")
+    pdf.drawString(mid_x, y - line_height * 3, f"Date of Service: {invoice_date[:10]}")
+    y -= line_height * 6
+    y -= line_height * 1.5
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(left_margin, y, "Line Items:")
+    y -= line_height
+    # Table header
+    pdf.setFillColorRGB(45/255, 99/255, 86/255)
+    pdf.rect(left_margin, y - line_height, right_margin - left_margin, line_height, fill=True, stroke=False)
+    pdf.setFillColorRGB(1, 1, 1)
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(left_margin + 5, y - line_height + 4, "Code")
+    pdf.drawString(left_margin + 60, y - line_height + 4, "Description")
+    pdf.drawString(left_margin + 260, y - line_height + 4, "ICD-10")
+    pdf.drawString(left_margin + 360, y - line_height + 4, "Qty")
+    pdf.drawString(left_margin + 420, y - line_height + 4, "Modifier")
+    pdf.drawRightString(right_margin - 5, y - line_height + 4, "Fee")
+    # After drawing table header, reset to black for entries
+    pdf.setFillColorRGB(0, 0, 0)
+    pdf.setFont("Helvetica", 12)
+    y -= line_height * 1.5
+    # Render each entry with wrapped text for desc and icd
+    for idx, (code_id, code, desc, modifier, fee) in enumerate(entries):
+        qty = 1
+        icd = patient_icd10_codes.split(",")[0] if patient_icd10_codes else ""
+        # Define column widths in characters (approximation)
+        desc_col_width = 35  # fits in Description column
+        icd_col_width = 18   # fits in ICD-10 column
+        # Wrap description and icd
+        desc_lines = textwrap.wrap(desc, width=desc_col_width) or [""]
+        icd_lines = textwrap.wrap(icd, width=icd_col_width) or [""]
+        max_lines = max(len(desc_lines), len(icd_lines))
+        # Draw first line with all columns
+        pdf.drawString(left_margin + 5, y, code)
+        pdf.drawString(left_margin + 60, y, desc_lines[0] if desc_lines else "")
+        pdf.drawString(left_margin + 260, y, icd_lines[0] if icd_lines else "")
+        pdf.drawString(left_margin + 360, y, str(qty))
+        pdf.drawString(left_margin + 420, y, modifier or "")
+        pdf.drawRightString(right_margin - 5, y, f"R{fee:.2f}")
+        # Draw additional wrapped lines (for desc/icd)
+        for i in range(1, max_lines):
+            y -= line_height
+            pdf.drawString(left_margin + 60, y, desc_lines[i] if i < len(desc_lines) else "")
+            pdf.drawString(left_margin + 260, y, icd_lines[i] if i < len(icd_lines) else "")
+        # Calculate total height for this row
+        row_height = max_lines * line_height
+        y -= line_height  # After last line, extra spacing for row separation
+        y -= 6
+        # Table grid line if not last entry or at page break
+        if (idx < len(entries) - 1 and y > 100) or (y <= 100):
+            pdf.line(left_margin, y + line_height - 2 + 6, right_margin, y + line_height - 2 + 6)
+        if y < 100 and idx < len(entries) - 1:
+            pdf.showPage()
+            pdf.setFont("Helvetica", 12)
+            y = y_start
+    # Reset fill color to black in case changed
+    pdf.setFillColorRGB(0, 0, 0)
+    # Determine X position for totals block on right
+    totals_block_x = right_margin - 200
+    # Totals block: total, paid, and due each on its own line
+    y -= line_height // 2
+    pdf.setFont("Helvetica-Bold", 12)
+    # Total
+    pdf.drawString(totals_block_x, y, "Total:")
+    pdf.drawRightString(right_margin - 5, y, f"R{total_amount:.2f}")
+    # Amount Paid
+    y -= line_height
+    pdf.setFont("Helvetica", 12)
+    amount_paid = total_amount if str(status).lower() == 'paid' else 0
+    pdf.drawString(totals_block_x, y, "Amount Paid:")
+    pdf.drawRightString(right_margin - 5, y, f"R{amount_paid:.2f}")
+    # Amount Due
+    y -= line_height
+    amount_due = total_amount - amount_paid
+    pdf.drawString(totals_block_x, y, "Amount Due:")
+    pdf.drawRightString(right_margin - 5, y, f"R{amount_due:.2f}")
+    # Finish PDF
+    pdf.showPage()
+    pdf.save()
+    buffer.seek(0)
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"inline; filename={invoice_id}.pdf"}
+    )
 # Users table setup
 def init_users_table():
     with sqlite3.connect("data/bookings.db") as conn:
@@ -411,13 +733,12 @@ def init_patients_table():
     with sqlite3.connect("data/bookings.db") as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS patients (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id TEXT PRIMARY KEY,
                 first_name TEXT,
                 surname TEXT,
                 preferred_name TEXT,
                 date_of_birth TEXT,
                 gender TEXT,
-                id_number TEXT,
                 address_line1 TEXT,
                 address_line2 TEXT,
                 town TEXT,
@@ -857,6 +1178,7 @@ def add_booking(booking: Booking, request: Request):
             raise HTTPException(status_code=400, detail="Booking ID already exists")
     return booking
 
+
 # PUT update booking
 @app.put("/bookings/{booking_id}", response_model=Booking)
 def update_booking(booking_id: str, booking: Booking, request: Request):
@@ -884,6 +1206,57 @@ def update_booking(booking_id: str, booking: Booking, request: Request):
             booking_id
         ))
     return booking
+
+# --- New endpoint: Mark billing complete and auto-create draft invoice ---
+@app.post("/complete-billing/{booking_id}")
+def complete_billing(booking_id: str, request: Request):
+    # ensure authenticated
+    if not request.session.get('user_id'):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    with sqlite3.connect("data/bookings.db") as conn:
+        # mark booking as billed
+        conn.execute("UPDATE bookings SET billing_completed = 1 WHERE id = ?", (booking_id,))
+        # only insert a draft if one doesn't exist
+        exists = conn.execute(
+            "SELECT 1 FROM billing_sessions WHERE id = ?", (booking_id,)
+        ).fetchone()
+        if not exists:
+            # create minimal draft invoice
+            conn.execute("""
+                INSERT INTO billing_sessions (id, patient_id, therapist_id, session_date, notes, total_amount)
+                SELECT id, patient_id, therapist, date || 'T' || time || ':00', '', 0
+                FROM bookings WHERE id = ?
+            """, (booking_id,))
+            # Also create a corresponding invoice record if not exists
+            invoice_exists = conn.execute(
+                "SELECT 1 FROM invoices WHERE appointment_id = ?", (booking_id,)
+            ).fetchone()
+            if not invoice_exists:
+                conn.execute("""
+                    INSERT INTO invoices (
+                        id,
+                        appointment_id,
+                        patient_id,
+                        therapist_id,
+                        invoice_date,
+                        due_date,
+                        status,
+                        notes,
+                        total_amount
+                    ) SELECT
+                        'INV' || substr(id,5),
+                        id,
+                        patient_id,
+                        therapist,
+                        date || 'T' || time || ':00',
+                        NULL,
+                        'Draft',
+                        '',
+                        0
+                    FROM bookings
+                    WHERE id = ?
+                """, (booking_id,))
+    return {"detail": "Booking marked billed and draft invoice created"}
 
 # DELETE booking
 @app.delete("/bookings/{booking_id}")
@@ -1375,6 +1748,13 @@ def serve_medical_aid_page(request: Request):
     if not request.session.get("user_id"):
         return FileResponse(os.path.join("templates", "login.html"))
     return FileResponse(os.path.join("templates", "Medical Aid.html"))
+
+# @app.get("/billing-page")
+@app.get("/billing-page")
+def serve_billing_page(request: Request):
+    if not request.session.get("user_id"):
+        return FileResponse(os.path.join("templates", "login.html"))
+    return FileResponse(os.path.join("templates", "billing.html"))
 
 @app.get("/treatment-notes-page")
 def serve_treatment_notes_page(request: Request):
@@ -1890,20 +2270,22 @@ def submit_treatment_note(note: dict):
 
     with sqlite3.connect("data/bookings.db") as conn:
         cursor = conn.cursor()
+        completed_at = datetime.utcnow().isoformat()
         cursor.execute("""
             INSERT INTO treatment_notes (
                 appointment_id, appointment_date, start_time, duration,
                 patient_name, patient_id, profession, therapist_name, therapist_id,
                 subjective_findings, objective_findings, treatment, plan, note_to_patient,
-                consent_to_treatment, team_alert, alert_comment, alert_resolved
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
+                consent_to_treatment, team_alert, alert_comment, alert_resolved, note_completed_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,(
             note["appointment_id"], note["appointment_date"], note["start_time"], note["duration"],
             note["patient_name"], note["patient_id"], note["profession"], note["therapist_name"], note["therapist_id"],
-            note["subjective_findings"], note["objective_findings"], note["treatment"], note["plan"], note["note_to_patient"],
+            note["subjective_findings"], note["objective_findings"], note["treatment"], note["plan"], note["note_to_patient"], 
             note.get("consent_to_treatment", False), note.get("team_alert", ""),
-            note.get("alert_comment", ""), note.get("alert_resolved", "")
-        ))
+            note.get("alert_comment", ""), note.get("alert_resolved", ""), completed_at,
+        )
+        )
         # Mark booking as having a completed note
         conn.execute(
             "UPDATE bookings SET note_completed = 1 WHERE id = ?",
@@ -2063,7 +2445,7 @@ def get_full_notes(appointment_id: str):
     with sqlite3.connect("data/bookings.db") as conn:
         # Fetch main treatment note
         cur = conn.execute("""
-            SELECT subjective_findings, objective_findings, treatment, plan
+            SELECT subjective_findings, objective_findings, treatment, plan, note_completed_at
             FROM treatment_notes
             WHERE appointment_id = ?
         """, (appointment_id,))
@@ -2090,7 +2472,8 @@ def get_full_notes(appointment_id: str):
                 "subjective_findings": treatment[0],
                 "objective_findings": treatment[1],
                 "treatment": treatment[2],
-                "plan": treatment[3]
+                "plan": treatment[3],
+                "note_completed_at": treatment[4]   
             } if treatment else None,
             "supplementary": supplementary,
             "billing": [{"code": code} for code in billing_codes],
@@ -2260,3 +2643,92 @@ def delete_invoice(invoice_id: str):
         if cur.rowcount == 0:
             raise HTTPException(status_code=404, detail="Invoice not found")
     return {"detail": "Invoice deleted"}
+
+
+@app.get("/therapist-stats")
+def get_therapist_stats():
+    with sqlite3.connect("data/bookings.db") as conn:
+        cur = conn.execute("SELECT * FROM therapist_stats_view")
+        cols = [c[0] for c in cur.description]
+        return [dict(zip(cols, row)) for row in cur.fetchall()]
+
+
+@app.post("/reminders")
+def create_reminder(data: dict, request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    with sqlite3.connect("data/bookings.db") as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO reminders (
+                title, description, created_by_user_id, patient_id, therapist_id, appointment_id,
+                due_date, recurrence, completed, completed_at, visibility, priority,
+                colour, notify, notify_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            data.get("title"),
+            data.get("description"),
+            user_id,
+            data.get("patient_id"),
+            data.get("therapist_id"),
+            data.get("appointment_id"),
+            data.get("due_date"),
+            data.get("recurrence"),
+            data.get("completed", 0),
+            data.get("completed_at"),
+            data.get("visibility", "private"),
+            data.get("priority", "normal"),
+            data.get("colour", "#2D6356"),
+            data.get("notify", 0),
+            data.get("notify_at")
+        ))
+        conn.commit()
+        reminder_id = cursor.lastrowid
+
+    return {"detail": "Reminder created", "id": reminder_id}
+
+# --- Reminders: GET all reminders for the logged-in user or visible to team/patient ---
+@app.get("/reminders")
+def get_reminders(request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    with sqlite3.connect("data/bookings.db") as conn:
+        cursor = conn.execute("""
+            SELECT * FROM reminders
+            WHERE created_by_user_id = ? OR visibility IN ('team', 'patient')
+            ORDER BY due_date IS NULL, due_date ASC
+        """, (user_id,))
+        columns = [col[0] for col in cursor.description]
+        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+    
+# --- Patient Bookings Endpoint ---
+@app.get("/api/patient/{patient_id}/bookings")
+def get_patient_bookings(patient_id: str):
+    """
+    Return a list of bookings for a specific patient, including therapist name,
+    billing and notes completion status.
+    """
+    with sqlite3.connect("data/bookings.db") as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT 
+                b.date,
+                b.time,
+                b.profession,
+                t.name || ' ' || t.surname AS therapist_name,
+                CASE WHEN be.id IS NOT NULL THEN 1 ELSE 0 END AS billing_completed,
+                CASE WHEN tn.id IS NOT NULL THEN 1 ELSE 0 END AS notes_completed
+            FROM bookings b
+            LEFT JOIN therapists t ON b.therapist = t.id
+            LEFT JOIN billing_entries be ON b.id = be.appointment_id
+            LEFT JOIN treatment_notes tn ON b.id = tn.appointment_id
+            WHERE b.patient_id = ?
+            ORDER BY b.date DESC, b.time DESC
+        """, (patient_id,))
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]    

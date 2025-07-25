@@ -1,0 +1,100 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ provider_profession }} Invoice - {{ invoice_id }}</title>
+  <style>
+    body { font-family: Arial, sans-serif; color: #333; margin: 0; padding: 1rem; }
+    header { display: flex; justify-content: space-between; margin-bottom: 2rem; }
+    header .left, header .right { width: 45%; }
+    header h1 { margin: 0 0 0.5rem; color: #2D6356; }
+    header p { margin: 0.15rem 0; }
+    section.details { display: flex; justify-content: space-between; margin-bottom: 2rem; }
+    section.details .column { width: 45%; }
+    section.details h2 { margin-top: 0; color: #2D6356; font-size: 1.1rem; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; }
+    th, td { border: 1px solid #ddd; padding: 0.75rem; text-align: left; vertical-align: top; }
+    th { background: #f8f8f8; color: #2D6356; }
+    .totals { display: flex; justify-content: flex-end; margin-bottom: 0.5rem; }
+    .totals .label { width: 200px; font-weight: bold; }
+    .totals .value { width: 80px; text-align: right; }
+    footer { text-align: center; font-size: 0.9rem; color: #666; border-top: 1px solid #eee; padding-top: 1rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="left">
+      <h1>{{ provider_profession }} Invoice</h1>
+      <p><strong>Invoice #:</strong> {{ invoice_id }}</p>
+      <p><strong>Service Date:</strong> {{ date_of_service }}</p>
+      {% if due_date %}
+      <p><strong>Due Date:</strong> {{ due_date }}</p>
+      {% endif %}
+      <p><strong>Status:</strong> {{ status }}</p>
+    </div>
+    <div class="right">
+      <p><strong>{{ provider_name }}</strong></p>
+      <p>Practice Number: {{ practice_number }}</p>
+    </div>
+  </header>
+  <section class="details">
+    <div class="column">
+      <h2>Patient Details</h2>
+      <p><strong>Name:</strong> {{ patient_name_full }}</p>
+      <p><strong>ID Number:</strong> {{ patient_table_id }}</p>
+      <p><strong>Medical Aid:</strong> {{ med_aid }}</p>
+      <p><strong>Plan:</strong> {{ plan }}</p>
+      <p><strong>Dependent #: </strong> {{ dependent_no }}</p>
+      <p><strong>Principal Member:</strong> {{ principal_member }}</p>
+    </div>
+    <div class="column">
+      <h2>Membership</h2>
+      <p><strong>Membership #:</strong> {{ membership_no }}</p>
+      <p><strong>ICD10 Codes:</strong> {{ patient_icd10_codes }}</p>
+    </div>
+  </section>
+  <table>
+    <thead>
+      <tr>
+        <th>Code</th>
+        <th>Description</th>
+        <th>ICD10 Code</th>
+        <th>Qty</th>
+        <th>Rate</th>
+        <th>Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in entries %}
+      <tr>
+        <td>{{ e.code }}</td>
+        <td>{{ e.description }}</td>
+        <td>{{ e.icd }}</td>
+        <td>{{ e.modifier|int if e.modifier else 1 }}</td>
+        <td>R{{ "%.2f"|format(e.fee) }}</td>
+        <td>R{{ "%.2f"|format(e.fee * (e.modifier|int if e.modifier else 1)) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="totals">
+    <div class="label">Sub Total (Tax Inclusive):</div>
+    <div class="value">R{{ "%.2f"|format(total_amount) }}</div>
+  </div>
+  <div class="totals">
+    <div class="label">Payment Made (-):</div>
+    <div class="value">R{{ "%.2f"|format(amount_paid or 0) }}</div>
+  </div>
+  <div class="totals">
+    <div class="label">Balance Due:</div>
+    <div class="value">R{{ "%.2f"|format(total_amount - (amount_paid or 0)) }}</div>
+  </div>
+  <footer>
+    <p>Thank you for your business!</p>
+    <p>{{ provider_name }} &middot; Practice No. {{ practice_number }}</p>
+    <p>Contact: {{ provider_name }} &bull; {{ practice_number }}</p>
+  </footer>
+</body>
+</html>

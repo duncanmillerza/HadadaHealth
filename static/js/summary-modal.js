@@ -1,5 +1,3 @@
-
-
 // Load summary modal fragment
 document.addEventListener("DOMContentLoaded", () => {
   fetch("/static/fragments/appointment_summary_modal.html")
@@ -117,9 +115,8 @@ window.goToPatientProfileFromSummary = goToPatientProfileFromSummary;
 
 function goToSession() {
   const bookingId = document.getElementById("summary-modal").dataset.bookingId;
-  const booking = (typeof bookings !== 'undefined') 
-    ? bookings.find(b => String(b.id) === bookingId) 
-    : null;
+  const bookingData = document.getElementById("summary-modal").dataset.booking;
+  const booking = bookingData ? JSON.parse(bookingData) : null;
   if (!booking) {
     console.error("Supplementary note: booking not found for ID", bookingId);
     return;

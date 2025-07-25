@@ -19,8 +19,7 @@
       </div>
   
       <div class="button-grid">
-        <button><span class="material-icons">edit</span><br>Treatment Note</button>
-        <button><span class="material-icons">calendar_today</span><br>Bookings</button>
+        <button onclick="openBookingsModal(window.currentPatientId)"><span class="material-icons">calendar_today</span><br>Bookings</button>
         <button onclick="openPatientDetailsModal()"><span class="material-icons">person</span><br>Details</button>
         <button><span class="material-icons">book</span><br>All Notes</button>
         <button><span class="material-icons">warning</span><br>Alerts</button>
@@ -170,7 +169,9 @@
         }
       });
       </script>
+      <script src="/static/js/nav-bar.js"></script>
       <script src="/static/js/patient-modal.js"></script>
+      <script src="/static/js/booking-table.js"></script>
       <script>
         // Load and inject the patient-modal fragment on page load
         document.addEventListener("DOMContentLoaded", () => {
@@ -192,6 +193,27 @@
             console.error("Patient data not loaded yet.");
           }
         }
+        document.addEventListener("DOMContentLoaded", () => {
+          fetch("/static/fragments/booking-table.html")
+            .then(res => res.text())
+            .then(html => {
+              const container = document.createElement('div');
+              container.innerHTML = html;
+              document.body.appendChild(container);
+
+              const closeBookingsBtn = document.getElementById("close-bookings-modal");
+              if (closeBookingsBtn) {
+                closeBookingsBtn.addEventListener("click", () => {
+                  const modal = document.getElementById("booking-modal");
+                  const backdrop = document.getElementById("booking-modal-backdrop");
+                  if (modal) modal.style.display = "none";
+                  if (backdrop) backdrop.style.display = "none";
+                });
+              }
+            })
+            .catch(err => console.error("Failed to load booking modal fragment:", err));
+        });
       </script>
+      
       </body>
       </html>

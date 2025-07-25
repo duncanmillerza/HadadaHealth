@@ -4,10 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Therapist Dashboard</title>
+</head>
   <link rel="stylesheet" href="/static/calendar.css">
   <link rel="stylesheet" href="/static/nav.css">
   <link rel="icon" href="/static/favicon.ico" type="image/x-icon" />
   <link rel="preload" href="/static/fonts/MaterialIcons-Regular.woff2" as="font" type="font/ttf" crossorigin="anonymous">
+  <style>
+    .appt-clickable {
+      cursor: pointer;
+      color: #2D6356;
+      transition: color 0.2s;
+    }
+    .appt-clickable:hover {
+      color: #214c43;
+      text-decoration: underline;
+    }
+  </style>
 </head>
 <body>
   <script src="/static/js/nav-bar.js"></script>
@@ -22,38 +34,71 @@
       <ul id="appointments-list"></ul>
     </div>
     <div class="section">
-      <h2>Outstanding Notes & Billing</h2>
-      <ul>
-        <li>08 April - Alex Green (No note)</li>
-        <li>10 April - Emily White (No billing info)</li>
+      <h2>Outstanding Notes</h2>
+      <ul id="outstanding-notes-list"></ul>
+    </div>
+    <div class="section">
+      <h2>Outstanding Billing</h2>
+      <ul id="outstanding-billing-list"></ul>
+    </div>
+    <div class="section">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="margin: 0;">Reminders</h2>
+        <button onclick="openReminderModal()" style="font-size: 1.2em; background: #2D6356; color: white; border: none; border-radius: 4px; padding: 0.2em 0.6em; cursor: pointer;">+</button>
+      </div>
+      <ul id="reminders-list">
+        <li>Loading reminders...</li>
       </ul>
     </div>
     <div class="section">
-      <h2>Reminders</h2>
-      <ul>
-        <li>Submit medical aid reports by Friday</li>
-        <li>Team MDT meeting tomorrow at 14:00</li>
-      </ul>
+      <h2>Stats (Lifetime)</h2>
+      <div class="stat-block">
+        <strong id="lifetime-appointments-count">0</strong>
+        Appointments
+      </div>
+      <div class="stat-block">
+        <strong id="lifetime-avg-note-completion-time">0.0 min</strong>
+        Avg Note Completion Time
+      </div>
+      <div class="stat-block">
+        <strong id="lifetime-avg-invoice-amount">R0.00</strong>
+        Avg Invoice Amount
+      </div>
+      <div class="stat-block">
+        <strong id="lifetime-total-invoiced">R0.00</strong>
+        Total Invoiced
+      </div>
     </div>
     <div class="section">
       <h2>Stats (Last 30 Days)</h2>
       <div class="stat-block">
-        <strong>42</strong>
-        Patients Seen
+        <strong id="recent-appointments-count">0</strong>
+        Appointments
       </div>
       <div class="stat-block">
-        <strong>52 hrs</strong>
-        Total Contact Time
+        <strong id="avg-note-completion-time">0.0 min</strong>
+        Avg Note Completion Time
       </div>
       <div class="stat-block">
-        <strong>6 hrs</strong>
-        Avg Time to Complete Notes
+        <strong id="avg-invoice-amount">R0.00</strong>
+        Avg Invoice Amount
+      </div>
+      <div class="stat-block">
+        <strong id="total-invoiced-30d">R0.00</strong>
+        Total Invoiced
       </div>
     </div>
   </div>
       <script src="/static/js/nav-bar.js"></script>
       <div id="bottom-nav"></div>
+  <script src="/static/js/summary-modal.js"></script>
 <script>
+    // Helper to format date as DD MMM
+    function formatDateDDMMM(dateString) {
+      const d = new Date(dateString);
+      return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+    }
+
     // Personalise dashboard with therapist name if linked, otherwise username
     async function personaliseDashboard() {
       try {
@@ -86,7 +131,13 @@
 
         const today = new Date().toISOString().split("T")[0];
         const response = await fetch(`/bookings?therapist_id=${sessionData.linked_therapist_id}`);
-        const bookings = await response.json();
+        let bookings = await response.json();
+        // Remove duplicates caused by SQL joins
+        let uniqueIds = Array.from(new Set(bookings.map(b => b.id)));
+        bookings = uniqueIds.map(id => bookings.find(b => b.id === id));
+
+        // 🛠️ Debug: log fetched bookings array
+        console.log('🛠️ fetched bookings:', bookings);
 
         const appointmentsList = document.getElementById('appointments-list');
         appointmentsList.innerHTML = "";
@@ -101,6 +152,11 @@
           todaysAppointments.forEach(booking => {
             const li = document.createElement("li");
             li.textContent = `${booking.time} - ${booking.name}`;
+            li.classList.add('appt-clickable');
+            li.addEventListener('click', () => {
+              console.log(`🛠️ appt-click for booking id: ${booking.id}`);
+              openSummaryModal(booking);
+            });
             appointmentsList.appendChild(li);
           });
         }
@@ -109,11 +165,220 @@
       }
     }
 
-    // Call both functions on load
+    // Populate outstanding notes only
+    async function populateOutstandingNotes() {
+      try {
+        const session = await fetch('/check-login');
+        const { logged_in, linked_therapist_id } = await session.json();
+        if (!logged_in || !linked_therapist_id) return;
+
+        const today = new Date().toISOString().split("T")[0];
+        const response = await fetch(`/bookings?therapist_id=${linked_therapist_id}`);
+        let bookings = await response.json();
+        // Remove duplicates caused by SQL joins
+        let uniqueIds = Array.from(new Set(bookings.map(b => b.id)));
+        bookings = uniqueIds.map(id => bookings.find(b => b.id === id));
+
+        const notesList = document.getElementById('outstanding-notes-list');
+        notesList.innerHTML = "";
+
+        const outstandingNotes = bookings
+          .filter(b => b.date < today && !b.has_note)
+          .sort((a, b) => a.date.localeCompare(b.date));
+
+        if (outstandingNotes.length === 0) {
+          notesList.innerHTML = "<li>No outstanding notes</li>";
+        } else {
+          outstandingNotes.forEach(b => {
+            const li = document.createElement("li");
+            li.textContent = `${formatDateDDMMM(b.date)} ${b.time} - ${b.name}`;
+            li.classList.add('appt-clickable');
+            li.addEventListener('click', () => openSummaryModal(b));
+            notesList.appendChild(li);
+          });
+        }
+      } catch (err) {
+        console.error("Failed to populate outstanding notes:", err);
+      }
+    }
+
+    // Populate outstanding billing only
+    async function populateOutstandingBilling() {
+      try {
+        const session = await fetch('/check-login');
+        const { logged_in, linked_therapist_id } = await session.json();
+        if (!logged_in || !linked_therapist_id) return;
+
+        const today = new Date().toISOString().split("T")[0];
+        const response = await fetch(`/bookings?therapist_id=${linked_therapist_id}`);
+        let bookings = await response.json();
+        // Remove duplicates caused by SQL joins
+        let uniqueIds = Array.from(new Set(bookings.map(b => b.id)));
+        bookings = uniqueIds.map(id => bookings.find(b => b.id === id));
+
+        const billingList = document.getElementById('outstanding-billing-list');
+        billingList.innerHTML = "";
+
+        const outstandingBilling = bookings
+          .filter(b => b.date < today && b.billing_completed === false)
+          .sort((a, b) => a.date.localeCompare(b.date));
+
+        if (outstandingBilling.length === 0) {
+          billingList.innerHTML = "<li>No outstanding billing</li>";
+        } else {
+          outstandingBilling.forEach(b => {
+            const li = document.createElement("li");
+            li.textContent = `${formatDateDDMMM(b.date)} ${b.time} - ${b.name}`;
+            li.classList.add('appt-clickable');
+            li.addEventListener('click', () => openSummaryModal(b));
+            billingList.appendChild(li);
+          });
+        }
+      } catch (err) {
+        console.error("Failed to populate outstanding billing:", err);
+      }
+    }
+
+    // Call all functions on load
     window.onload = function() {
       personaliseDashboard();
       populateTodaysAppointments();
+      populateOutstandingNotes();
+      populateOutstandingBilling();
+      populateStats();
+      populateReminders();
     };
+    /**
+     * Format a duration in minutes into the largest time units.
+     */
+    function formatDuration(totalMinutes) {
+      let remaining = Math.round(totalMinutes);
+      const parts = [];
+      const years = Math.floor(remaining / (60 * 24 * 365));
+      if (years) { parts.push(years + 'y'); remaining -= years * 60 * 24 * 365; }
+      const weeks = Math.floor(remaining / (60 * 24 * 7));
+      if (weeks) { parts.push(weeks + 'w'); remaining -= weeks * 60 * 24 * 7; }
+      const days = Math.floor(remaining / (60 * 24));
+      if (days) { parts.push(days + 'd'); remaining -= days * 60 * 24; }
+      const hours = Math.floor(remaining / 60);
+      if (hours) { parts.push(hours + 'h'); remaining -= hours * 60; }
+      if (remaining || parts.length === 0) { parts.push(remaining + 'min'); }
+      return parts.join(' ');
+    }
+
+    async function populateStats() {
+      try {
+        const sessionRes = await fetch('/session-info');
+        const { linked_therapist_id } = await sessionRes.json();
+        if (!linked_therapist_id) return;
+        // Fetch stats view
+        const res = await fetch('/therapist-stats');
+        const statsArray = await res.json();
+        // Find this therapist's stats
+        const stats = statsArray.find(s => s.therapist_id === linked_therapist_id);
+        if (!stats) return;
+        // Update 30-day stats
+        document.getElementById('recent-appointments-count').textContent = stats.recent_appointments_30d || 0;
+        document.getElementById('avg-note-completion-time').textContent =
+          stats.avg_note_completion_minutes_30d !== null
+            ? formatDuration(stats.avg_note_completion_minutes_30d)
+            : '0min';
+        document.getElementById('avg-invoice-amount').textContent =
+          'R' + (stats.avg_invoice_amount_30d !== null ? stats.avg_invoice_amount_30d.toFixed(2) : '0.00');
+        document.getElementById('total-invoiced-30d').textContent =
+          'R' + (stats.total_invoiced_30d !== null ? stats.total_invoiced_30d.toFixed(2) : '0.00');
+
+        // Populate lifetime stats
+        document.getElementById('lifetime-appointments-count').textContent = stats.total_appointments || 0;
+        document.getElementById('lifetime-avg-note-completion-time').textContent =
+          stats.avg_note_completion_minutes !== null
+            ? formatDuration(stats.avg_note_completion_minutes)
+            : '0min';
+        document.getElementById('lifetime-avg-invoice-amount').textContent =
+          'R' + (stats.avg_invoice_amount !== null ? stats.avg_invoice_amount.toFixed(2) : '0.00');
+        document.getElementById('lifetime-total-invoiced').textContent =
+          'R' + (stats.total_invoiced !== null ? stats.total_invoiced.toFixed(2) : '0.00');
+      } catch (err) {
+        console.error('Failed to populate stats:', err);
+      }
+    }
+    window.populateStats = populateStats;
+
+      // Populate reminders dynamically
+  async function populateReminders() {
+    try {
+      const res = await fetch("/reminders");
+      const reminders = await res.json();
+      const list = document.getElementById("reminders-list");
+      list.innerHTML = "";
+
+      if (!reminders.length) {
+        list.innerHTML = "<li>No reminders</li>";
+        return;
+      }
+
+      reminders.forEach(reminder => {
+        const li = document.createElement("li");
+        // Container for the title and the info button
+        const span = document.createElement("span");
+        span.textContent = reminder.title;
+        // Add due date if present
+        if (reminder.due_date) {
+          span.textContent += ` (Due: ${new Date(reminder.due_date).toLocaleDateString()})`;
+        }
+        li.style.borderLeft = `6px solid ${reminder.colour || "#2D6356"}`;
+        li.style.paddingLeft = "0.5em";
+        li.style.display = "flex";
+        li.style.alignItems = "center";
+        li.style.gap = "0.5em";
+
+        // Info button
+        const infoBtn = document.createElement("button");
+        infoBtn.textContent = "ⓘ";
+        infoBtn.title = "View reminder details";
+        infoBtn.style.background = "none";
+        infoBtn.style.border = "none";
+        infoBtn.style.cursor = "pointer";
+        infoBtn.style.fontSize = "1.1em";
+        infoBtn.style.marginLeft = "0.25em";
+        infoBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          openReminderViewModal(reminder);
+        });
+
+        li.appendChild(span);
+        li.appendChild(infoBtn);
+        list.appendChild(li);
+      });
+    } catch (err) {
+      console.error("Failed to load reminders:", err);
+      const list = document.getElementById("reminders-list");
+      list.innerHTML = "<li>Error loading reminders</li>";
+    }
+  }
   </script>
+  <script src="/static/js/reminder-modal.js"></script>
+  <div id="reminder-modal-container"></div>
+  <div id="reminder-view-modal-container"></div>
+<script>
+  fetch("/static/fragments/reminder-modal.html")
+    .then(res => res.text())
+    .then(html => {
+      document.getElementById("reminder-modal-container").innerHTML = html;
+      initReminderModal();
+    })
+    .then(() => {
+      const script = document.createElement("script");
+      script.src = "/static/js/reminder-modal.js";
+      document.body.appendChild(script);
+    });
+
+  // Load the reminder view modal fragment
+  fetch("/static/fragments/reminder-view-modal.html")
+    .then(res => res.text())
+    .then(html => {
+      document.getElementById("reminder-view-modal-container").innerHTML = html;
+    });
+</script>
   </body>
   </html>

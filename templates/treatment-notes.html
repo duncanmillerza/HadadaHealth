@@ -190,8 +190,8 @@
             // 2. After billingPayload: debug log
             console.log("Billing payload:", billingPayload);
             // 3. Before fetch: debug log
-            console.log("Sending billing data to /submit-billing...");
-            const billingRes = await fetch("/submit-billing", {
+            console.log("Sending billing data to /billing-sessions...");
+            const billingRes = await fetch("/billing-sessions", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json"

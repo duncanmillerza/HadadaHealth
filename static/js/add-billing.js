@@ -37,7 +37,7 @@ function removeBillingRow(button) {
 async function populateBillingRow(input) {
   const codeInput = input.value.split(" - ")[0];
   try {
-    const response = await fetch("/api/billing-codes");
+    const response = await fetch("/api/billing_codes");
     const codes = await response.json();
     const match = codes.find(c => c.code === codeInput);
     if (match) {
@@ -132,7 +132,7 @@ async function submitBillingModal() {
   };
 
   try {
-    const res = await fetch("/submit-billing", {
+    const res = await fetch("/billing-sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)

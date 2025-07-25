@@ -807,3 +807,17 @@ div.appointment.greyed-out {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Added modal-styled class for consistent modal styling */
+.modal-styled {
+  max-width: 600px;
+  width: 95%;
+  margin: 8vh auto;
+  background: white;
+  padding: 2rem 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  overflow-y: auto;
+  max-height: 85vh;
+  position: relative;
+}
