@@ -61,7 +61,26 @@ logging.basicConfig(level=logging.INFO)
 import os
 from dotenv import load_dotenv
 load_dotenv()
+
 API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+# --- Optional local LLM (gpt4all) import ---
+# If ENABLE_GPT4ALL is set to "1" and the package is installed, use it.
+# Otherwise, provide a stub that raises a clear runtime error if instantiated.
+ENABLE_GPT4ALL = os.getenv("ENABLE_GPT4ALL", "0") == "1"
+try:
+    if ENABLE_GPT4ALL:
+        from gpt4all import GPT4All as _RealGPT4All
+        GPT4All = _RealGPT4All
+    else:
+        raise ImportError("gpt4all disabled by env")
+except Exception:
+    class GPT4All:  # fallback stub
+        def __init__(self, *args, **kwargs):
+            raise RuntimeError(
+                "Local LLM (gpt4all) is disabled or not installed. "
+                "Set ENABLE_GPT4ALL=1 and add 'gpt4all' to requirements to enable."
+            )
 
 import smtplib, ssl
 from email.message import EmailMessage
