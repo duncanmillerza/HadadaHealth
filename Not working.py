@@ -1,12 +1,9 @@
-# Outcome measure endpoints
-from typing import List
-from fastapi import Body
 import sqlite3
 import httpx
 import os
 import json
 from fastapi import HTTPException
-
+from datetime import datetime
 
 # Helper to get DB connection with row_factory as dict
 def get_db_connection():
@@ -50,7 +47,6 @@ import json
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.responses import StreamingResponse
-from fastapi.responses import Response
 from io import BytesIO
 from reportlab.pdfgen import canvas
 import textwrap
@@ -63,11 +59,6 @@ from dotenv import load_dotenv
 load_dotenv()
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-import smtplib, ssl
-from email.message import EmailMessage
-from pydantic import EmailStr
-from typing import Optional
-
 # --- Sessions ---
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
@@ -78,17 +69,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 security = HTTPBasic()
 
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
-from fastapi import Request
-
 app = FastAPI()
-
-# --- Favicon route: silence 404s until a real icon is added ---
-@app.get("/favicon.ico")
-async def favicon():
-    # Silence favicon 404s until a real icon is added
-    return Response(status_code=204)
 
 
 # Add SessionMiddleware for user sessions
@@ -914,20 +895,9 @@ def update_therapist(therapist_id: int, therapist_data: dict = Body(...)):
         conn.execute(f"UPDATE therapists SET {columns} WHERE id = ?", values)
     return {"detail": "Therapist updated successfully"}
 
+# Mount static directory for serving static files
+# Mount static directory for serving static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# Jinja2 templates setup
-templates = Jinja2Templates(directory="templates")
-
-# Landing page routes for pitch
-@app.get("/landing", response_class=HTMLResponse, name="landing")
-async def landing(request: Request):
-    return templates.TemplateResponse("Pitch.html", {"request": request})
-
-# Home -> serve the same pitch page
-@app.get("/", response_class=HTMLResponse, name="home")
-async def home(request: Request):
-    return templates.TemplateResponse("Pitch.html", {"request": request})
 
 app.add_middleware(
     CORSMiddleware,
@@ -940,90 +910,6 @@ app.add_middleware(
 # Include the AI summary router
 app.include_router(router)
 
-# ContactRequest Pydantic model for /contact endpoint
-class ContactRequest(BaseModel):
-    name: str
-    email: EmailStr
-    phone: Optional[str] = None
-    phone_e164: Optional[str] = None
-    org: Optional[str] = None
-    message: Optional[str] = None
-
-@app.post("/contact")
-async def contact_send(data: ContactRequest):
-    """
-    Send contact emails via Resend (preferred), SMTP (optional), or console fallback.
-    Priority:
-      1) If RESEND_API_KEY is set and EMAIL_MODE in {auto,resend} -> Resend API
-      2) Else if EMAIL_MODE == smtp and SMTP vars are present -> SMTP
-      3) Else -> Console log (demo mode)
-    """
-    mode = os.getenv("EMAIL_MODE", "auto").lower()  # auto|resend|smtp|console
-
-    # Common fields
-    to_addr = os.getenv("SMTP_TO", "duncan@hadadahealth.com")
-    subject = f"HadadaHealth enquiry from {data.name}"
-    body = (
-        f"Name: {data.name}\n"
-        f"Email: {data.email}\n"
-        f"Phone: {data.phone or ''}\n"
-        f"Phone (E.164): {data.phone_e164 or ''}\n"
-        f"Organisation: {data.org or ''}\n\n"
-        f"Message:\n{data.message or ''}\n"
-    )
-
-    # 1) Resend API path (default when RESEND_API_KEY is present)
-    resend_key = os.getenv("RESEND_API_KEY")
-    resend_from = os.getenv("RESEND_FROM") or os.getenv("SMTP_FROM") or "onboarding@resend.dev"
-    if resend_key and mode in {"auto", "resend"}:
-        try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                r = await client.post(
-                    "https://api.resend.com/emails",
-                    headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
-                    json={
-                        "from": resend_from,
-                        "to": [to_addr],
-                        "subject": subject,
-                        "text": body,
-                    },
-                )
-            if r.status_code >= 400:
-                # Log and continue to console fallback
-                logging.error("Resend API error %s: %s", r.status_code, r.text)
-                raise HTTPException(status_code=500, detail=f"Resend error: {r.text}")
-            return {"ok": True, "mode": "resend"}
-        except Exception as e:
-            logging.exception("Resend send failed")
-            # Fall through to console success so UI doesn't break during demos
-            return {"ok": True, "mode": "console", "note": f"Resend failed: {e}"}
-
-    # 2) SMTP path (only if explicitly selected)
-    host = os.getenv("SMTP_HOST")
-    port = int(os.getenv("SMTP_PORT", "587"))
-    user = os.getenv("SMTP_USER")
-    pwd = os.getenv("SMTP_PASS")
-    from_addr = os.getenv("SMTP_FROM", user or "noreply@hadadahealth.com")
-    if mode == "smtp" and host and user and pwd:
-        try:
-            msg = EmailMessage()
-            msg["Subject"] = subject
-            msg["From"] = from_addr
-            msg["To"] = to_addr
-            msg.set_content(body)
-            context = ssl.create_default_context()
-            with smtplib.SMTP(host, port) as server:
-                server.starttls(context=context)
-                server.login(user, pwd)
-                server.send_message(msg)
-            return {"ok": True, "mode": "smtp"}
-        except Exception as e:
-            logging.exception("SMTP send failed")
-            return {"ok": True, "mode": "console", "note": f"SMTP failed: {e}"}
-
-    # 3) Console fallback (demo mode)
-    logging.info("📬 [Console Email] To: %s\nSubject: %s\n\n%s", to_addr, subject, body)
-    return {"ok": True, "mode": "console"}
 # Database setup
 def init_db():
     with sqlite3.connect("data/bookings.db") as conn:
@@ -1053,7 +939,37 @@ def init_db():
                 FOREIGN KEY (appointment_id) REFERENCES bookings(id)
             );
         """)
+        # --- Outcome Measure Types Table ---
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS outcome_measure_types (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                category TEXT,
+                description TEXT,
+                unit TEXT
+            );
+        """)
+        # Pre-populate standard outcome measures if table is empty
+        cur = conn.execute("SELECT COUNT(*) FROM outcome_measure_types")
+        if cur.fetchone()[0] == 0:
+            conn.executemany(
+                "INSERT INTO outcome_measure_types (name, category, description, unit) VALUES (?, ?, ?, ?)",
+                [
+                    ('Berg Balance Scale', 'Balance', 'Scored out of 56. Higher is better.', 'Score (0–56)'),
+                    ('Timed Up and Go (TUG)', 'Balance', 'Time to stand, walk 3m, and sit. Lower is better.', 'Seconds'),
+                    ('10-Meter Walk Test', 'Mobility', 'Time or speed over 10 metres.', 'Seconds / m/s'),
+                    ('6-Minute Walk Test', 'Mobility', 'Distance walked in 6 minutes.', 'Metres'),
+                    ('MoCA', 'Cognition', 'Montreal Cognitive Assessment. Higher = better cognition.', 'Score (0–30)'),
+                    ('Barthel Index', 'ADL', 'Measures independence in daily living.', 'Score (0–100)'),
+                    ('FIM', 'ADL', 'Functional Independence Measure.', 'Score per domain (1–7)'),
+                    ('Box and Block Test', 'Upper Limb', 'Number of blocks moved in 60 seconds.', 'Count'),
+                    ('Nine Hole Peg Test', 'Upper Limb', 'Time to complete peg placement.', 'Seconds'),
+                    ('COPM', 'Participation', 'Client-rated performance and satisfaction.', 'Rating (0–10)')
+                ]
+            )
+            conn.commit()
 
+# --- Supplementary Notes Endpoint ---
 from datetime import datetime
 
 @app.post("/api/treatment-notes/{appointment_id}/supplementary_note")
@@ -1071,23 +987,6 @@ def add_supplementary_note(appointment_id: str, data: dict, request: Request):
             VALUES (?, ?, ?, ?)
         """, (appointment_id, user_id, note, timestamp))
     return {"detail": "Supplementary note saved"}
-
-# --- Outcome Measure Types endpoint (dropdown source, subscores only) ---
-@app.get("/api/outcome-measure-types")
-def get_outcome_measure_types_from_subscores():
-    conn = get_db_connection()
-    outcome_types = conn.execute("""
-        SELECT DISTINCT outcome_measure_type_id, subcategory_name
-        FROM outcome_measure_type_subscores
-    """).fetchall()
-    conn.close()
-    return [
-        {
-            "id": row["outcome_measure_type_id"],
-            "name": row["subcategory_name"]
-        }
-        for row in outcome_types
-    ]
 
 def init_patients_table():
     with sqlite3.connect("data/bookings.db") as conn:
@@ -1400,14 +1299,6 @@ class Settings(BaseModel):
     slot_duration: int
     weekdays: List[str]
     dark_mode: bool
-
-class ContactRequest(BaseModel):
-    name: str
-    email: EmailStr
-    phone: Optional[str] = None
-    phone_e164: Optional[str] = None
-    org: Optional[str] = None
-    message: Optional[str] = None
 
 from typing import Optional
 @app.get("/bookings", response_model=List[Booking])
@@ -3142,144 +3033,25 @@ def get_patient_bookings(patient_id: str):
         rows = cursor.fetchall()
         return [dict(row) for row in rows]    
 # --- Outcome Measures Endpoint ---
-
-# --- Outcome Measure Types API ---
-@app.get("/api/outcome-measure-types")
-def get_outcome_measure_types():
+@router.post("/api/outcome-measures")
+def add_outcome_measure(data: dict):
     with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.execute("SELECT id, name, description, score_type, max_score, interpretation FROM outcome_measure_types")
-        rows = cursor.fetchall()
-
-    return [
-        {
-            "id": row[0],
-            "name": row[1],
-            "description": row[2],
-            "score_type": row[3],
-            "max_score": row[4],
-            "interpretation": row[5]
-        }
-        for row in rows
-    ]
-# Create a new outcome_measure_type
-@app.post("/api/outcome-measure-types")
-async def create_outcome_measure_type(data: dict):
-    with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.execute("""
-            INSERT INTO outcome_measure_types (name, max_score, has_subscores)
-            VALUES (?, ?, ?)
-        """, (data["name"], data["max_score"], data["has_subscores"]))
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO outcome_measures (
+                patient_id, therapist, appointment_id, date,
+                outcome_measure, score, unit, comments, raw_data
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            data.get("patient_id"),
+            data.get("therapist"),
+            data.get("appointment_id"),
+            data.get("date"),
+            data.get("outcome_measure"),
+            data.get("score"),
+            data.get("unit"),
+            data.get("comments"),
+            data.get("raw_data"),
+        ))
         conn.commit()
         return {"status": "success", "id": cursor.lastrowid}
-
-# Create a new outcome_measure_type_subscore
-@app.post("/api/outcome-measure-type-subscores")
-async def create_outcome_measure_type_subscore(data: dict):
-    with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.execute("""
-            INSERT INTO outcome_measure_type_subscores (outcome_measure_type_id, name, max_score)
-            VALUES (?, ?, ?)
-        """, (data["outcome_measure_type_id"], data["name"], data["max_score"]))
-        conn.commit()
-        return {"status": "success", "id": cursor.lastrowid}
-
-# --- New endpoint: Get outcome measure subscores for a given outcome_measure_id ---
-@app.get("/api/outcome-measure-subscores/{outcome_measure_id}")
-def get_outcome_measure_subscores(outcome_measure_id: int):
-    conn = get_db_connection()
-    cur = conn.execute(
-        "SELECT * FROM outcome_measure_subscores WHERE outcome_measure_id = ?",
-        (outcome_measure_id,)
-    )
-    rows = cur.fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
-
-@app.get("/api/outcome-measure-types/{type_id}/subscores")
-def get_outcome_measure_type_subscores(type_id: int):
-    with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.execute(
-            """
-            SELECT id, subcategory_name, max_score
-            FROM outcome_measure_type_subscores
-            WHERE outcome_measure_type_id = ?
-            """,
-            (type_id,)
-        )
-        rows = cursor.fetchall()
-
-    return [{"id": row[0], "subcategory_name": row[1], "max_score": row[2]} for row in rows]
-
-# --- Outcome Measure Type Categories Endpoints ---
-
-# Return unique category strings
-@app.get("/api/outcome-measure-types/categories")
-def get_outcome_measure_categories():
-    with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.execute("SELECT DISTINCT category FROM outcome_measure_types WHERE category IS NOT NULL AND TRIM(category) != ''")
-        categories = [row[0] for row in cursor.fetchall()]
-    return categories
-
-# Return outcome measure types filtered by category
-@app.get("/api/outcome-measure-types/by-category/{category}")
-def get_outcome_measures_by_category(category: str):
-    with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.execute("SELECT id, name FROM outcome_measure_types WHERE category = ?", (category,))
-        measures = [{"id": row[0], "name": row[1]} for row in cursor.fetchall()]
-    return measures
-from datetime import datetime
-
-@app.post("/api/outcome-measures")
-def create_outcome_measure(data: dict = Body(...)):
-    """
-    Expects JSON with: patient_id, therapist, appointment_id, date,
-    outcome_measure_type_id, score (optional/nullable), comments (optional)
-    """
-    with sqlite3.connect("data/bookings.db") as conn:
-        cur = conn.cursor()
-        cur.execute(
-            """
-            INSERT INTO outcome_measures
-              (patient_id, therapist, appointment_id, date, outcome_measure_type_id, score, comments)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                data.get("patient_id"),
-                data.get("therapist", ""),
-                data.get("appointment_id"),
-                data.get("date"),
-                data.get("outcome_measure_type_id"),
-                data.get("score"),
-                data.get("comments", "")
-            )
-        )
-        new_id = cur.lastrowid
-        conn.commit()
-    return {"id": new_id}
-
-@app.post("/api/outcome-measures/{measure_id}/subscores")
-def add_outcome_measure_subscores(measure_id: int, subscores: List[dict] = Body(...)):
-    """
-    Expects a JSON array of { subcategory_name, max_score, score, comments }
-    """
-    if not isinstance(subscores, list):
-        raise HTTPException(status_code=400, detail="Subscores must be a list")
-    with sqlite3.connect("data/bookings.db") as conn:
-        cur = conn.cursor()
-        for s in subscores:
-            cur.execute(
-                """
-                INSERT INTO outcome_measure_subscores
-                  (outcome_measure_id, subcategory_name, score, max_score, comments)
-                VALUES (?, ?, ?, ?, ?)
-                """,
-                (
-                    measure_id,
-                    s.get("subcategory_name", ""),
-                    s.get("score"),
-                    s.get("max_score"),
-                    s.get("comments", "")
-                )
-            )
-        conn.commit()
-    return {"status": "ok", "count": len(subscores)}

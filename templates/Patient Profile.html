@@ -7,7 +7,9 @@
     <meta name="robots" content="index,follow"/>
     <link rel="stylesheet" href="/static/calendar.css">
     <link rel="stylesheet" href="/static/nav.css">
-    <link rel="preload" href="/static/fonts/MaterialIcons-Regular.woff2" as="font" type="font/ttf" crossorigin="anonymous">
+</head>
+<script src="/static/js/medical-history.js"></script>
+
 </head>
 <body id="icrwd">
   <script src="/static/js/nav-bar.js"></script>
@@ -24,13 +26,17 @@
         <button><span class="material-icons">book</span><br>All Notes</button>
         <button><span class="material-icons">warning</span><br>Alerts</button>
         <button><span class="material-icons">chat</span><br>Chat</button>
+        <button id="medical-history-button" onclick="openMedicalHistoryModal(window.currentPatientId)">
+          <span class="material-icons">history_edu</span><br>Medical History
+        </button>
       </div>
   
-      <div class="alert-card">
+      <div class="alert-card" id="alert-card">
         <strong>Alert: Important Note</strong><br>
-        <em>Occupational Therapist Kim Jones: April 7, 2025</em><br>
-        This one has been resolved
+        <em>Loading alerts...</em>
       </div>
+
+      <!-- Medical History Section removed -->
   
       </div>
       <script src="/static/js/nav-bar.js"></script>
@@ -118,6 +124,34 @@
               })
               .catch(err => {
                 console.error("Error loading profession summaries:", err);
+              });
+
+            // Fetch alerts for the patient and populate the alert card
+            fetch(`/api/patient/${patientId}/alerts`)
+              .then(res => res.json())
+              .then(alerts => {
+                const alertCard = document.getElementById('alert-card');
+                if (alerts.length === 0) {
+                  alertCard.innerHTML = '<strong>Alert: Important Note</strong><br><em>No alerts for this patient</em>';
+                  return;
+                }
+                alertCard.innerHTML = '<strong>Alert: Important Note</strong><br>';
+                alerts.forEach(alert => {
+                  const isResolved = alert.resolved === "Yes";
+                  const resolvedClass = isResolved ? 'style="opacity:0.6;text-decoration:line-through;"' : '';
+                  alertCard.innerHTML += `
+                    <div ${resolvedClass}>
+                      <em>${alert.profession} ${alert.therapist}: ${alert.date}</em><br>
+                      ${alert.note}<br>
+                      <button onclick="toggleResolved(${patientId}, '${alert.id}', ${!isResolved})">
+                        Mark as ${isResolved ? 'Unresolved' : 'Resolved'}
+                      </button>
+                    </div><br>`;
+                });
+              })
+              .catch(err => {
+                console.error("Error loading alerts:", err);
+                document.getElementById('alert-card').innerHTML += '<br><em>Error loading alerts</em>';
               });
 
           }
@@ -213,7 +247,68 @@
             })
             .catch(err => console.error("Failed to load booking modal fragment:", err));
         });
+
+        function toggleResolved(patientId, alertId, newState) {
+          fetch(`/api/patient/${patientId}/alerts/${alertId}/resolve`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ resolved: newState }),
+          })
+            .then(response => {
+              if (!response.ok) {
+                throw new Error("Failed to update alert resolution");
+              }
+              location.reload(); // refresh to reflect change
+            })
+            .catch(error => {
+              console.error("Error updating alert:", error);
+            });
+        }
       </script>
       
       </body>
       </html>
+
+
+      <script>
+        // Show/hide sections by ID, hiding all others of the same type
+        function showSection(sectionId) {
+          // List of section IDs
+          const sectionIds = [
+            'medical-history-section'
+            // Add other section IDs here if needed, e.g., 'notes-section', 'alerts-section'
+          ];
+          // Hide all sections
+          sectionIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+          });
+          // Show the selected section
+          const target = document.getElementById(sectionId);
+          if (target) target.style.display = 'block';
+
+          // If showing medical history, fetch content if not already loaded
+          if (sectionId === 'medical-history-section') {
+            const contentDiv = document.getElementById('medical-history-content');
+            // Only fetch if not already loaded
+            if (contentDiv && !contentDiv.dataset.loaded) {
+              const patientId = getPatientIdFromURL();
+              fetch(`/api/patient/${patientId}/summary/ai`)
+                .then(res => {
+                  if (!res.ok) throw new Error("Failed to load medical history summary");
+                  return res.json();
+                })
+                .then(data => {
+                  contentDiv.innerHTML = `<div class="ai-summary">${data.summary}</div>`;
+                  contentDiv.dataset.loaded = "true";
+                })
+                .catch(err => {
+                  contentDiv.innerHTML = `<p style="color:red;">Error loading summary.</p>`;
+                });
+            }
+          }
+        }
+      </script>
+      

@@ -1,3 +1,7 @@
+// --- Global variables for current booking context ---
+let currentPatientId = null;
+let currentProfession = null;
+let currentAppointmentId = null;
 // Load summary modal fragment
 document.addEventListener("DOMContentLoaded", () => {
   fetch("/static/fragments/appointment_summary_modal.html")
@@ -11,11 +15,15 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // Open the summary modal with booking details
-function openSummaryModal(booking) {
+async function openSummaryModal(booking) {
   console.log("openSummaryModal called with booking:", booking);
   document.getElementById("summary-modal").dataset.bookingId = booking.id;
   document.getElementById("summary-modal").dataset.patientId = booking.patient_id || "";
   document.getElementById("summary-modal").dataset.booking = JSON.stringify(booking);
+  // Store current patient, profession, and appointment globally
+  currentPatientId = booking.patient_id;
+  currentProfession = booking.profession;
+  currentAppointmentId = booking.id;
   // Set billing button text depending on whether billing is completed
   const billingBtn = document.querySelector('#summary-modal .summary-actions button[onclick="addBillingFromSummary()"]');
   if (billingBtn) {
@@ -77,6 +85,8 @@ function openSummaryModal(booking) {
         console.error(err);
       });
   }
+
+  // Remove automatic AI summary fetch when opening modal
 
   // Adjust action buttons
   const sessionBtn = document.querySelector('#summary-modal .summary-actions button[onclick="goToSession()"]');
@@ -240,3 +250,30 @@ function addBillingFromSummary() {
     document.getElementById("billing-modal").style.display = "block";
   }
 }
+
+
+// Define globally accessible loadLatestNoteSummary function
+function loadLatestNoteSummary(patientId, profession, appointmentId) {
+  // Use global context if parameters are not provided
+  const pid = typeof patientId !== "undefined" ? patientId : currentPatientId;
+  const prof = typeof profession !== "undefined" ? profession : currentProfession;
+  const aid = typeof appointmentId !== "undefined" ? appointmentId : currentAppointmentId;
+  fetch(`/api/patient/${pid}/summary/${prof}/latest?appointment_id=${aid}`)
+    .then(response => {
+      if (!response.ok) throw new Error("Error: " + response.status);
+      return response.json();
+    })
+    .then(data => {
+      const summaryElement = document.getElementById("latest-summary");
+      console.log("Summary response:", data);
+      summaryElement.innerText = data.summary || "No summary available.";
+    })
+    .catch(err => {
+      console.error("Error:", err);
+      const summaryElement = document.getElementById("latest-summary");
+      if (summaryElement) summaryElement.innerText = "Failed to load summary.";
+    });
+}
+
+// Attach event handler for the "Latest Summary (AI)" button when modal is loaded
+// No need for dynamic event handler; use global context and button inline in modal HTML.

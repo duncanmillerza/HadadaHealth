@@ -6,3 +6,4 @@ python-multipart
 gpt4all
 itsdangerous
 reportlab>=3.6.12
+python-dotenv

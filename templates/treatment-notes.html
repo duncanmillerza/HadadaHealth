@@ -100,6 +100,9 @@
 
           <button type="submit">Submit Note</button>
         </form>
+        <button onclick="openOutcomeMeasureModal()">
+          <span class="material-icons">bar_chart</span><br>Add Outcome Measure
+        </button>
       </div>
     </div>
     <script src="/static/js/nav-bar.js"></script>
@@ -183,7 +186,7 @@
                 therapist_id: therapistId,
                 session_date: appt?.date || new Date().toISOString().split("T")[0],
                 notes: formData.get("treatment") || "",
-                total_amount: parseFloat(document.getElementById("overall-total").textContent) || 0
+                
               },
               entries: billingEntries
             };
@@ -476,6 +479,56 @@ function updateOverallTotal(skipRule008 = false) {
     </script>
     <div id="toast-container" style="position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
       display: flex; flex-direction: column; gap: 0.5rem; align-items: center; z-index: 9999;"></div>
+
+    <!-- Outcome Measure Modal -->
+    <style>
+      #outcomeMeasureModal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1050;
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 600px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        display: none;
+      }
+
+      #outcomeMeasureModal.show {
+        display: block;
+      }
+
+      #outcomeMeasureModal .modal-header {
+        font-weight: bold;
+        margin-bottom: 10px;
+      }
+    </style>
+    <div id="outcomeMeasureModal" class="modal">
+      <div class="modal-content" style="max-width: 600px; margin: 0; padding: 20px; background: white; border-radius: 8px;">
+        <div class="modal-header"><h3>Add Outcome Measure</h3></div>
+        <form id="outcomeMeasureForm">
+          <!-- Category Dropdown inserted above the outcome measure dropdown -->
+          <label for="outcomeCategorySelect" style="margin-bottom: 0.25rem;">Category</label>
+          <select id="outcomeCategorySelect" class="form-control" style="margin-bottom: 1rem;"></select>
+
+          <label for="outcomeMeasureSelect">Outcome Measure</label>
+          <select id="outcomeMeasureSelect" name="outcome_measure_type_id" onchange="loadSubscores()" required>
+            <option value="">Select...</option>
+          </select>
+
+          <div id="subscoreInputs"></div>
+
+          <label for="commentsInput">Comments</label>
+          <textarea id="commentsInput" name="comments"></textarea>
+
+          <button type="button" onclick="submitOutcomeMeasure()">Save</button>
+          <button type="button" onclick="closeOutcomeMeasureModal()">Cancel</button>
+        </form>
+      </div>
+    </div>
   <script>
     function showToast(message, bgColor = "#2D6356") {
       const container = document.getElementById("toast-container");
@@ -498,6 +551,194 @@ function updateOverallTotal(skipRule008 = false) {
       }, 3000);
     }
   </script>
+  <script>
+    async function openOutcomeMeasureModal() {
+      document.getElementById("outcomeMeasureModal").classList.add("show");
+      // --- Populate categories first ---
+      const categorySelect = document.getElementById("outcomeCategorySelect");
+      categorySelect.innerHTML = "<option value=''>-- Select Category --</option>";
+      try {
+        const res = await fetch("/api/outcome-measure-types/categories");
+        const categories = await res.json();
+        categories.forEach(category => {
+          const option = document.createElement("option");
+          option.value = category;
+          option.textContent = category;
+          categorySelect.appendChild(option);
+        });
+      } catch (e) {
+        // fallback: hide category if error
+        categorySelect.style.display = "none";
+      }
+      // When category changes, populate measure dropdown
+      categorySelect.onchange = async () => {
+        const selectedCategory = categorySelect.value;
+        const measureSelect = document.getElementById("outcomeMeasureSelect");
+        // Clear all options except the first (placeholder)
+        while (measureSelect.options.length > 1) {
+          measureSelect.remove(1);
+        }
+        if (!selectedCategory) return;
+        const res = await fetch(`/api/outcome-measure-types/by-category/${encodeURIComponent(selectedCategory)}`);
+        const measures = await res.json();
+        measures.forEach(measure => {
+          const option = document.createElement("option");
+          option.value = measure.id;
+          option.textContent = measure.name;
+          measureSelect.appendChild(option);
+        });
+      };
+      // Optionally, clear the outcome measure dropdown at modal open (keep only default)
+      const measureSelect = document.getElementById("outcomeMeasureSelect");
+      while (measureSelect.options.length > 1) {
+        measureSelect.remove(1);
+      }
+    }
+    function closeOutcomeMeasureModal() {
+      document.getElementById("outcomeMeasureModal").classList.remove("show");
+      // Clear form and subscores on close
+      document.getElementById("outcomeMeasureForm").reset();
+      document.getElementById("subscoreInputs").innerHTML = "";
+    }
+
+    // Dynamic Outcome Measure JS
+    // loadOutcomeMeasures is no longer called automatically from modal open
+
+    async function loadSubscores(outcomeMeasureTypeId) {
+      const subscoreContainer = document.getElementById("subscoreInputs");
+      subscoreContainer.innerHTML = ""; // Clear previous content
+
+      try {
+        outcomeMeasureTypeId = outcomeMeasureTypeId || document.getElementById("outcomeMeasureSelect").value;
+        const res = await fetch(`/api/outcome-measure-types/${outcomeMeasureTypeId}/subscores`);
+        const subscores = await res.json();
+
+        if (!Array.isArray(subscores)) {
+          throw new Error("Invalid response format");
+        }
+
+        const table = document.createElement("table");
+        table.style.width = "100%";
+        table.style.borderCollapse = "collapse";
+
+        const thead = document.createElement("thead");
+        thead.innerHTML = `
+          <tr>
+            <th style="text-align:left; padding: 8px; border-bottom: 1px solid #ccc;"> </th>
+            <th style="text-align:left; padding: 8px; border-bottom: 1px solid #ccc;">Max Score</th>
+            <th style="text-align:left; padding: 8px; border-bottom: 1px solid #ccc;">Score</th>
+          </tr>`;
+        table.appendChild(thead);
+
+        const tbody = document.createElement("tbody");
+
+        subscores.forEach(subscore => {
+          const row = document.createElement("tr");
+
+          const nameCell = document.createElement("td");
+          nameCell.textContent = subscore.subcategory_name;
+          nameCell.style.padding = "8px";
+
+          const maxCell = document.createElement("td");
+          maxCell.textContent = subscore.max_score;
+          maxCell.style.padding = "8px";
+
+          const inputCell = document.createElement("td");
+          inputCell.style.padding = "8px";
+
+          const input = document.createElement("input");
+          input.type = "number";
+          input.name = `subscore_${subscore.id}`;
+          input.max = subscore.max_score;
+          input.min = 0;
+          input.classList.add("subscore-input");
+          // Attach metadata for later use
+          input.dataset.subcategory = subscore.subcategory_name;
+          input.dataset.max = (subscore.max_score ?? "");
+          input.addEventListener("input", calculateTotalSubscore);
+
+          inputCell.appendChild(input);
+
+          row.appendChild(nameCell);
+          row.appendChild(maxCell);
+          row.appendChild(inputCell);
+          tbody.appendChild(row);
+        });
+
+        table.appendChild(tbody);
+        subscoreContainer.appendChild(table);
+
+        const totalDisplay = document.createElement("div");
+        totalDisplay.id = "totalSubscore";
+        totalDisplay.style.marginTop = "1rem";
+        totalDisplay.style.fontWeight = "bold";
+        subscoreContainer.appendChild(totalDisplay);
+
+        calculateTotalSubscore();
+      } catch (error) {
+        console.error("Failed to load subscores:", error);
+      }
+    }
+
+    async function submitOutcomeMeasure() {
+      // You may want to set these from global context or from appointment data
+      const patientId = window.appt?.patient_id || window.currentPatientId;
+      const therapist = window.therapistName || window.currentTherapistName || "";
+      const appointmentId = window.appt?.id || window.currentAppointmentId;
+
+      const typeId = document.getElementById("outcomeMeasureSelect").value;
+      const comments = document.getElementById("commentsInput").value;
+
+      // Compute total score from subscores (if any)
+      const subInputsForTotal = document.querySelectorAll("#subscoreInputs input.subscore-input");
+      let computedTotal = null;
+      if (subInputsForTotal.length) {
+        computedTotal = 0;
+        subInputsForTotal.forEach((i) => {
+          const v = parseFloat(i.value);
+          if (!isNaN(v)) computedTotal += v;
+        });
+      }
+
+      const measureResponse = await fetch("/api/outcome-measures", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patient_id: patientId,
+          therapist,
+          appointment_id: appointmentId,
+          date: new Date().toISOString().split("T")[0],
+          outcome_measure_type_id: typeId,
+          score: computedTotal,
+          comments
+        })
+      });
+
+      const measureData = await measureResponse.json();
+      const measureId = measureData.id;
+
+      const subscores = [];
+      document.querySelectorAll("#subscoreInputs input.subscore-input").forEach((input) => {
+        subscores.push({
+          subcategory_name: input.dataset.subcategory || "",
+          max_score: input.dataset.max === "" ? null : Number(input.dataset.max),
+          score: input.value === "" ? null : Number(input.value),
+          comments: ""
+        });
+      });
+
+      if (subscores.length > 0) {
+        await fetch(`/api/outcome-measures/${measureId}/subscores`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(subscores)
+        });
+      }
+
+      closeOutcomeMeasureModal();
+      showToast("Outcome measure saved.", "#2D6356");
+    }
+  </script>
     </body>
     </html>
     <script>
@@ -505,4 +746,19 @@ function updateOverallTotal(skipRule008 = false) {
         document.getElementById("billing-section").style.display = "block";
         document.getElementById("show-billing-button").style.display = "none";
       }
+      function calculateTotalSubscore() {
+  const subscoreInputs = document.querySelectorAll(".subscore-input");
+  let total = 0;
+  subscoreInputs.forEach(input => {
+    const value = parseInt(input.value);
+    if (!isNaN(value)) {
+      total += value;
+    }
+  });
+
+  const totalField = document.getElementById("totalSubscore");
+  if (totalField) {
+    totalField.textContent = `Total Score: ${total}`;
+  }
+}
     </script>

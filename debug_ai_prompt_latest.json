@@ -1,0 +1,10 @@
+[
+  {
+    "role": "system",
+    "content": "You are a helpful assistant summarising clinical notes for healthcare professionals."
+  },
+  {
+    "role": "user",
+    "content": "Please write a short paragraph summary (no more than 4 sentances) in simple pros of the latest session with a focus on what was worked on and what the plan is:\nDate: 28/07/2025 09:00 (45)\nTherapist: Duncan (Physiotherapy)\nSubjective: Patient says \u201cI feel stronger\u201d and is eager to start walking short distances independently.\nObjective: Independent sitting balance for >2 minutes. Right upper limb shows flicker in wrist extensors. Gait with quad cane: 8 meters with close supervision. No falls since last session.\nTreatment: Functional reach tasks in standing. Gait re-education on uneven surface. Introduced constraint-induced tasks for right arm (mirror box).\nPlan: Review progress with MDT. Trial use of ankle foot orthosis for foot clearance. Begin cognitive dual-task training during ambulation."
+  }
+]
