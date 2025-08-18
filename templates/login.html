@@ -8,182 +8,298 @@
   <title>Login - HadadaHealth</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Montserrat:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --brand-primary: #2D6356;
-      --brand-accent: #F9F8F8;
-      --text-base: #333333;
-      --text-light: #555555;
-      --font-sans: 'Inter', sans-serif;
-      --font-display: 'Montserrat', sans-serif;
-    }
-    body {
-      font-family: var(--font-sans);
-      color: var(--text-base);
-      background: var(--brand-accent);
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      padding-top: 2rem;
-      min-height: 100vh;
-    }
-    .login-container {
-      background: #F9F8F8;
-      padding: 2rem;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-      width: 300px;
-    }
-    h2 {
-      text-align: center;
-      margin-bottom: 1.5rem;
-    }
-    input[type="text"], input[type="password"] {
-      width: 100%;
-      padding: 0.75rem;
-      margin-bottom: 1rem;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-    }
-    button {
-      width: 100%;
-      padding: 0.75rem;
-      background-color: #2D6356;
-      border: none;
-      color: white;
-      font-size: 1rem;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #244c45;
-    }
-    .error {
-      color: red;
-      text-align: center;
-      margin-bottom: 1rem;
+      --primary-color: #2D6356;
+      --accent-1: #32517A;
+      --accent-2: #96364C;
+      --light-bg: #F8FAFB;
+      --white: #FFFFFF;
+      --text-dark: #1A1A1A;
+      --text-light: #6B7280;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
     }
 
-    .landing-wrapper {
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, var(--light-bg) 0%, rgba(45, 99, 86, 0.05) 100%);
+      color: var(--text-dark);
+      line-height: 1.6;
+      min-height: 100vh;
       display: flex;
-      flex-direction: row;
+      align-items: center;
       justify-content: center;
-      align-items: flex-start;
-      gap: 2rem;
-      padding: 2rem;
+      padding: 2rem 1rem;
     }
-    .info-container {
-      max-width: 400px;
-      background: #F9F8F8;
-      padding: 1.5rem;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+
+    .login-wrapper {
+      display: flex;
+      max-width: 1000px;
+      width: 100%;
+      background: var(--white);
+      border-radius: 16px;
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
     }
-    .info-container h1 {
-      margin-top: 0;
+
+    .info-section {
+      flex: 1;
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-1) 100%);
+      color: var(--white);
+      padding: 3rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
-    .info-container ul {
-      padding-left: 1.2rem;
+
+    .logo-container {
+      text-align: center;
+      margin-bottom: 2rem;
     }
-    h1, h2 {
-      font-family: var(--font-display);
-      color: var(--brand-primary);
-      margin: 0 0 1rem;
+
+    .logo {
+      width: 180px;
+      height: auto;
+      margin-bottom: 2rem;
     }
-    h1 {
+
+    .info-section h1 {
       font-size: 2rem;
       font-weight: 700;
+      margin-bottom: 1rem;
+      text-align: center;
     }
-    h2 {
-      font-size: 1.5rem;
-      font-weight: 600;
+
+    .info-section p {
+      font-size: 1.1rem;
+      opacity: 0.9;
+      margin-bottom: 1.5rem;
+      text-align: center;
     }
-    p, li {
-      font-family: var(--font-sans);
-      font-weight: 300;
-      line-height: 1.5;
-      color: var(--text-light);
+
+    .features-list {
+      list-style: none;
+      margin-bottom: 2rem;
     }
-    button {
-      background-color: var(--brand-primary);
-      font-family: var(--font-display);
-      font-weight: 600;
+
+    .features-list li {
+      padding: 0.5rem 0;
+      position: relative;
+      padding-left: 1.5rem;
+      opacity: 0.9;
     }
-    a {
-      color: var(--brand-primary);
+
+    .features-list li:before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      color: var(--white);
+      font-weight: bold;
+    }
+
+    .contact-info {
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+      padding-top: 1.5rem;
+      text-align: center;
+    }
+
+    .contact-info p {
+      font-size: 0.95rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .contact-info a {
+      color: var(--white);
       text-decoration: none;
       font-weight: 500;
     }
-    a:hover {
+
+    .contact-info a:hover {
       text-decoration: underline;
     }
-  /* Mobile responsive adjustments */
-  @media (max-width: 768px) {
-    .landing-wrapper {
+
+    .login-section {
+      flex: 1;
+      padding: 3rem;
+      display: flex;
       flex-direction: column;
-      align-items: center;
-      padding: 1rem;
-      gap: 1.5rem;
+      justify-content: center;
     }
-    .info-container,
+
     .login-container {
-      width: 100%;
       max-width: 400px;
+      width: 100%;
+      margin: 0 auto;
     }
-    .info-container img {
-      width: 150px;
+
+    .login-container h2 {
+      font-size: 1.75rem;
+      font-weight: 600;
+      color: var(--primary-color);
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+
+    .login-subtitle {
+      color: var(--text-light);
+      text-align: center;
+      margin-bottom: 2rem;
+      font-size: 1rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      color: var(--text-dark);
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 2px solid rgba(45, 99, 86, 0.2);
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(45, 99, 86, 0.1);
+    }
+
+    .login-button {
+      width: 100%;
+      padding: 0.75rem 2rem;
+      background: var(--primary-color);
+      color: var(--white);
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .login-button:hover {
+      background: var(--accent-1);
+      transform: translateY(-2px);
+    }
+
+    .login-button:active {
+      transform: translateY(0);
+    }
+
+    .error {
+      color: var(--accent-2);
+      text-align: center;
       margin-bottom: 1rem;
+      padding: 0.75rem;
+      background: rgba(150, 54, 76, 0.1);
+      border-radius: 6px;
+      font-weight: 500;
     }
-  }
+
+    @media (max-width: 768px) {
+      .login-wrapper {
+        flex-direction: column;
+        max-width: 400px;
+      }
+      
+      .info-section,
+      .login-section {
+        padding: 2rem;
+      }
+      
+      .info-section {
+        text-align: center;
+      }
+      
+      .info-section h1 {
+        font-size: 1.5rem;
+      }
+      
+      .logo {
+        width: 140px;
+      }
+      
+      .features-list {
+        text-align: left;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="landing-wrapper">
-    <div class="info-container">
-      <img
-        src="/static/hadada_health_logo.svg"
-        alt="HadadaHealth logo"
-        style="width:200px; height:auto; margin-bottom:1rem; display:block; margin-left:auto; margin-right:auto;"
-      >
-      <h1>Welcome to HadadaHealth</h1>
-      <p>HadadaHealth is a collaborative practice management platform currently in development. It enables health professionals across different practices to work together seamlessly on shared patient care. Our complete solution includes:</p>
-      <ul>
-        <li>Scheduling and appointment management</li>
-        <li>Invoicing and billing workflows</li>
-        <li>Comprehensive patient notes and documentation</li>
-        <li>Secure MDT (multidisciplinary team) communication</li>
-        <li>Real-time collaboration across practices</li>
-      </ul>
-      <p>If you have any questions or would like to learn more, please contact:</p>
-      <p><strong>Email:</strong> <a href="mailto:duncan@hadadahealth.com">duncan@hadadahealth.com</a></p>
-      <p><strong>Phone:</strong> +27 84 561 2171 </p>
-      <p><em>We appreciate your patience as we continue development!</em></p>
-    </div>
-    <div class="login-container">
-      <h2>Login</h2>
-      <div id="error" class="error"></div>
-      <input type="text" id="username" placeholder="Username" required>
-      <input type="password" id="password" placeholder="Password" required>
-      <!-- Pitch page button inserted here -->
-      <div style="margin-top: 1rem; text-align: center;">
-        <a href="/landing" class="btn" style="display:inline-block; padding:10px 16px; background-color: var(--brand-primary, #2D6356); color:#fff; border-radius:8px; text-decoration:none;">
-            Press here for more details
-        </a>
+  <div class="login-wrapper">
+    <div class="info-section">
+      <div class="logo-container">
+        <img src="/static/Hadada Health Logo Light.svg" alt="HadadaHealth" class="logo">
       </div>
-      <button onclick="submitLogin()">Login</button>
+      
+      <p>Built by clinicians for clinicians. Practice management with AI-powered features designed to help you achieve the best possible care for your patients.</p>
+      
+      <ul class="features-list">
+        <li>Scheduling and appointment management</li>
+        <li>AI-assisted clinical documentation</li>
+        <li>Comprehensive billing workflows</li>
+        <li>Secure team communication</li>
+        <li>Real-time collaboration tools</li>
+      </ul>
+      
+      <div class="contact-info">
+        <p><strong>Contact Us</strong></p>
+        <p><a href="mailto:duncan@hadadahealth.com">duncan@hadadahealth.com</a></p>
+        <p>+27 84 561 2171</p>
+      </div>
+    </div>
+    
+    <div class="login-section">
+      <div class="login-container">
+        <h2>Welcome Back</h2>
+        <p class="login-subtitle">Sign in to access your HadadaHealth dashboard</p>
+        
+        <div id="error" class="error" style="display: none;"></div>
+        
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" required>
+        </div>
+        
+        <button class="login-button" onclick="submitLogin()">Sign In</button>
+      </div>
     </div>
   </div>
-  <iframe src="https://gamma.app/embed/mwymmi8d8cdsyav" style="width: 700px; max-width: 100%; height: 450px" allow="fullscreen" title="HADADA"></iframe>
 <script>
 async function submitLogin() {
   const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value.trim();
   const errorDiv = document.getElementById('error');
+  errorDiv.style.display = "none";
   errorDiv.textContent = "";
 
   if (!username || !password) {
     errorDiv.textContent = "Please fill in both fields.";
+    errorDiv.style.display = "block";
     return;
   }
 
@@ -201,10 +317,12 @@ async function submitLogin() {
     } else {
       const data = await res.json();
       errorDiv.textContent = data.detail || "Login failed.";
+      errorDiv.style.display = "block";
     }
   } catch (err) {
     console.error('Login error:', err);
     errorDiv.textContent = "Login failed.";
+    errorDiv.style.display = "block";
   }
 }
 // Automatically focus on username field when page loads and allow Enter to submit login

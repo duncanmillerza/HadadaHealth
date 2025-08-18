@@ -921,15 +921,6 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # Jinja2 templates setup
 templates = Jinja2Templates(directory="templates")
 
-# Landing page routes for pitch
-@app.get("/landing", response_class=HTMLResponse, name="landing")
-async def landing(request: Request):
-    return templates.TemplateResponse("Pitch.html", {"request": request})
-
-# Home -> serve the same pitch page
-@app.get("/", response_class=HTMLResponse, name="home")
-async def home(request: Request):
-    return templates.TemplateResponse("Pitch.html", {"request": request})
 
 app.add_middleware(
     CORSMiddleware,
