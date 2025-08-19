@@ -313,10 +313,7 @@ async function submitLogin() {
       credentials: 'include'
     });
     if (res.ok) {
-      // Small delay to ensure session is established
-      setTimeout(() => {
-        window.location.replace("/");
-      }, 100);
+      window.location.href = "/";
     } else {
       const data = await res.json();
       errorDiv.textContent = data.detail || "Login failed.";
