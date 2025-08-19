@@ -57,26 +57,29 @@ async function openSummaryModal(booking) {
       .then(res => res.json())
       .then(data => {
         let html = "";
-        if (data.treatment) {
-          html += `<strong>Subjective:</strong> ${data.treatment.subjective_findings || "None"}<br>`;
-          html += `<strong>Objective:</strong> ${data.treatment.objective_findings || "None"}<br>`;
-          html += `<strong>Treatment:</strong> ${data.treatment.treatment || "None"}<br>`;
-          html += `<strong>Plan:</strong> ${data.treatment.plan || "None"}<br>`;
-        }
+        // Treatment note fields are directly in the data object
+        html += `<strong>Subjective:</strong> ${data.subjective_findings && data.subjective_findings.trim() ? data.subjective_findings : "None"}<br>`;
+        html += `<strong>Objective:</strong> ${data.objective_findings && data.objective_findings.trim() ? data.objective_findings : "None"}<br>`;
+        html += `<strong>Treatment:</strong> ${data.treatment && data.treatment.trim() ? data.treatment : "None"}<br>`;
+        html += `<strong>Plan:</strong> ${data.plan && data.plan.trim() ? data.plan : "None"}<br>`;
         if (data.billing && data.billing.length) {
-          const codes = data.billing.map(e => {
-            const modifier = e.billing_modifier ? ` (${e.billing_modifier})` : "";
-            return `${e.code || e.code_id}${modifier}`;
-          }).join(", ");
-          html += `<strong>Billing:</strong> ${codes}<br>`;
+          html += `<hr><strong>Billing Codes:</strong><br>`;
+          data.billing.forEach(entry => {
+            const modifier = entry.billing_modifier ? ` (${entry.billing_modifier}${entry.modifier_name ? ` - ${entry.modifier_name}` : ""})` : "";
+            const fee = entry.final_fee ? ` - R${entry.final_fee.toFixed(2)}` : (entry.base_fee ? ` - R${entry.base_fee.toFixed(2)}` : "");
+            html += `• <strong>${entry.code}</strong>: ${entry.description}${modifier}${fee}<br>`;
+          });
         }
         if (data.supplementary && data.supplementary.length) {
-          html += `<hr><strong>Supplementary Notes:</strong><ul>`;
+          html += `<hr><strong>Supplementary Notes:</strong><br>`;
           data.supplementary.forEach(n => {
             const date = new Date(n.timestamp).toLocaleString();
-            html += `<li><em>${date}</em>: ${n.note}</li>`;
+            const author = n.author_username || "Unknown";
+            html += `<div style="margin-bottom: 0.5rem; padding: 0.25rem; background: #f5f5f5; border-radius: 3px;">`;
+            html += `<small><em>${date} by ${author}</em></small><br>`;
+            html += `${n.note}`;
+            html += `</div>`;
           });
-          html += `</ul>`;
         }
         noteDiv.innerHTML = html;
       })

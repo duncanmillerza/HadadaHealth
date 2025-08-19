@@ -4,20 +4,55 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Therapist Dashboard</title>
-</head>
-  <link rel="stylesheet" href="/static/calendar.css">
+  <link rel="stylesheet" href="/static/design-system.css">
   <link rel="stylesheet" href="/static/nav.css">
   <link rel="icon" href="/static/favicon.ico" type="image/x-icon" />
   <link rel="preload" href="/static/fonts/MaterialIcons-Regular.woff2" as="font" type="font/ttf" crossorigin="anonymous">
   <style>
     .appt-clickable {
       cursor: pointer;
-      color: #2D6356;
+      color: var(--primary-color);
       transition: color 0.2s;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--gray-100);
+      display: block;
     }
     .appt-clickable:hover {
-      color: #214c43;
-      text-decoration: underline;
+      color: var(--accent-1);
+      background: var(--gray-50);
+      border-radius: var(--border-radius);
+      padding-left: 0.75rem;
+    }
+    .appt-clickable:last-child {
+      border-bottom: none;
+    }
+    .stat-block {
+      background: var(--gray-50);
+      padding: 1rem;
+      border-radius: var(--border-radius);
+      margin-bottom: 1rem;
+      border-left: 4px solid var(--primary-color);
+    }
+    .stat-block strong {
+      display: block;
+      font-size: 1.5rem;
+      color: var(--primary-color);
+      font-weight: 600;
+    }
+    #dashboard-heading {
+      text-align: center;
+      color: var(--primary-color);
+      margin: 2rem 0;
+      font-weight: 700;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    ul li {
+      color: var(--text-light);
+      font-size: 0.875rem;
     }
   </style>
 </head>
@@ -27,65 +62,73 @@
   <!-- <div class="therapist-name" id="therapist-name">
     Therapist: 
   </div> -->
-  <h1 id="dashboard-heading">Loading...</h1>
-  <div class="dashboard">
-    <div class="section">
-      <h2>Today's Appointments</h2>
-      <ul id="appointments-list"></ul>
-    </div>
-    <div class="section">
-      <h2>Outstanding Notes</h2>
-      <ul id="outstanding-notes-list"></ul>
-    </div>
-    <div class="section">
-      <h2>Outstanding Billing</h2>
-      <ul id="outstanding-billing-list"></ul>
-    </div>
-    <div class="section">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h2 style="margin: 0;">Reminders</h2>
-        <button onclick="openReminderModal()" style="font-size: 1.2em; background: #2D6356; color: white; border: none; border-radius: 4px; padding: 0.2em 0.6em; cursor: pointer;">+</button>
+  <div class="container" style="padding-top: 2rem;">
+    <h1 id="dashboard-heading" class="fade-in">Loading...</h1>
+    <div class="dashboard">
+      <div class="section">
+        <h2>Today's Appointments</h2>
+        <ul id="appointments-list">
+          <li>Loading appointments...</li>
+        </ul>
       </div>
-      <ul id="reminders-list">
-        <li>Loading reminders...</li>
-      </ul>
-    </div>
-    <div class="section">
-      <h2>Stats (Lifetime)</h2>
-      <div class="stat-block">
-        <strong id="lifetime-appointments-count">0</strong>
-        Appointments
+      <div class="section">
+        <h2>Outstanding Notes</h2>
+        <ul id="outstanding-notes-list">
+          <li>Loading notes...</li>
+        </ul>
       </div>
-      <div class="stat-block">
-        <strong id="lifetime-avg-note-completion-time">0.0 min</strong>
-        Avg Note Completion Time
+      <div class="section">
+        <h2>Outstanding Billing</h2>
+        <ul id="outstanding-billing-list">
+          <li>Loading billing...</li>
+        </ul>
       </div>
-      <div class="stat-block">
-        <strong id="lifetime-avg-invoice-amount">R0.00</strong>
-        Avg Invoice Amount
+      <div class="section">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="mb-0">Reminders</h2>
+          <button onclick="openReminderModal()" class="btn btn-primary btn-sm">+</button>
+        </div>
+        <ul id="reminders-list">
+          <li>Loading reminders...</li>
+        </ul>
       </div>
-      <div class="stat-block">
-        <strong id="lifetime-total-invoiced">R0.00</strong>
-        Total Invoiced
+      <div class="section">
+        <h2>Stats (Lifetime)</h2>
+        <div class="stat-block">
+          <strong id="lifetime-appointments-count">0</strong>
+          Appointments
+        </div>
+        <div class="stat-block">
+          <strong id="lifetime-avg-note-completion-time">0.0 min</strong>
+          Avg Note Completion Time
+        </div>
+        <div class="stat-block">
+          <strong id="lifetime-avg-invoice-amount">R0.00</strong>
+          Avg Invoice Amount
+        </div>
+        <div class="stat-block">
+          <strong id="lifetime-total-invoiced">R0.00</strong>
+          Total Invoiced
+        </div>
       </div>
-    </div>
-    <div class="section">
-      <h2>Stats (Last 30 Days)</h2>
-      <div class="stat-block">
-        <strong id="recent-appointments-count">0</strong>
-        Appointments
-      </div>
-      <div class="stat-block">
-        <strong id="avg-note-completion-time">0.0 min</strong>
-        Avg Note Completion Time
-      </div>
-      <div class="stat-block">
-        <strong id="avg-invoice-amount">R0.00</strong>
-        Avg Invoice Amount
-      </div>
-      <div class="stat-block">
-        <strong id="total-invoiced-30d">R0.00</strong>
-        Total Invoiced
+      <div class="section">
+        <h2>Stats (Last 30 Days)</h2>
+        <div class="stat-block">
+          <strong id="recent-appointments-count">0</strong>
+          Appointments
+        </div>
+        <div class="stat-block">
+          <strong id="avg-note-completion-time">0.0 min</strong>
+          Avg Note Completion Time
+        </div>
+        <div class="stat-block">
+          <strong id="avg-invoice-amount">R0.00</strong>
+          Avg Invoice Amount
+        </div>
+        <div class="stat-block">
+          <strong id="total-invoiced-30d">R0.00</strong>
+          Total Invoiced
+        </div>
       </div>
     </div>
   </div>

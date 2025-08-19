@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Treatment Notes</title>
+    <link rel="stylesheet" href="/static/design-system.css">
     <link rel="stylesheet" href="/static/forms.css">
     <link rel="stylesheet" href="/static/nav.css">
     <link rel="preload" href="/static/fonts/MaterialIcons-Regular.woff2" as="font" type="font/ttf" crossorigin="anonymous">
@@ -10,19 +12,37 @@
 <body>
   <script src="/static/js/nav-bar.js"></script>
   <div id="top-nav"></div>
-    <div id="i3q7v4" class="form-section">
-      <h1 id="treatment-heading" style="font-size: 1.8rem;">Treatment Notes</h1>
-      <div id="appt-summary" style="color: #555; font-size: 0.95rem; margin-bottom: 1rem;"></div>
+  <div class="container">
+    <div class="card">
+      <div class="card-header">
+        <h1 id="treatment-heading">Treatment Notes</h1>
+        <div id="appt-summary" class="text-light"></div>
+      </div>
+      <div class="card-body">
       <div class="section">
-        <form onsubmit="submitTreatmentNote(event)" method="post" id="i7vw2d" class="treatment-form form-flex">
-          <label>Subjective Findings<textarea name="subjective_findings" rows="3" id="i84xe9-2"></textarea></label>
-          <label>Objective Findings<textarea name="objective_findings" rows="3" id="iazhsj-2"></textarea></label>
-          <label>Treatment<textarea name="treatment" rows="3" id="i4sok2-2"></textarea></label>
-          <label>Plan<textarea name="plan" rows="3" id="ig3tph-2"></textarea></label>
-          <label for="note-to-patient">Note to Patient (optional):</label>
+        <form onsubmit="submitTreatmentNote(event)" method="post" id="i7vw2d">
+          <div class="form-group">
+            <label class="form-label">Subjective Findings</label>
+            <textarea name="subjective_findings" rows="3" id="i84xe9-2" class="form-input"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Objective Findings</label>
+            <textarea name="objective_findings" rows="3" id="iazhsj-2" class="form-input"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Treatment</label>
+            <textarea name="treatment" rows="3" id="i4sok2-2" class="form-input"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Plan</label>
+            <textarea name="plan" rows="3" id="ig3tph-2" class="form-input"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="note-to-patient" class="form-label">Note to Patient (optional)</label>
             <textarea
               id="note-to-patient"
               name="note_to_patient"
+              class="form-input"
               rows="3"
               placeholder="Enter any note you'd like to send to the patient"
             ></textarea>
@@ -762,3 +782,8 @@ function updateOverallTotal(skipRule008 = false) {
   }
 }
     </script>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

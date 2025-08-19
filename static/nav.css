@@ -1,17 +1,33 @@
 
 
-/* Navigation Styles moved from calendar.css */
+/* Navigation Styles - Enhanced to match design system */
+
+/* Import design system variables to ensure they're always available */
+:root {
+  --primary-color: #2D6356;
+  --accent-1: #32517A;
+  --white: #FFFFFF;
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
 
 header#combined-top-nav {
-  background: linear-gradient(to right, #2D6356, #32517A);
-  color: white;
-  padding: 0.8rem 2rem;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-1) 100%);
+  color: var(--white);
+  padding: 1rem 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border-radius: 0;
+  margin: 0;
+  margin-bottom: 0;
+  box-shadow: var(--shadow-lg);
+  border: none;
+  width: 100vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
 }
 
 .logo {

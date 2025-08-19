@@ -158,9 +158,39 @@
 body {
     font-family: sans-serif;
     margin: 0;
-    padding: 2rem;
+    padding: 0;
     background: #f8f8f8;
   }
+
+/* Add padding to main content areas instead of body */
+.main-content, 
+main,
+.dashboard:not(.dashboard > .section),
+.container > *:not(#top-nav):not(#bottom-nav) {
+    padding-left: 2rem;
+    padding-right: 2rem;
+    padding-top: 2rem;
+}
+
+.container {
+    padding-bottom: 2rem;
+}
+
+/* Ensure navigation doesn't get padding */
+#top-nav,
+#bottom-nav,
+header#combined-top-nav {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+}
   .h2 {
     text-align: center;
   }
