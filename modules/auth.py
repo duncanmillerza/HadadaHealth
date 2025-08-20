@@ -230,6 +230,126 @@ def require_admin(request: Request) -> Dict[str, Any]:
     return user
 
 
+def require_therapist_or_admin(request: Request) -> Dict[str, Any]:
+    """
+    Dependency to require therapist or admin role
+    
+    Args:
+        request: FastAPI request object
+        
+    Returns:
+        User session data
+        
+    Raises:
+        HTTPException: If user not authenticated or insufficient permissions
+    """
+    user = require_auth(request)
+    if user.get("role") not in ["Admin", "Therapist"]:
+        raise HTTPException(status_code=403, detail="Therapist or admin access required")
+    return user
+
+
+def can_access_patient_data(user_id: int, patient_id: str, user_role: str, linked_therapist_id: Optional[int] = None) -> bool:
+    """
+    Check if user can access specific patient data
+    
+    Args:
+        user_id: The user's ID
+        patient_id: The patient's ID
+        user_role: The user's role (Admin, Therapist, etc.)
+        linked_therapist_id: The user's linked therapist ID if applicable
+        
+    Returns:
+        True if user can access patient data, False otherwise
+    """
+    # Admins can access all patient data
+    if user_role == "Admin":
+        return True
+    
+    # If user is linked to a therapist, check if that therapist has treated this patient
+    if linked_therapist_id and user_role == "Therapist":
+        conn = get_db_connection()
+        try:
+            # Check if this therapist has any bookings/notes for this patient
+            result = conn.execute("""
+                SELECT COUNT(*) FROM bookings 
+                WHERE patient_id = ? AND therapist = ?
+                UNION ALL
+                SELECT COUNT(*) FROM treatment_notes 
+                WHERE patient_id = ? AND therapist_id = ?
+            """, (patient_id, linked_therapist_id, patient_id, linked_therapist_id)).fetchall()
+            
+            # If any query returns > 0, therapist has access
+            return any(row[0] > 0 for row in result)
+        finally:
+            conn.close()
+    
+    return False
+
+
+def require_patient_access(patient_id: str):
+    """
+    Dependency factory to require access to specific patient data
+    
+    Args:
+        patient_id: The patient ID to check access for
+        
+    Returns:
+        Dependency function
+    """
+    def check_patient_access(request: Request) -> Dict[str, Any]:
+        user = require_auth(request)
+        
+        # Check if user can access this patient's data
+        if not can_access_patient_data(
+            user["user_id"], 
+            patient_id, 
+            user["role"], 
+            user.get("linked_therapist_id")
+        ):
+            raise HTTPException(
+                status_code=403, 
+                detail="Access denied: You don't have permission to view this patient's data"
+            )
+        
+        return user
+    
+    return check_patient_access
+
+
+def filter_patients_by_access(patients: List[Dict[str, Any]], user_role: str, linked_therapist_id: Optional[int] = None) -> List[Dict[str, Any]]:
+    """
+    Filter patient list based on user access permissions
+    
+    Args:
+        patients: List of patient dictionaries
+        user_role: The user's role
+        linked_therapist_id: The user's linked therapist ID if applicable
+        
+    Returns:
+        Filtered list of patients the user can access
+    """
+    # Admins can see all patients
+    if user_role == "Admin":
+        return patients
+    
+    # For therapists, filter to only patients they have treated
+    if user_role == "Therapist" and linked_therapist_id:
+        accessible_patients = []
+        conn = get_db_connection()
+        try:
+            for patient in patients:
+                patient_id = str(patient.get('id', ''))
+                if can_access_patient_data(0, patient_id, user_role, linked_therapist_id):
+                    accessible_patients.append(patient)
+            return accessible_patients
+        finally:
+            conn.close()
+    
+    # Other roles get no patients
+    return []
+
+
 # ===== USER MANAGEMENT FUNCTIONS =====
 
 def get_all_users(request: Request) -> List[Dict[str, Any]]:

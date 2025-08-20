@@ -99,6 +99,7 @@ async def favicon():
 
 # Add SessionMiddleware for user sessions with secure configuration
 from modules.config import config, validate_security_config
+from modules.auth import require_auth, require_admin, require_therapist_or_admin, filter_patients_by_access
 
 # Validate security configuration at startup
 if not validate_security_config():
@@ -110,7 +111,7 @@ app.add_middleware(SessionMiddleware, **session_config)
 
 # patient_id should be str for compatibility with string-based IDs
 @app.put("/api/patient/{patient_id}/alerts/{appointment_id}/resolve")
-def toggle_alert_resolution(patient_id: str, appointment_id: str, payload: dict = Body(...)):
+def toggle_alert_resolution(patient_id: str, appointment_id: str, payload: dict = Body(...), request: Request = None, user: dict = Depends(require_auth)):
     # Ensure resolved is interpreted as a Python boolean
     resolved = payload.get("resolved", False)
     if isinstance(resolved, str):
@@ -126,7 +127,7 @@ def toggle_alert_resolution(patient_id: str, appointment_id: str, payload: dict 
     return {"status": "updated"}
 # --- New endpoint: Get latest alerts for a patient ---
 @app.get("/api/patient/{patient_id}/alerts")
-def get_alerts(patient_id: str):
+def get_alerts(patient_id: str, user: dict = Depends(require_auth)):
     with sqlite3.connect("data/bookings.db") as conn:
         cursor = conn.execute("""
             SELECT appointment_id, appointment_date, therapist_name, profession, alert_comment, alert_resolved
@@ -220,7 +221,7 @@ async def get_ai_summary(patient_id: str):
 
 
 @app.get("/api/patient/{patient_id}/summary/{profession}/latest")
-async def get_latest_note_summary_endpoint(patient_id: str, profession: str):
+async def get_latest_note_summary_endpoint(patient_id: str, profession: str, user: dict = Depends(require_auth)):
     """Get latest treatment note summary for patient and profession with AI summary"""
     note_data = get_latest_note_summary(patient_id, profession)
     
@@ -279,7 +280,7 @@ async def get_latest_note_summary_endpoint(patient_id: str, profession: str):
 # --- New endpoint: Get latest session note for a patient and profession
 
 @app.get("/api/patient/{patient_id}/latest-session-note/{profession}")
-def get_latest_session_note(patient_id: int, profession: str):
+def get_latest_session_note(patient_id: int, profession: str, user: dict = Depends(require_auth)):
     with sqlite3.connect("data/bookings.db") as conn:
         cursor = conn.execute("""
             SELECT appointment_date, start_time, therapist_name, subjective_findings, objective_findings, treatment, plan, note_to_patient
@@ -305,7 +306,7 @@ def get_latest_session_note(patient_id: int, profession: str):
 # --- Batch endpoint: Check treatment notes for multiple appointment IDs ---
 
 @app.get("/api/check-treatment-notes")
-def check_treatment_notes(ids: str = Query(..., description="Comma separated appointment IDs")):
+def check_treatment_notes(ids: str = Query(..., description="Comma separated appointment IDs"), user: dict = Depends(require_auth)):
     id_list = ids.split(",")
     placeholders = ",".join("?" for _ in id_list)
     sql = f"SELECT appointment_id FROM treatment_notes WHERE appointment_id IN ({placeholders})"
@@ -388,7 +389,7 @@ def create_billing_session(data: dict, request: Request):
 
 # --- New: POST endpoint to submit a full billing payload (overwrite session and entries) ---
 @app.post("/submit-billing")
-def submit_billing(data: dict):
+def submit_billing(data: dict, user: dict = Depends(require_therapist_or_admin)):
     session_data = data.get("session")
     entries_data = data.get("entries", [])
 
@@ -495,7 +496,7 @@ def get_billing_codes():
 
 # GET endpoint to retrieve billing sessions with their entries for a patient
 @app.get("/billing-sessions/{patient_id}")
-def get_billing_sessions(patient_id: str):
+def get_billing_sessions(patient_id: str, user: dict = Depends(require_auth)):
     # Handle both string and numeric patient IDs
     if not patient_id or patient_id == "undefined":
         return {"error": "Invalid patient ID"}
@@ -1431,7 +1432,7 @@ def delete_booking(booking_id: str):
 
 # POST save patient (with therapist_id support)
 @app.post("/patients")
-def save_patient(patient: Patient, request: Request):
+def save_patient(patient: Patient, request: Request, user: dict = Depends(require_therapist_or_admin)):
     therapist_id = request.session.get("linked_therapist_id")
     if hasattr(patient, "therapist_id") and getattr(patient, "therapist_id", None):
         therapist_id = getattr(patient, "therapist_id")
@@ -1524,16 +1525,25 @@ def update_patient(patient_id: int, patient_data: dict = Body(...)):
 # --- GET all patients, including icd10_codes ---
 # --- GET all patients, including icd10_codes ---
 @app.get("/patients")
-def get_patients():
+def get_patients(user: dict = Depends(require_therapist_or_admin)):
     with sqlite3.connect("data/bookings.db") as conn:
         cursor = conn.execute("SELECT * FROM patients")
         columns = [column[0] for column in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+        all_patients = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        
+        # Filter patients based on user permissions
+        filtered_patients = filter_patients_by_access(
+            all_patients, 
+            user.get("role"), 
+            user.get("linked_therapist_id")
+        )
+        
+        return filtered_patients
 
 
 # --- New endpoint: Get medical history summary and generated date for a patient ---
 @app.get("/api/patient/{patient_id}/medical-history")
-def get_medical_history(patient_id: str):
+def get_medical_history(patient_id: str, user: dict = Depends(require_auth)):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -1554,7 +1564,7 @@ def get_medical_history(patient_id: str):
 
 # --- New endpoint: Regenerate AI medical history summary for a patient ---
 @app.post("/api/patient/{patient_id}/medical-history/regenerate")
-async def regenerate_medical_history(patient_id: str):
+async def regenerate_medical_history(patient_id: str, user: dict = Depends(require_auth)):
     summary = await generate_ai_medical_history(patient_id)
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1619,7 +1629,7 @@ def import_medical_aids_endpoint(file: UploadFile = File(...)):
 
 # Bulk import patients from Excel
 @app.post("/import-patients")
-def import_patients(file: UploadFile = File(...)):
+def import_patients(file: UploadFile = File(...), user: dict = Depends(require_admin)):
     try:
         df = pd.read_excel(file.file)
         with sqlite3.connect("data/bookings.db") as conn:
@@ -1903,7 +1913,7 @@ def get_patients():
 
 # API endpoint to update an existing patient's data
 @app.put("/update-patient/{patient_id}")
-def update_patient(patient_id: int, patient_data: dict = Body(...)):
+def update_patient(patient_id: int, patient_data: dict = Body(...), user: dict = Depends(require_admin)):
     with sqlite3.connect("data/bookings.db") as conn:
         columns = ", ".join([f"{key} = ?" for key in patient_data.keys()])
         values = list(patient_data.values())
@@ -1913,7 +1923,7 @@ def update_patient(patient_id: int, patient_data: dict = Body(...)):
 
 # API endpoint to delete a patient by ID
 @app.delete("/delete-patient/{patient_id}")
-def delete_patient(patient_id: int):
+def delete_patient(patient_id: int, user: dict = Depends(require_admin)):
     with sqlite3.connect("data/bookings.db") as conn:
         if not conn.execute("SELECT 1 FROM patients WHERE id = ?", (patient_id,)).fetchone():
             raise HTTPException(status_code=404, detail="Patient not found")
@@ -2223,7 +2233,7 @@ def get_icd10_codes(query: str = Query(default="", description="Search ICD-10 co
 # --- GET a single patient by ID (full details for profile) ---
 
 @app.get("/api/patient/{patient_id}")
-def get_patient_by_id(patient_id: int):
+def get_patient_by_id(patient_id: int, user: dict = Depends(require_auth)):
     with sqlite3.connect("data/bookings.db") as conn:
         cursor = conn.execute("SELECT * FROM patients WHERE id = ?", (patient_id,))
         row = cursor.fetchone()
@@ -2234,7 +2244,7 @@ def get_patient_by_id(patient_id: int):
 
 # --- GET distinct professions who have booked the patient ---
 @app.get("/api/patient/{patient_id}/professions")
-def get_patient_professions(patient_id: int):
+def get_patient_professions(patient_id: int, user: dict = Depends(require_auth)):
     with sqlite3.connect("data/bookings.db") as conn:
         cursor = conn.execute("""
             SELECT DISTINCT t.profession
@@ -2246,14 +2256,14 @@ def get_patient_professions(patient_id: int):
 
 # --- GET patient summary for a specific profession (for Patient Profile) ---
 @app.get("/api/patient/{patient_id}/summary/{profession}")
-def patient_profession_summary_endpoint(patient_id: int, profession: str):
+def patient_profession_summary_endpoint(patient_id: int, profession: str, user: dict = Depends(require_auth)):
     """Get patient summary for a specific profession"""
     return get_patient_profession_summary(patient_id, profession)
     
 
 # Add this endpoint near other /api/patient routes
 @app.get("/api/patient/{patient_id}/summary/ai")
-def get_patient_ai_summary_endpoint(patient_id: int):
+def get_patient_ai_summary_endpoint(patient_id: int, user: dict = Depends(require_auth)):
     """Get AI summary for patient treatment notes"""
     notes = get_patient_ai_summary_data(patient_id)
     
@@ -2326,7 +2336,7 @@ def get_full_notes(appointment_id: str):
 # --- NEW ENDPOINT: GET /api/unbilled-treatment-notes ---
 # Returns all treatment notes that have not yet been billed (billing_completed = 0 or NULL)
 @app.get("/api/unbilled-treatment-notes")
-def get_unbilled_treatment_notes():
+def get_unbilled_treatment_notes(user: dict = Depends(require_therapist_or_admin)):
     with sqlite3.connect("data/bookings.db") as conn:
         cursor = conn.execute("""
             SELECT tn.*, b.name as booking_name, b.therapist as booking_therapist, b.date as booking_date
@@ -2496,7 +2506,7 @@ def get_therapist_stats_endpoint():
 
 # --- Patient Bookings Endpoint ---
 @app.get("/api/patient/{patient_id}/bookings")
-def get_patient_bookings(patient_id: str):
+def get_patient_bookings(patient_id: str, user: dict = Depends(require_auth)):
     """
     Return a list of bookings for a specific patient, including therapist name,
     billing and notes completion status.
@@ -2730,7 +2740,7 @@ def get_dashboard_summary_endpoint(request: Request):
 
 
 @app.get("/api/reports/patient/{patient_id}")
-def get_patient_report_endpoint(patient_id: int):
+def get_patient_report_endpoint(patient_id: int, user: dict = Depends(require_auth)):
     """Get comprehensive patient report"""
     return get_patient_summary_report(patient_id)
 
@@ -2760,7 +2770,7 @@ def get_financial_summary_endpoint(start_date: Optional[str] = None, end_date: O
 
 
 @app.get("/api/export/patient/{patient_id}")
-def export_patient_data_endpoint(patient_id: int, format: str = "json"):
+def export_patient_data_endpoint(patient_id: int, format: str = "json", user: dict = Depends(require_auth)):
     """Export comprehensive patient data"""
     return export_patient_data(patient_id, format)
 
