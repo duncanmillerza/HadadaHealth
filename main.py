@@ -57,11 +57,15 @@ from modules.medical_aids import (
     MedicalAid, get_all_medical_aids, get_all_medical_aids_full, create_medical_aid,
     update_medical_aid, delete_medical_aid, get_medical_aid_plans, import_medical_aids_from_excel
 )
+from modules.auth import (
+    security, login_user, logout_user, check_login_status, serve_login_page,
+    get_all_users, create_user, signup_user, update_user, delete_user
+)
 
 # Initialize FastAPI app and router
 app = FastAPI()
 router = APIRouter()
-security = HTTPBasic()
+# security is now imported from modules.auth
 
 
 # --- Favicon route: silence 404s until a real icon is added ---
@@ -748,130 +752,63 @@ def delete_therapist_endpoint(therapist_id: int):
 
 # List all users (Admin-only)
 @app.get("/users")
-def list_users(request: Request):
-    if request.session.get('role') != 'Admin':
-        raise HTTPException(status_code=403, detail="Admin only")
-    with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.execute("""
-            SELECT id, username, role, permissions, linked_therapist_id
-            FROM users
-        """)
-        users = [
-            {
-                "id": row[0],
-                "username": row[1],
-                "role": row[2],
-                "permissions": json.loads(row[3] or "[]"),
-                "linked_therapist_id": row[4]
-            }
-            for row in cursor.fetchall()
-        ]
-    return users
+def list_users_endpoint(request: Request):
+    """Get all users using the auth module"""
+    return get_all_users(request)
 
 # Update a user (Admin-only)
-
 @app.put("/users/{user_id}")
-def update_user(user_id: int, user_data: dict = Body(...), request: Request = None):
-    if request.session.get('role') != 'Admin':
-        raise HTTPException(status_code=403, detail="Admin only")
-
-    fields = []
-    values = []
-    for key, value in user_data.items():
-        if key == "permissions" and isinstance(value, list):
-            fields.append(f"{key} = ?")
-            values.append(json.dumps(value))
-        else:
-            fields.append(f"{key} = ?")
-            values.append(value)
-    values.append(user_id)
-
-    with sqlite3.connect("data/bookings.db") as conn:
-        conn.execute(f"UPDATE users SET {', '.join(fields)} WHERE id = ?", values)
-
-    return {"detail": "User updated successfully"}
+def update_user_endpoint(user_id: int, user_data: dict = Body(...), request: Request = None):
+    """Update user using the auth module"""
+    return update_user(user_id, user_data, request)
 
 # Delete a user (Admin-only)
 @app.delete("/users/{user_id}")
-def delete_user(user_id: int, request: Request):
-    if request.session.get('role') != 'Admin':
-        raise HTTPException(status_code=403, detail="Admin only")
-    with sqlite3.connect("data/bookings.db") as conn:
-        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
-    return {"detail": "User deleted successfully"}
+def delete_user_endpoint(user_id: int, request: Request):
+    """Delete user using the auth module"""
+    return delete_user(user_id, request)
 
 # --- USER SIGNUP (Admin-only in future) ---
 @app.post("/signup")
-def signup(
+def signup_endpoint(
     username: str = Body(...),
     password: str = Body(...),
     role: str = Body(...),
     permissions: List[str] = Body(default=[])
 ):
-    password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    with sqlite3.connect("data/bookings.db") as conn:
-        try:
-            conn.execute(
-                """
-                INSERT INTO users (username, password_hash, role, permissions)
-                VALUES (?, ?, ?, ?)
-                """,
-                (username, password_hash, role, json.dumps(permissions)),
-            )
-        except sqlite3.IntegrityError:
-            raise HTTPException(status_code=400, detail="Username already exists")
-    return {"detail": "User created successfully"}
+    """User signup using the auth module"""
+    user_data = {
+        'username': username,
+        'password': password,
+        'role': role,
+        'permissions': permissions
+    }
+    return signup_user(user_data)
 
 # --- CREATE USER ENDPOINT (Admin-only) ---
 @app.post("/create-user")
-def create_user(
+def create_user_endpoint(
     username: str = Body(...),
     password: str = Body(...),
     role: str = Body(...),
     permissions: List[str] = Body(default=[]),
     linked_therapist_id: int = Body(default=None)
 ):
-    password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    with sqlite3.connect("data/bookings.db") as conn:
-        try:
-            conn.execute(
-                """
-                INSERT INTO users (username, password_hash, role, permissions, linked_therapist_id)
-                VALUES (?, ?, ?, ?, ?)
-                """,
-                (username, password_hash, role, json.dumps(permissions), linked_therapist_id)
-            )
-        except sqlite3.IntegrityError:
-            raise HTTPException(status_code=400, detail="Username already exists")
-    return {"detail": "User created successfully"}
+    """Create user using the auth module"""
+    user_data = {
+        'username': username,
+        'password': password,
+        'role': role,
+        'permissions': permissions,
+        'linked_therapist_id': linked_therapist_id
+    }
+    return create_user(user_data)
 
 # --- USER LOGIN ---
 @app.post("/login")
-def login(request: Request, credentials: HTTPBasicCredentials = Depends(security)):
-    with sqlite3.connect("data/bookings.db") as conn:
-        user = conn.execute(
-            "SELECT id, username, password_hash, role, permissions, linked_therapist_id FROM users WHERE username = ?",
-            (credentials.username,),
-        ).fetchone()
-        if not user:
-            raise HTTPException(status_code=401, detail="Incorrect username or password")
-        if not bcrypt.checkpw(credentials.password.encode('utf-8'), user[2].encode('utf-8')):
-            raise HTTPException(status_code=401, detail="Incorrect username or password")
-
-    request.session['user_id'] = user[0]
-    request.session['username'] = user[1]
-    request.session['role'] = user[3]
-    request.session['permissions'] = json.loads(user[4] or "[]")
-    request.session['linked_therapist_id'] = user[5]  # ✅ include in session
-
-    return {
-        "detail": "Login successful",
-        "user_id": user[0],
-        "username": user[1],
-        "role": user[3],
-        "permissions": json.loads(user[4] or "[]"),
-        "linked_therapist_id": user[5]  # ✅ include in response
-    }
+def login_endpoint(request: Request, credentials: HTTPBasicCredentials = Depends(security)):
+    """Login using the auth module"""
+    return login_user(request, credentials)
 
 # API endpoint to update an existing therapist's data
 @app.put("/update-therapist/{therapist_id}")
@@ -2079,27 +2016,21 @@ def delete_clinic(clinic_id: int):
 
 
 @app.get("/login-page")
-def serve_login_page():
-    return FileResponse(os.path.join("templates", "login.html"))
+def serve_login_page_endpoint():
+    """Serve login page using the auth module"""
+    return serve_login_page()
 
 # --- LOGOUT Route ---
 @app.get("/logout")
-def logout(request: Request, response: Response):
-    request.session.clear()
-    response.delete_cookie("session")
-    return {"detail": "Logged out successfully"}
+def logout_endpoint(request: Request, response: Response):
+    """Logout using the auth module"""
+    return logout_user(request, response)
 
 # --- CHECK if user is logged in (Optional helper) ---
 @app.get("/check-login")
-def check_login(request: Request):
-    if request.session.get("user_id"):
-        return {
-            "logged_in": True,
-            "username": request.session.get("username"),
-            "role": request.session.get("role"),
-            "linked_therapist_id": request.session.get("linked_therapist_id"),
-        }
-    return {"logged_in": False}
+def check_login_endpoint(request: Request):
+    """Check login status using the auth module"""
+    return check_login_status(request)
 
 @app.get("/therapist-calendar")
 def serve_therapist_calendar(request: Request):
