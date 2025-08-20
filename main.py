@@ -1,12 +1,41 @@
-# Outcome measure endpoints
-from typing import List
-from fastapi import Body
-import sqlite3
-import httpx
-import os
+# Standard library imports
 import json
-from fastapi import HTTPException
+import logging
+import os
+import sqlite3
+import smtplib
+import ssl
+import textwrap
+from datetime import datetime
+from io import BytesIO
+from typing import List, Optional
 
+# Third-party imports
+import bcrypt
+import httpx
+import pandas as pd
+from dotenv import load_dotenv
+from fastapi import (
+    FastAPI, HTTPException, Depends, Request, Query, Body,
+    UploadFile, File, APIRouter, Path
+)
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, StreamingResponse, Response, HTMLResponse
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel, EmailStr
+from reportlab.pdfgen import canvas
+from starlette.middleware.sessions import SessionMiddleware
+from starlette.requests import Request
+from email.message import EmailMessage
+
+# Load environment variables
+load_dotenv()
+API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
 # Import our modular utilities
 from modules.database import get_db_connection
@@ -19,78 +48,17 @@ from modules.treatment_notes import (
     submit_treatment_note, get_full_treatment_note, add_supplementary_note,
     check_treatment_note, get_latest_session_note, get_unbilled_treatment_notes
 )
+from modules.therapists import (
+    Therapist, get_all_therapists, get_therapist_by_id, get_therapist_basic_info,
+    create_therapist, update_therapist, delete_therapist, import_therapists_from_excel,
+    get_therapist_stats
+)
 
-# --- Endpoint: Update alert resolution status ---
-from fastapi import Body
-
-import os
-import httpx
-from fastapi import APIRouter, HTTPException
-from dotenv import load_dotenv
-
-load_dotenv()
-
+# Initialize FastAPI app and router
+app = FastAPI()
 router = APIRouter()
-from fastapi import Depends
-import sqlite3
-import os
-import httpx
-import sqlite3
-from fastapi import HTTPException
-
-
-
-
-
-from fastapi import Request
-from fastapi import Query
-from fastapi import Body
-from fastapi import FastAPI, HTTPException, Depends
-from fastapi import UploadFile, File
-import pandas as pd
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List, Optional
-import sqlite3
-import json
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from fastapi.responses import StreamingResponse
-from fastapi.responses import Response
-from io import BytesIO
-from reportlab.pdfgen import canvas
-import textwrap
-import os
-import logging
-from datetime import datetime
-logging.basicConfig(level=logging.INFO)
-import os
-from dotenv import load_dotenv
-load_dotenv()
-
-API_KEY = os.getenv("OPENROUTER_API_KEY")
-
-
-import smtplib, ssl
-from email.message import EmailMessage
-from pydantic import EmailStr
-from typing import Optional
-
-# --- Sessions ---
-from starlette.middleware.sessions import SessionMiddleware
-from starlette.requests import Request
-
-# --- bcrypt and security imports ---
-import bcrypt
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
-
 security = HTTPBasic()
 
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
-from fastapi import Request
-
-app = FastAPI()
 
 # --- Favicon route: silence 404s until a real icon is added ---
 @app.get("/favicon.ico")
@@ -102,10 +70,6 @@ async def favicon():
 # Add SessionMiddleware for user sessions
 # NOTE: Change "SUPER_SECRET_KEY" to a strong secret in production!
 app.add_middleware(SessionMiddleware, secret_key="SUPER_SECRET_KEY")
-
-from fastapi import HTTPException
-
-# ...
 
 # patient_id should be str for compatibility with string-based IDs
 @app.put("/api/patient/{patient_id}/alerts/{appointment_id}/resolve")
@@ -297,7 +261,6 @@ async def get_latest_note_summary(patient_id: str, profession: str):
     return {"summary": data["choices"][0]["message"]["content"]}
 
 # --- New endpoint: Get latest session note for a patient and profession
-from fastapi import HTTPException
 
 @app.get("/api/patient/{patient_id}/latest-session-note/{profession}")
 def get_latest_session_note(patient_id: int, profession: str):
@@ -324,7 +287,6 @@ def get_latest_session_note(patient_id: int, profession: str):
         }
 
 # --- Batch endpoint: Check treatment notes for multiple appointment IDs ---
-from fastapi import Query
 
 @app.get("/api/check-treatment-notes")
 def check_treatment_notes(ids: str = Query(..., description="Comma separated appointment IDs")):
@@ -770,12 +732,13 @@ def init_users_table():
 
 # DELETE therapist
 @app.delete("/delete-therapist/{therapist_id}")
-def delete_therapist(therapist_id: int):
-    with sqlite3.connect("data/bookings.db") as conn:
-        if not conn.execute("SELECT 1 FROM therapists WHERE id = ?", (therapist_id,)).fetchone():
-            raise HTTPException(status_code=404, detail="Therapist not found")
-        conn.execute("DELETE FROM therapists WHERE id = ?", (therapist_id,))
-    return {"detail": "Therapist deleted"}
+def delete_therapist_endpoint(therapist_id: int):
+    """Delete therapist using the therapists module"""
+    success = delete_therapist(therapist_id)
+    if success:
+        return {"detail": "Therapist deleted"}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to delete therapist")
 
 # --- USER MANAGEMENT ENDPOINTS (Admin-only) ---
 
@@ -802,7 +765,6 @@ def list_users(request: Request):
     return users
 
 # Update a user (Admin-only)
-from fastapi import Body
 
 @app.put("/users/{user_id}")
 def update_user(user_id: int, user_data: dict = Body(...), request: Request = None):
@@ -909,18 +871,13 @@ def login(request: Request, credentials: HTTPBasicCredentials = Depends(security
 
 # API endpoint to update an existing therapist's data
 @app.put("/update-therapist/{therapist_id}")
-def update_therapist(therapist_id: int, therapist_data: dict = Body(...)):
-    with sqlite3.connect("data/bookings.db") as conn:
-        columns = ", ".join([f"{key} = ?" for key in therapist_data.keys()])
-        values = []
-        for key, value in therapist_data.items():
-            if key == "permissions" and isinstance(value, list):
-                values.append(json.dumps(value))
-            else:
-                values.append(value)
-        values.append(therapist_id)
-        conn.execute(f"UPDATE therapists SET {columns} WHERE id = ?", values)
-    return {"detail": "Therapist updated successfully"}
+def update_therapist_endpoint(therapist_id: int, therapist_data: dict = Body(...)):
+    """Update therapist using the therapists module"""
+    success = update_therapist(therapist_id, therapist_data)
+    if success:
+        return {"detail": "Therapist updated successfully"}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to update therapist")
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -1352,20 +1309,7 @@ class Patient(BaseModel):
     signature_data: Optional[str] = None
 
 # Therapist model
-class Therapist(BaseModel):
-    name: str
-    surname: str
-    preferred_name: Optional[str] = None
-    profession: str
-    cellphone: str
-    clinic: str
-    email: Optional[str] = None
-    hpcsa_number: str
-    malpractice_number: str
-    malpractice_expiry: Optional[str] = None
-    hpcsa_expiry: Optional[str] = None
-    date_of_birth: Optional[str] = None
-    permissions: Optional[List[str]] = []
+# Therapist model is now imported from modules.therapists
 
 # Settings model
 class Settings(BaseModel):
@@ -1599,7 +1543,6 @@ def save_patient(patient: Patient, request: Request):
     return {"detail": "Patient saved"}
 
 from typing import Dict
-from fastapi import Body
 
 # Update patient endpoint (PUT)
 @app.put("/update-patient/{patient_id}")
@@ -1872,118 +1815,35 @@ def import_patients(file: UploadFile = File(...)):
 
 # Bulk import therapists from Excel
 @app.post("/import-therapists")
-def import_therapists(file: UploadFile = File(...)):
-    try:
-        df = pd.read_excel(file.file)
-        with sqlite3.connect("data/bookings.db") as conn:
-            for _, row in df.iterrows():
-                values = (
-                    row.get('first_name', ''),
-                    row.get('surname', ''),
-                    row.get('preferred_name', ''),
-                    row.get('date_of_birth', ''),
-                    row.get('gender', ''),
-                    row.get('id_number', ''),
-                    row.get('address_line1', ''),
-                    row.get('address_line2', ''),
-                    row.get('town', ''),
-                    row.get('postal_code', ''),
-                    row.get('country', ''),
-                    row.get('email', ''),
-                    row.get('contact_number', ''),
-                    row.get('clinic', ''),
-                    row.get('account_name', ''),
-                    row.get('account_id_number', ''),
-                    row.get('account_address', ''),
-                    row.get('account_phone', ''),
-                    row.get('account_email', ''),
-                    row.get('funding_option', ''),
-                    row.get('main_member_name', ''),
-                    row.get('medical_aid_name', ''),
-                    row.get('medical_aid_other', ''),
-                    row.get('plan_name', ''),
-                    row.get('medical_aid_number', ''),
-                    row.get('dependent_number', ''),
-                    row.get('alternative_funding_source', ''),
-                    row.get('alternative_funding_other', ''),
-                    row.get('claim_number', ''),
-                    row.get('case_manager', ''),
-                    row.get('patient_important_info', ''),
-                    row.get('consent_treatment', ''),
-                    row.get('consent_photography', ''),
-                    row.get('consent_data', ''),
-                    row.get('consent_communication', ''),
-                    row.get('consent_billing', ''),
-                    row.get('consent_terms', ''),
-                    row.get('signature_identity', ''),
-                    row.get('signature_name', ''),
-                    row.get('signature_relationship', ''),
-                    row.get('signature_data', ''),
-                )
-                conn.execute("""
-                    INSERT INTO therapists (
-                        name, surname, preferred_name, profession, cellphone,
-                        clinic, hpcsa_number, malpractice_number,
-                        malpractice_expiry, hpcsa_expiry, date_of_birth
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, values)
-        return {"detail": "Therapists imported successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
+def import_therapists_endpoint(file: UploadFile = File(...)):
+    """Import therapists from Excel using the therapists module"""
+    return import_therapists_from_excel(file)
 
 # GET all therapists
 @app.get("/therapists")
-def get_therapists():
-    with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.execute("SELECT * FROM therapists")
-        columns = [column[0] for column in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+def get_therapists_endpoint():
+    """Get all therapists using the therapists module"""
+    return get_all_therapists()
 
 # GET a single therapist by ID
-from fastapi import HTTPException
 @app.get("/therapist/{therapist_id}")
-def get_therapist(therapist_id: int):
-    with sqlite3.connect("data/bookings.db") as conn:
-        row = conn.execute(
-            "SELECT id, name, surname, preferred_name FROM therapists WHERE id = ?", (therapist_id,)
-        ).fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="Therapist not found")
-        return {
-            "id": row[0],
-            "name": row[1],
-            "surname": row[2],
-            "preferred_name": row[3]
-        }
+def get_therapist_endpoint(therapist_id: int):
+    """Get therapist by ID using the therapists module"""
+    therapist = get_therapist_basic_info(therapist_id)
+    if not therapist:
+        raise HTTPException(status_code=404, detail="Therapist not found")
+    return therapist
 
 
 # POST save therapist and create linked user
 @app.post("/save-therapist")
-def save_therapist(therapist: Therapist):
+def save_therapist_endpoint(therapist: Therapist):
+    """Create therapist and linked user using the therapists module"""
     with sqlite3.connect("data/bookings.db") as conn:
         cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO therapists (
-                name, surname, preferred_name, profession, cellphone,
-                clinic, email, hpcsa_number, malpractice_number,
-                malpractice_expiry, hpcsa_expiry, date_of_birth, permissions
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            therapist.name,
-            therapist.surname,
-            therapist.preferred_name,
-            therapist.profession,
-            therapist.cellphone,
-            therapist.clinic,
-            therapist.email,
-            therapist.hpcsa_number,
-            therapist.malpractice_number,
-            therapist.malpractice_expiry,
-            therapist.hpcsa_expiry,
-            therapist.date_of_birth,
-            json.dumps(therapist.permissions)
-        ))
-        therapist_id = cursor.lastrowid
+        
+        # Create therapist using module function
+        therapist_id = create_therapist(therapist)
 
         # Automatically create linked user with unique username
         password = bcrypt.hashpw("welcome123".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
@@ -2005,6 +1865,7 @@ def save_therapist(therapist: Therapist):
             therapist_id,
             json.dumps(["calendar", "patients", "notes"])
         ))
+        conn.commit()
     return {"detail": "Therapist and linked user created successfully"}
 
 
@@ -2292,7 +2153,6 @@ def delete_clinic(clinic_id: int):
         conn.execute("DELETE FROM clinics WHERE id = ?", (clinic_id,))
     return {"detail": "Clinic deleted"}
 
-from fastapi import Response
 
 @app.get("/login-page")
 def serve_login_page():
@@ -2409,7 +2269,6 @@ def get_billing_codes_for_profession(profession: str):
     return codes
 
 # --- New endpoint: update a billing code ---
-from fastapi import Body
 
 @app.put("/billing-codes/{code_id}")
 def update_billing_code(code_id: int, updated_data: dict = Body(...)):
@@ -2464,7 +2323,6 @@ def get_full_treatment_note_endpoint(appointment_id: str):
         ))
     return {"detail": "Billing code added successfully"}
 
-from fastapi import Query
 
 @app.get("/bookings-for-day-for-therapists")
 def bookings_for_day_for_therapists(
@@ -2495,7 +2353,6 @@ def bookings_for_day_for_therapists(
     
 
 # --- Treatment Notes Submission Endpoint ---
-from fastapi import HTTPException
 
 # --- Modifiers API endpoint ---
 # Place this near the other /api/ or /billing-codes routes
@@ -2556,7 +2413,6 @@ def get_icd10_codes(query: str = Query(default="", description="Search ICD-10 co
     return results
 
 # --- GET a single patient by ID (full details for profile) ---
-from fastapi import HTTPException
 
 @app.get("/api/patient/{patient_id}")
 def get_patient_by_id(patient_id: int):
@@ -2718,7 +2574,6 @@ def get_unbilled_treatment_notes():
 # --- NEW ENDPOINT: POST /api/billing-for-appointment ---
 # Accepts: { "appointment_id": "string", "billing_entries": [ ... ] }
 # Updates billing tables and marks treatment note as billed
-from fastapi import Body
 @app.post("/api/billing-for-appointment")
 def billing_for_appointment(payload: dict = Body(...)):
     appointment_id = payload.get("appointment_id")
@@ -2770,7 +2625,6 @@ def billing_for_appointment(payload: dict = Body(...)):
     return {"detail": "Billing saved and appointment marked as billed"}
 
 # --- INVOICE MANAGEMENT ENDPOINTS ---
-from fastapi import Path
 from datetime import datetime
 
 # GET /invoices — Return all invoices.
@@ -2868,11 +2722,9 @@ def delete_invoice(invoice_id: str):
 
 
 @app.get("/therapist-stats")
-def get_therapist_stats():
-    with sqlite3.connect("data/bookings.db") as conn:
-        cur = conn.execute("SELECT * FROM therapist_stats_view")
-        cols = [c[0] for c in cur.description]
-        return [dict(zip(cols, row)) for row in cur.fetchall()]
+def get_therapist_stats_endpoint():
+    """Get therapist statistics using the therapists module"""
+    return get_therapist_stats()
 
 
 @app.post("/reminders")
