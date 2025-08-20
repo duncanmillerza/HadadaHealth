@@ -307,9 +307,14 @@ def get_latest_session_note(patient_id: int, profession: str, user: dict = Depen
 
 @app.get("/api/check-treatment-notes")
 def check_treatment_notes(ids: str = Query(..., description="Comma separated appointment IDs"), user: dict = Depends(require_auth)):
-    id_list = ids.split(",")
-    placeholders = ",".join("?" for _ in id_list)
-    sql = f"SELECT appointment_id FROM treatment_notes WHERE appointment_id IN ({placeholders})"
+    id_list = [id_str.strip() for id_str in ids.split(",") if id_str.strip()]
+    if not id_list:
+        return []
+    
+    # Create safe parameterized query with proper placeholders
+    placeholders = ",".join("?" * len(id_list))
+    sql = "SELECT appointment_id FROM treatment_notes WHERE appointment_id IN (" + placeholders + ")"
+    
     with sqlite3.connect("data/bookings.db") as conn:
         rows = conn.execute(sql, id_list).fetchall()
     found = {row[0] for row in rows}
@@ -1501,23 +1506,38 @@ from typing import Dict
 # Update patient endpoint (PUT)
 @app.put("/update-patient/{patient_id}")
 def update_patient(patient_id: int, patient_data: dict = Body(...)):
-    # Dynamically build the SQL update statement
+    # Define allowed fields to prevent SQL injection
+    ALLOWED_FIELDS = {
+        'first_name', 'surname', 'preferred_name', 'date_of_birth', 'gender', 'id_number',
+        'address_line1', 'address_line2', 'town', 'postal_code', 'country',
+        'phone_home', 'phone_work', 'phone_cell', 'email', 'emergency_contact_name',
+        'emergency_contact_relationship', 'emergency_contact_phone', 'medical_aid_name',
+        'medical_aid_plan', 'medical_aid_number', 'dependent_number', 'principal_member',
+        'icd10_codes'
+    }
+    
+    # Build safe SQL update statement with whitelisted fields only
     fields = []
     values = []
     for key, value in patient_data.items():
-        # Support updating icd10_codes (and any other field)
-        fields.append(f"{key} = ?")
-        values.append(value)
+        if key in ALLOWED_FIELDS:
+            fields.append(f"{key} = ?")
+            values.append(value)
+    
     values.append(patient_id)
     if not fields:
-        raise HTTPException(status_code=400, detail="No fields to update")
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    
     with sqlite3.connect("data/bookings.db") as conn:
         # Ensure icd10_codes column exists
         try:
             conn.execute("ALTER TABLE patients ADD COLUMN icd10_codes TEXT;")
         except sqlite3.OperationalError:
             pass
-        cur = conn.execute(f"UPDATE patients SET {', '.join(fields)} WHERE id = ?", values)
+        
+        # Build safe SQL query - fields are now whitelisted
+        sql_query = "UPDATE patients SET " + ", ".join(fields) + " WHERE id = ?"
+        cur = conn.execute(sql_query, values)
         if cur.rowcount == 0:
             raise HTTPException(status_code=404, detail="Patient not found")
     return {"detail": "Patient updated successfully"}
@@ -1913,12 +1933,37 @@ def get_patients():
 
 # API endpoint to update an existing patient's data
 @app.put("/update-patient/{patient_id}")
-def update_patient(patient_id: int, patient_data: dict = Body(...), user: dict = Depends(require_admin)):
+def update_patient_admin(patient_id: int, patient_data: dict = Body(...), user: dict = Depends(require_admin)):
+    # Define allowed fields to prevent SQL injection
+    ALLOWED_FIELDS = {
+        'first_name', 'surname', 'preferred_name', 'date_of_birth', 'gender', 'id_number',
+        'address_line1', 'address_line2', 'town', 'postal_code', 'country',
+        'phone_home', 'phone_work', 'phone_cell', 'email', 'emergency_contact_name',
+        'emergency_contact_relationship', 'emergency_contact_phone', 'medical_aid_name',
+        'medical_aid_plan', 'medical_aid_number', 'dependent_number', 'principal_member',
+        'icd10_codes'
+    }
+    
+    # Build safe SQL update statement with whitelisted fields only
+    fields = []
+    values = []
+    for key, value in patient_data.items():
+        if key in ALLOWED_FIELDS:
+            fields.append(f"{key} = ?")
+            values.append(value)
+    
+    if not fields:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    
+    values.append(patient_id)
+    
     with sqlite3.connect("data/bookings.db") as conn:
-        columns = ", ".join([f"{key} = ?" for key in patient_data.keys()])
-        values = list(patient_data.values())
-        values.append(patient_id)
-        conn.execute(f"UPDATE patients SET {columns} WHERE id = ?", values)
+        # Build safe SQL query - fields are now whitelisted
+        sql_query = "UPDATE patients SET " + ", ".join(fields) + " WHERE id = ?"
+        result = conn.execute(sql_query, values)
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Patient not found")
+    
     return {"detail": "Patient updated successfully"}
 
 # API endpoint to delete a patient by ID
@@ -2468,7 +2513,7 @@ def get_invoice(invoice_id: str = Path(...)):
 
 # PUT /invoices/{invoice_id} — Update invoice status.
 @app.put("/invoices/{invoice_id}")
-def update_invoice(invoice_id: str, update_data: dict = Body(...)):
+def update_invoice(invoice_id: str, update_data: dict = Body(...), user: dict = Depends(require_therapist_or_admin)):
     allowed_fields = {"status", "notes", "due_date", "total_amount"}
     fields = []
     values = []
@@ -2479,8 +2524,11 @@ def update_invoice(invoice_id: str, update_data: dict = Body(...)):
     if not fields:
         raise HTTPException(status_code=400, detail="No valid fields to update")
     values.append(invoice_id)
+    
     with sqlite3.connect("data/bookings.db") as conn:
-        cur = conn.execute(f"UPDATE invoices SET {', '.join(fields)} WHERE id = ?", values)
+        # Build safe SQL query - fields are whitelisted so this is safe
+        sql_query = "UPDATE invoices SET " + ", ".join(fields) + " WHERE id = ?"
+        cur = conn.execute(sql_query, values)
         if cur.rowcount == 0:
             raise HTTPException(status_code=404, detail="Invoice not found")
     return {"detail": "Invoice updated"}
