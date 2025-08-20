@@ -65,6 +65,24 @@ from modules.professions_clinics import (
     get_all_professions, create_profession, update_profession, delete_profession,
     get_all_clinics, create_clinic, update_clinic, delete_clinic
 )
+from modules.outcome_measures import (
+    get_all_outcome_measure_types, create_outcome_measure_type, get_outcome_measure_categories,
+    get_outcome_measures_by_category, create_outcome_measure, add_outcome_measure_subscores
+)
+from modules.reminders import (
+    get_all_reminders, create_reminder, get_reminder_by_id, update_reminder,
+    delete_reminder, get_pending_reminders, mark_reminder_completed, search_reminders
+)
+from modules.reports_analytics import (
+    get_dashboard_summary, get_patient_summary_report, get_patient_profession_summary,
+    get_patient_ai_summary_data, get_latest_note_summary, get_system_overview_report,
+    get_therapist_performance_report, get_financial_summary_report, export_patient_data
+)
+from modules.settings_configuration import (
+    get_system_settings, update_system_settings, get_user_preferences, update_user_preferences,
+    get_system_configuration, update_system_configuration, create_system_backup,
+    restore_system_backup, get_application_info, get_settings_summary
+)
 
 # Initialize FastAPI app and router
 app = FastAPI()
@@ -79,9 +97,16 @@ async def favicon():
     return Response(status_code=204)
 
 
-# Add SessionMiddleware for user sessions
-# NOTE: Change "SUPER_SECRET_KEY" to a strong secret in production!
-app.add_middleware(SessionMiddleware, secret_key="SUPER_SECRET_KEY")
+# Add SessionMiddleware for user sessions with secure configuration
+from modules.config import config, validate_security_config
+
+# Validate security configuration at startup
+if not validate_security_config():
+    raise RuntimeError("Security configuration validation failed. Check your environment variables.")
+
+# Configure secure session middleware
+session_config = config.get_session_config()
+app.add_middleware(SessionMiddleware, **session_config)
 
 # patient_id should be str for compatibility with string-based IDs
 @app.put("/api/patient/{patient_id}/alerts/{appointment_id}/resolve")
@@ -195,44 +220,23 @@ async def get_ai_summary(patient_id: str):
 
 
 @app.get("/api/patient/{patient_id}/summary/{profession}/latest")
-async def get_latest_note_summary(patient_id: str, profession: str):
-    # Use the same DB as the rest of the app
-    db_path = "data/bookings.db"
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT 
-            appointment_date,
-            start_time,
-            duration,
-            therapist_name,
-            profession,
-            subjective_findings,
-            objective_findings,
-            treatment,
-            plan
-        FROM treatment_notes
-        WHERE patient_id = ? AND LOWER(profession) = LOWER(?)
-        ORDER BY appointment_date DESC, start_time DESC
-        LIMIT 1
-    """, (patient_id, profession))
-    row = cursor.fetchone()
-    conn.close()
-
-    if not row:
+async def get_latest_note_summary_endpoint(patient_id: str, profession: str):
+    """Get latest treatment note summary for patient and profession with AI summary"""
+    note_data = get_latest_note_summary(patient_id, profession)
+    
+    if not note_data:
         raise HTTPException(status_code=404, detail="No treatment notes found for this profession")
 
     note = {
-        "date": row[0],
-        "time": row[1],
-        "duration": row[2],
-        "therapist": row[3],
-        "profession": row[4],
-        "subjective": row[5],
-        "objective": row[6],
-        "treatment": row[7],
-        "plan": row[8],
+        "date": note_data.get('appointment_date'),
+        "time": note_data.get('start_time'),
+        "duration": note_data.get('duration'),
+        "therapist": note_data.get('therapist_name'),
+        "profession": note_data.get('profession'),
+        "subjective": note_data.get('subjective_findings'),
+        "objective": note_data.get('objective_findings'),
+        "treatment": note_data.get('treatment'),
+        "plan": note_data.get('plan'),
     }
 
     full_text = (
@@ -491,7 +495,11 @@ def get_billing_codes():
 
 # GET endpoint to retrieve billing sessions with their entries for a patient
 @app.get("/billing-sessions/{patient_id}")
-def get_billing_sessions(patient_id: int):
+def get_billing_sessions(patient_id: str):
+    # Handle both string and numeric patient IDs
+    if not patient_id or patient_id == "undefined":
+        return {"error": "Invalid patient ID"}
+    
     with sqlite3.connect("data/bookings.db") as conn:
         cursor = conn.execute("""
             SELECT * FROM billing_sessions WHERE patient_id = ?
@@ -1279,7 +1287,7 @@ def get_bookings_endpoint(request: Request, therapist_id: Optional[int] = None, 
     return get_bookings(request, therapist_id, start, end)
 
 @app.get("/bookings/{booking_id}")
-def get_booking_endpoint(booking_id: int):
+def get_booking_endpoint(booking_id: str):
     """Get single booking using the appointments module"""
     return get_booking_by_id(booking_id)
 # Session info endpoint for frontend to get user/role/therapist
@@ -1821,36 +1829,15 @@ def serve_manage_users_page(request: Request):
     return FileResponse(os.path.join("templates", "manage-users.html"))
 
 # Settings API endpoints
-@app.get("/settings", response_model=Settings)
-def get_settings():
-    with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.execute("SELECT start_time, end_time, slot_duration, weekdays, dark_mode FROM settings WHERE id = 1")
-        row = cursor.fetchone()
-        if row:
-            return {
-                "start_time": row[0],
-                "end_time": row[1],
-                "slot_duration": row[2],
-                "weekdays": row[3].split(","),
-                "dark_mode": bool(row[4])
-            }
-        raise HTTPException(status_code=404, detail="Settings not found")
+@app.get("/settings")
+def get_settings_endpoint():
+    """Get system settings using the settings module"""
+    return get_system_settings()
 
 @app.post("/settings")
-def update_settings(settings: Settings = Body(...)):
-    with sqlite3.connect("data/bookings.db") as conn:
-        conn.execute("""
-            UPDATE settings
-            SET start_time = ?, end_time = ?, slot_duration = ?, weekdays = ?, dark_mode = ?
-            WHERE id = 1
-        """, (
-            settings.start_time,
-            settings.end_time,
-            settings.slot_duration,
-            ",".join(settings.weekdays),
-            int(settings.dark_mode)
-        ))
-    return {"detail": "Settings updated"}
+def update_settings_endpoint(settings_data: dict = Body(...)):
+    """Update system settings using the settings module"""
+    return update_system_settings(settings_data)
 
 @app.get("/patients")
 def get_patients():
@@ -2259,69 +2246,28 @@ def get_patient_professions(patient_id: int):
 
 # --- GET patient summary for a specific profession (for Patient Profile) ---
 @app.get("/api/patient/{patient_id}/summary/{profession}")
-def patient_profession_summary(patient_id: int, profession: str):
-    with sqlite3.connect("data/bookings.db") as conn:
-        cur = conn.cursor()
-        # Last session info with appointment_id and therapist_id for optional linking
-        cur.execute("""
-            SELECT appointment_date, start_time, therapist_name, appointment_id, therapist_id
-            FROM treatment_notes
-            WHERE patient_id = ? AND LOWER(profession) = LOWER(?)
-            ORDER BY appointment_date DESC, start_time DESC
-            LIMIT 1
-        """, (patient_id, profession))
-        row = cur.fetchone()
-        if row:
-            date_str = row[0]
-            time_str = row[1]
-            therapist = row[2]
-            appointment_id = row[3]
-            therapist_id = row[4]
-            last_session = f"{date_str} at {time_str} with {therapist}"
-        else:
-            last_session = None
-            appointment_id = None
-            therapist_id = None
-
-        # Count past and future bookings for this profession
-        cur.execute("""
-            SELECT COUNT(*) FROM bookings
-            WHERE patient_id = ? AND LOWER(profession) = LOWER(?) AND date < DATE('now')
-        """, (patient_id, profession))
-        past_bookings = cur.fetchone()[0]
-        cur.execute("""
-            SELECT COUNT(*) FROM bookings
-            WHERE patient_id = ? AND LOWER(profession) = LOWER(?) AND date >= DATE('now')
-        """, (patient_id, profession))
-        future_bookings = cur.fetchone()[0]
-
-        return {
-            "last_session": last_session,
-            "appointment_id": appointment_id,
-            "therapist_id": therapist_id,
-            "past_bookings": past_bookings,
-            "future_bookings": future_bookings
-        }
+def patient_profession_summary_endpoint(patient_id: int, profession: str):
+    """Get patient summary for a specific profession"""
+    return get_patient_profession_summary(patient_id, profession)
     
 
 # Add this endpoint near other /api/patient routes
 @app.get("/api/patient/{patient_id}/summary/ai")
-def get_patient_ai_summary(patient_id: int):
-    with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.execute("""
-            SELECT appointment_date, profession, subjective_findings, objective_findings, treatment, plan
-            FROM treatment_notes
-            WHERE patient_id = ?
-            ORDER BY appointment_date
-        """, (patient_id,))
-        notes = cursor.fetchall()
-
+def get_patient_ai_summary_endpoint(patient_id: int):
+    """Get AI summary for patient treatment notes"""
+    notes = get_patient_ai_summary_data(patient_id)
+    
     if not notes:
         return {"summary": "No treatment notes found for this patient."}
 
     combined_notes = ""
-    for row in notes:
-        date, prof, subj, obj, tx, plan = row
+    for note in notes:
+        date = note.get('appointment_date')
+        prof = note.get('profession')
+        subj = note.get('subjective_findings')
+        obj = note.get('objective_findings')
+        tx = note.get('treatment')
+        plan = note.get('plan')
         combined_notes += f"\n\n[{date}] {prof}\nSubjective: {subj}\nObjective: {obj}\nTreatment: {tx}\nPlan: {plan}"
 
     prompt = f"Summarise the following multidisciplinary treatment notes for a patient:\n{combined_notes}"
@@ -2548,58 +2494,6 @@ def get_therapist_stats_endpoint():
     return get_therapist_stats()
 
 
-@app.post("/reminders")
-def create_reminder(data: dict, request: Request):
-    user_id = request.session.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO reminders (
-                title, description, created_by_user_id, patient_id, therapist_id, appointment_id,
-                due_date, recurrence, completed, completed_at, visibility, priority,
-                colour, notify, notify_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            data.get("title"),
-            data.get("description"),
-            user_id,
-            data.get("patient_id"),
-            data.get("therapist_id"),
-            data.get("appointment_id"),
-            data.get("due_date"),
-            data.get("recurrence"),
-            data.get("completed", 0),
-            data.get("completed_at"),
-            data.get("visibility", "private"),
-            data.get("priority", "normal"),
-            data.get("colour", "#2D6356"),
-            data.get("notify", 0),
-            data.get("notify_at")
-        ))
-        conn.commit()
-        reminder_id = cursor.lastrowid
-
-    return {"detail": "Reminder created", "id": reminder_id}
-
-# --- Reminders: GET all reminders for the logged-in user or visible to team/patient ---
-@app.get("/reminders")
-def get_reminders(request: Request):
-    user_id = request.session.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.execute("""
-            SELECT * FROM reminders
-            WHERE created_by_user_id = ? OR visibility IN ('team', 'patient')
-            ORDER BY due_date IS NULL, due_date ASC
-        """, (user_id,))
-        columns = [col[0] for col in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
-    
 # --- Patient Bookings Endpoint ---
 @app.get("/api/patient/{patient_id}/bookings")
 def get_patient_bookings(patient_id: str):
@@ -2715,57 +2609,207 @@ def get_outcome_measures_by_category(category: str):
     return measures
 from datetime import datetime
 
-@app.post("/api/outcome-measures")
-def create_outcome_measure(data: dict = Body(...)):
+@app.post("/api/outcome-measures")  
+def create_outcome_measure_endpoint(data: dict = Body(...)):
     """
+    Create outcome measure using the outcome measures module
     Expects JSON with: patient_id, therapist, appointment_id, date,
     outcome_measure_type_id, score (optional/nullable), comments (optional)
     """
-    with sqlite3.connect("data/bookings.db") as conn:
-        cur = conn.cursor()
-        cur.execute(
-            """
-            INSERT INTO outcome_measures
-              (patient_id, therapist, appointment_id, date, outcome_measure_type_id, score, comments)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                data.get("patient_id"),
-                data.get("therapist", ""),
-                data.get("appointment_id"),
-                data.get("date"),
-                data.get("outcome_measure_type_id"),
-                data.get("score"),
-                data.get("comments", "")
-            )
-        )
-        new_id = cur.lastrowid
-        conn.commit()
-    return {"id": new_id}
+    return create_outcome_measure(data)
 
 @app.post("/api/outcome-measures/{measure_id}/subscores")
-def add_outcome_measure_subscores(measure_id: int, subscores: List[dict] = Body(...)):
+def add_outcome_measure_subscores_endpoint(measure_id: str, subscores: List[dict] = Body(...)):
     """
+    Add subscores to outcome measure using the outcome measures module
     Expects a JSON array of { subcategory_name, max_score, score, comments }
     """
-    if not isinstance(subscores, list):
-        raise HTTPException(status_code=400, detail="Subscores must be a list")
-    with sqlite3.connect("data/bookings.db") as conn:
-        cur = conn.cursor()
-        for s in subscores:
-            cur.execute(
-                """
-                INSERT INTO outcome_measure_subscores
-                  (outcome_measure_id, subcategory_name, score, max_score, comments)
-                VALUES (?, ?, ?, ?, ?)
-                """,
-                (
-                    measure_id,
-                    s.get("subcategory_name", ""),
-                    s.get("score"),
-                    s.get("max_score"),
-                    s.get("comments", "")
-                )
-            )
-        conn.commit()
-    return {"status": "ok", "count": len(subscores)}
+    # Handle "undefined" or invalid measure IDs
+    if measure_id == "undefined" or not measure_id:
+        raise HTTPException(status_code=400, detail="Invalid measure ID")
+    
+    try:
+        measure_id_int = int(measure_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Measure ID must be a number")
+    
+    return add_outcome_measure_subscores(measure_id_int, subscores)
+
+
+# ===== REMINDER ENDPOINTS =====
+
+@app.get("/api/reminders")
+def get_reminders_endpoint(request: Request):
+    """Get all reminders for the current user"""
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    return get_all_reminders(user_id)
+
+
+@app.get("/reminders")
+def get_reminders_legacy_endpoint(request: Request):
+    """Get all reminders (legacy endpoint for frontend compatibility)"""
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    return get_all_reminders(user_id)
+
+
+@app.post("/reminders")
+def create_reminder_endpoint(reminder_data: dict = Body(...), request: Request = None):
+    """Create a new reminder"""
+    user_id = request.session.get("user_id") if request else None
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    return create_reminder(reminder_data, user_id)
+
+
+@app.get("/api/reminders/{reminder_id}")
+def get_reminder_endpoint(reminder_id: int):
+    """Get a specific reminder by ID"""
+    reminder = get_reminder_by_id(reminder_id)
+    if not reminder:
+        raise HTTPException(status_code=404, detail="Reminder not found")
+    return reminder
+
+
+@app.put("/reminders/{reminder_id}")
+def update_reminder_endpoint(reminder_id: int, reminder_data: dict = Body(...)):
+    """Update a reminder"""
+    return update_reminder(reminder_id, reminder_data)
+
+
+@app.delete("/api/reminders/{reminder_id}")
+def delete_reminder_endpoint(reminder_id: int):
+    """Delete a reminder"""
+    return delete_reminder(reminder_id)
+
+
+@app.get("/api/reminders/pending")
+def get_pending_reminders_endpoint(request: Request):
+    """Get pending reminders for the current user"""
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    return get_pending_reminders(user_id)
+
+
+@app.post("/api/reminders/{reminder_id}/complete")
+def complete_reminder_endpoint(reminder_id: int):
+    """Mark a reminder as completed"""
+    return mark_reminder_completed(reminder_id)
+
+
+@app.get("/api/reminders/search")
+def search_reminders_endpoint(q: str = Query(...), request: Request = None):
+    """Search reminders"""
+    user_id = request.session.get("user_id") if request else None
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    return search_reminders(q, user_id)
+
+
+# ===== REPORTS & ANALYTICS ENDPOINTS =====
+
+@app.get("/api/dashboard/summary")
+def get_dashboard_summary_endpoint(request: Request):
+    """Get comprehensive dashboard summary"""
+    user_id = request.session.get("user_id")
+    therapist_id = request.session.get("linked_therapist_id")
+    
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    return get_dashboard_summary(user_id, therapist_id)
+
+
+@app.get("/api/reports/patient/{patient_id}")
+def get_patient_report_endpoint(patient_id: int):
+    """Get comprehensive patient report"""
+    return get_patient_summary_report(patient_id)
+
+
+@app.get("/api/reports/system-overview")
+def get_system_overview_endpoint():
+    """Get system overview report"""
+    return get_system_overview_report()
+
+
+@app.get("/api/reports/therapist-performance/{therapist_id}")
+def get_therapist_performance_endpoint(therapist_id: int):
+    """Get therapist performance report"""
+    return get_therapist_performance_report(therapist_id)
+
+
+@app.get("/api/reports/therapist-performance")
+def get_all_therapist_performance_endpoint():
+    """Get all therapist performance report"""
+    return get_therapist_performance_report()
+
+
+@app.get("/api/reports/financial-summary")
+def get_financial_summary_endpoint(start_date: Optional[str] = None, end_date: Optional[str] = None):
+    """Get financial summary report"""
+    return get_financial_summary_report(start_date, end_date)
+
+
+@app.get("/api/export/patient/{patient_id}")
+def export_patient_data_endpoint(patient_id: int, format: str = "json"):
+    """Export comprehensive patient data"""
+    return export_patient_data(patient_id, format)
+
+
+# ===== SETTINGS & CONFIGURATION ENDPOINTS =====
+
+@app.get("/api/user/{user_id}/preferences")
+def get_user_preferences_endpoint(user_id: int):
+    """Get user preferences"""
+    return get_user_preferences(user_id)
+
+
+@app.post("/api/user/{user_id}/preferences")
+def update_user_preferences_endpoint(user_id: int, preferences: dict = Body(...)):
+    """Update user preferences"""
+    return update_user_preferences(user_id, preferences)
+
+
+@app.get("/api/system/configuration")
+def get_system_configuration_endpoint():
+    """Get system configuration"""
+    return get_system_configuration()
+
+
+@app.post("/api/system/configuration")
+def update_system_configuration_endpoint(config: dict = Body(...)):
+    """Update system configuration"""
+    return update_system_configuration(config)
+
+
+@app.get("/api/system/backup")
+def create_system_backup_endpoint():
+    """Create system backup"""
+    return create_system_backup()
+
+
+@app.post("/api/system/restore")
+def restore_system_backup_endpoint(backup_data: dict = Body(...)):
+    """Restore system from backup"""
+    return restore_system_backup(backup_data)
+
+
+@app.get("/api/system/info")
+def get_application_info_endpoint():
+    """Get application information"""
+    return get_application_info()
+
+
+@app.get("/api/settings/summary")
+def get_settings_summary_endpoint():
+    """Get comprehensive settings summary"""
+    return get_settings_summary()
