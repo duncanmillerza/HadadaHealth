@@ -48,3 +48,16 @@ logs/
 # Temporary files
 *.tmp
 *.temp
+
+# Database Files (contain sensitive patient data)
+data/bookings.db
+data/icd10_with_pmb.db
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup Files
+data/*.backup
+data/*.bak
+*.backup
+*.bak

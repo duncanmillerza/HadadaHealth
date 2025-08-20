@@ -269,6 +269,67 @@ For security-related deployment issues:
 3. Verify environment variable configuration
 4. Contact development team if needed
 
+## 🗂️ **Database File Security**
+
+### Critical Database File Permissions
+
+**CRITICAL**: Database files must be secured to prevent unauthorized access to patient data.
+
+#### Required File Permissions
+
+```bash
+# Secure the data directory (owner access only)
+chmod 700 data/
+
+# Secure all database files (owner read/write only)
+chmod 600 data/bookings.db
+chmod 600 data/icd10_with_pmb.db
+```
+
+#### Automated Security Setup
+
+Run the provided security script to automatically secure database files:
+
+```bash
+./secure_database.sh
+```
+
+This script will:
+- Create data directory with secure permissions (700)
+- Set database file permissions to 600 (owner only)
+- Verify all permissions are correctly applied
+- Display security status confirmation
+
+#### Manual Verification
+
+Check database file permissions:
+```bash
+ls -la data/
+```
+
+Expected output:
+```
+drwx------  4 user  group   128 date data/
+-rw-------  1 user  group  196608 date bookings.db
+-rw-------  1 user  group   13MB  date icd10_with_pmb.db
+```
+
+#### Production Deployment Notes
+
+- **Dedicated User**: Run application as dedicated user, not root
+- **File Ownership**: Ensure database files owned by application user
+- **Backup Security**: Maintain same permissions on database backups
+- **System Monitoring**: Monitor for unauthorized file permission changes
+
+### POPIA Compliance Requirements
+
+The database contains sensitive patient information subject to POPIA regulations:
+- **Personal Information**: Names, contact details, ID numbers
+- **Medical Records**: Treatment notes, diagnoses, medical history
+- **Financial Data**: Billing information, medical aid details
+
+**Failure to secure database files = POPIA violation + potential data breach**
+
 ---
 
 **⚠️ REMEMBER: This security configuration is critical for protecting patient data and maintaining POPIA compliance. Never skip or bypass security validation.**
