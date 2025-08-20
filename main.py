@@ -53,6 +53,10 @@ from modules.therapists import (
     create_therapist, update_therapist, delete_therapist, import_therapists_from_excel,
     get_therapist_stats
 )
+from modules.medical_aids import (
+    MedicalAid, get_all_medical_aids, get_all_medical_aids_full, create_medical_aid,
+    update_medical_aid, delete_medical_aid, get_medical_aid_plans, import_medical_aids_from_excel
+)
 
 # Initialize FastAPI app and router
 app = FastAPI()
@@ -1618,129 +1622,49 @@ async def regenerate_medical_history(patient_id: str):
     return {"success": True, "summary": summary, "generated_at": now}
 
 # MedicalAid model for create/update endpoints
-class MedicalAid(BaseModel):
-    name: str
-    website: Optional[str] = None
-    claims_email: Optional[str] = None
-    plans: Optional[List[str]] = None
-    claim_tips: Optional[str] = None
-    administrator: Optional[str] = None
+# Medical Aid model is now imported from modules.medical_aids
 
 # GET all medical aid names
 @app.get("/medical_aids", response_model=List[str])
-def get_medical_aids():
-    with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.execute("SELECT name FROM medical_aids ORDER BY name ASC")
-        return [row[0] for row in cursor.fetchall()]
+def get_medical_aids_endpoint():
+    """Get all medical aid names using the medical aids module"""
+    return get_all_medical_aids()
 
 # GET all medical aid full records
 @app.get("/medical_aids_full")
-def get_medical_aids_full():
-    with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.execute("""
-            SELECT name, website, claims_email, plans, claim_tips, administrator
-            FROM medical_aids ORDER BY name ASC
-        """)
-        columns = [column[0] for column in cursor.description]
-        results = []
-        for row in cursor.fetchall():
-            row_dict = dict(zip(columns, row))
-            try:
-                row_dict["plans"] = json.loads(row_dict["plans"]) if row_dict["plans"] else []
-            except Exception:
-                row_dict["plans"] = []
-            results.append(row_dict)
-        return results
+def get_medical_aids_full_endpoint():
+    """Get all medical aids with full details using the medical aids module"""
+    return get_all_medical_aids_full()
 
 # POST new medical aid
 @app.post("/medical_aids", status_code=201)
-def add_medical_aid(aid: MedicalAid):
-    with sqlite3.connect("data/bookings.db") as conn:
-        try:
-            conn.execute("""
-                INSERT INTO medical_aids (name, website, claims_email, plans, claim_tips, administrator)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (
-                aid.name,
-                aid.website,
-                aid.claims_email,
-                json.dumps(aid.plans) if aid.plans else None,
-                aid.claim_tips,
-                aid.administrator
-            ))
-        except sqlite3.IntegrityError:
-            raise HTTPException(status_code=400, detail="Medical aid already exists")
-    return {"detail": "Medical aid added"}
+def add_medical_aid_endpoint(aid: MedicalAid):
+    """Create medical aid using the medical aids module"""
+    return create_medical_aid(aid)
 
 # PUT update medical aid name
 @app.put("/medical_aids/{old_name}")
-def update_medical_aid(old_name: str, aid: MedicalAid):
-    with sqlite3.connect("data/bookings.db") as conn:
-        if not conn.execute("SELECT 1 FROM medical_aids WHERE name = ?", (old_name,)).fetchone():
-            raise HTTPException(status_code=404, detail="Medical aid not found")
-        try:
-            conn.execute("""
-                UPDATE medical_aids
-                SET name = ?, website = ?, claims_email = ?, plans = ?, claim_tips = ?, administrator = ?
-                WHERE name = ?
-            """, (
-                aid.name,
-                aid.website,
-                aid.claims_email,
-                json.dumps(aid.plans) if aid.plans else None,
-                aid.claim_tips,
-                aid.administrator,
-                old_name
-            ))
-        except sqlite3.IntegrityError:
-            raise HTTPException(status_code=400, detail="New name already exists")
-    return {"detail": "Medical aid updated"}
+def update_medical_aid_endpoint(old_name: str, aid: MedicalAid):
+    """Update medical aid using the medical aids module"""
+    return update_medical_aid(old_name, aid)
 
 # DELETE medical aid
 @app.delete("/medical_aids/{name}")
-def delete_medical_aid(name: str):
-    with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.execute("SELECT 1 FROM medical_aids WHERE name = ?", (name,))
-        if not cursor.fetchone():
-            raise HTTPException(status_code=404, detail="Medical aid not found")
-        conn.execute("DELETE FROM medical_aids WHERE name = ?", (name,))
-    return {"detail": "Medical aid deleted"}
+def delete_medical_aid_endpoint(name: str):
+    """Delete medical aid using the medical aids module"""
+    return delete_medical_aid(name)
 
 # GET plans for a specific medical aid
 @app.get("/medical_aid_plans/{medical_aid_name}", response_model=List[str])
-def get_plans_for_medical_aid(medical_aid_name: str):
-    with sqlite3.connect("data/bookings.db") as conn:
-        result = conn.execute("SELECT plans FROM medical_aids WHERE name = ?", (medical_aid_name,)).fetchone()
-        if not result or result[0] is None:
-            return []
-        try:
-            plans = json.loads(result[0])
-            return plans if isinstance(plans, list) else []
-        except Exception:
-            return []
+def get_plans_for_medical_aid_endpoint(medical_aid_name: str):
+    """Get medical aid plans using the medical aids module"""
+    return get_medical_aid_plans(medical_aid_name)
 
 # Bulk import medical aids from Excel
 @app.post("/import-medical-aids")
-def import_medical_aids(file: UploadFile = File(...)):
-    try:
-        df = pd.read_excel(file.file)
-        with sqlite3.connect("data/bookings.db") as conn:
-            for _, row in df.iterrows():
-                values = (
-                    row.get('name', ''),
-                    row.get('website', ''),
-                    row.get('claims_email', ''),
-                    json.dumps([p.strip() for p in str(row.get('plans', '')).split(",") if p.strip()]) if row.get('plans') else None,
-                    row.get('claim_tips', ''),
-                    row.get('administrator', '')
-                )
-                conn.execute("""
-                    INSERT INTO medical_aids (name, website, claims_email, plans, claim_tips, administrator)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, values)
-        return {"detail": "Medical aids imported successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
+def import_medical_aids_endpoint(file: UploadFile = File(...)):
+    """Import medical aids from Excel using the medical aids module"""
+    return import_medical_aids_from_excel(file)
 
 
 
