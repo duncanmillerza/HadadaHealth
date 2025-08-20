@@ -8,17 +8,11 @@ import json
 from fastapi import HTTPException
 
 
-# Import our modular utilities
-from modules.database import get_db_connection
-from modules.appointments import (
-    Booking, get_bookings, get_booking_by_id, create_booking,
-    update_booking, delete_booking, get_bookings_for_day_for_therapists,
-    check_treatment_notes
-)
-from modules.treatment_notes import (
-    submit_treatment_note, get_full_treatment_note, add_supplementary_note,
-    check_treatment_note, get_latest_session_note, get_unbilled_treatment_notes
-)
+# Helper to get DB connection with row_factory as dict
+def get_db_connection():
+    conn = sqlite3.connect("data/bookings.db")
+    conn.row_factory = sqlite3.Row
+    return conn
 
 # --- Endpoint: Update alert resolution status ---
 from fastapi import Body
@@ -1056,9 +1050,20 @@ def init_db():
 from datetime import datetime
 
 @app.post("/api/treatment-notes/{appointment_id}/supplementary_note")
-def add_supplementary_note_endpoint(appointment_id: str, data: dict, request: Request):
-    """Add supplementary note using the treatment_notes module"""
-    return add_supplementary_note(appointment_id, data, request)
+def add_supplementary_note(appointment_id: str, data: dict, request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    note = data.get("note", "").strip()
+    if not note:
+        raise HTTPException(status_code=400, detail="Note is required")
+    timestamp = datetime.now().isoformat()
+    with sqlite3.connect("data/bookings.db") as conn:
+        conn.execute("""
+            INSERT INTO supplementary_notes (appointment_id, user_id, note, timestamp)
+            VALUES (?, ?, ?, ?)
+        """, (appointment_id, user_id, note, timestamp))
+    return {"detail": "Supplementary note saved"}
 
 # --- Outcome Measure Types endpoint (dropdown source, subscores only) ---
 @app.get("/api/outcome-measure-types")
@@ -1305,7 +1310,21 @@ init_clinics_table()
 init_users_table()
 init_billing_tables()
 
-# Booking model is now imported from modules.appointments
+# Booking model
+class Booking(BaseModel):
+    id: str
+    name: str
+    therapist: int
+    date: str
+    day: str
+    time: str
+    duration: int
+    notes: Optional[str] = ""
+    colour: Optional[str] = None
+    profession: Optional[str] = None
+    patient_id: Optional[int] = None
+    has_note: bool = False
+    billing_completed: bool = False
 
 # Patient model
 class Patient(BaseModel):
@@ -1384,15 +1403,98 @@ class ContactRequest(BaseModel):
     message: Optional[str] = None
 
 from typing import Optional
-@app.get("/bookings")  # Removed response_model since we return dicts now
-def get_bookings_endpoint(request: Request, therapist_id: Optional[int] = None, start: str = Query(None), end: str = Query(None)):
-    """Get bookings using the appointments module"""
-    return get_bookings(request, therapist_id, start, end)
+@app.get("/bookings", response_model=List[Booking])
+def get_bookings(request: Request, therapist_id: Optional[int] = None, start: str = Query(None), end: str = Query(None)):
+    user_id = request.session.get('user_id')
+    session_therapist_id = request.session.get('linked_therapist_id')
+    role = request.session.get('role')
 
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    target_id = therapist_id if role == "Admin" and therapist_id else session_therapist_id
+
+    if not target_id:
+        raise HTTPException(status_code=400, detail="No therapist ID available")
+
+    base_sql = """
+    SELECT
+      b.id,
+      b.name,
+      b.therapist,
+      b.date,
+      b.day,
+      b.time,
+      b.duration,
+      b.colour,
+      b.profession,
+      b.patient_id,
+      CASE WHEN tn.appointment_id IS NOT NULL THEN 1 ELSE 0 END AS has_note,
+      CASE WHEN be.appointment_id IS NOT NULL THEN 1 ELSE 0 END AS has_billing,
+      b.billing_completed
+    FROM bookings b
+    LEFT JOIN treatment_notes tn
+      ON b.id = tn.appointment_id
+    LEFT JOIN billing_entries be
+      ON b.id = be.appointment_id
+    WHERE b.therapist = ?
+    """
+    params = [target_id]
+    if start and end:
+        base_sql += " AND date >= ? AND date < ?"
+        params += [start, end]
+    with sqlite3.connect("data/bookings.db") as conn:
+        cursor = conn.execute(base_sql, params)
+        columns = [col[0] for col in cursor.description]
+        rows = cursor.fetchall()
+        bookings = []
+        for row in rows:
+            d = dict(zip(columns, row))
+            # Map has_billing (int) to hasBilling (bool) for JS
+            d['hasBilling'] = bool(d.pop('has_billing', 0))
+            # Map billing_completed (may be None or 0/1) to bool for JS
+            d['billing_completed'] = bool(d.get('billing_completed', 0))
+            bookings.append(Booking(**d))
+        return bookings
+
+# GET single booking by booking_id (backward compatibility route)
 @app.get("/bookings/{booking_id}")
-def get_booking_endpoint(booking_id: int):
-    """Get single booking using the appointments module"""
-    return get_booking_by_id(booking_id)
+def get_booking(booking_id: str):
+    with sqlite3.connect("data/bookings.db") as conn:
+        cursor = conn.execute("SELECT * FROM bookings WHERE id = ?", (booking_id,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        columns = [column[0] for column in cursor.description]
+        booking = dict(zip(columns, row))
+
+        # Lookup therapist name
+        therapist_id = booking.get("therapist")
+        therapist_name = None
+        if therapist_id:
+            t_cursor = conn.execute("SELECT preferred_name, name, surname FROM therapists WHERE id = ?", (therapist_id,))
+            t_row = t_cursor.fetchone()
+            if t_row:
+                preferred_name, name, surname = t_row
+                therapist_name = preferred_name or f"{name} {surname}"
+
+        booking["therapist"] = therapist_name or str(therapist_id)
+
+        # Lookup patient and clinic
+        patient_id = booking.get("patient_id")
+        if patient_id:
+            p_cursor = conn.execute("SELECT first_name, surname, preferred_name, clinic FROM patients WHERE id = ?", (patient_id,))
+            p_row = p_cursor.fetchone()
+            if p_row:
+                preferred_name, first_name, surname, clinic = p_row[2], p_row[0], p_row[1], p_row[3]
+                patient_display = preferred_name or f"{first_name} {surname}"
+                booking["patient"] = patient_display
+                booking["clinic"] = clinic
+
+        # Ensure billing_completed is returned as boolean
+        booking["billing_completed"] = bool(booking.get("billing_completed", 0))
+
+        return booking
 # Session info endpoint for frontend to get user/role/therapist
 @app.get("/session-info")
 def session_info(request: Request):
@@ -2442,9 +2544,53 @@ def delete_billing_code(code_id: int):
 
 # --- New endpoint: get full treatment note, billing, and supplementary notes for an appointment ---
 @app.get("/api/treatment-notes/full/{appointment_id}")
-def get_full_treatment_note_endpoint(appointment_id: str):
-    """Get full treatment note using the treatment_notes module"""
-    return get_full_treatment_note(appointment_id)
+def get_full_treatment_note(appointment_id: str):
+    with sqlite3.connect("data/bookings.db") as conn:
+        # Treatment note
+        treatment_row = conn.execute("""
+            SELECT *
+            FROM treatment_notes
+            WHERE appointment_id = ?
+        """, (appointment_id,)).fetchone()
+
+        treatment = None
+        if treatment_row:
+            columns = [col[1] for col in conn.execute("PRAGMA table_info(treatment_notes)")]
+            treatment = dict(zip(columns, treatment_row))
+
+        # Billing entries (include billing_modifier)
+        billing_rows = conn.execute("""
+            SELECT be.code_id, be.final_fee, bc.code, bc.description, be.billing_modifier
+            FROM billing_entries be
+            LEFT JOIN billing_codes bc ON be.code_id = bc.id
+            WHERE be.appointment_id = ?
+        """, (appointment_id,)).fetchall()
+
+        billing = []
+        for row in billing_rows:
+            billing.append({
+                "code_id": row[0],
+                "final_fee": row[1],
+                "code": row[2],
+                "description": row[3],
+                "billing_modifier": row[4]
+            })
+
+        # Supplementary notes
+        supp_rows = conn.execute("""
+            SELECT note, timestamp
+            FROM supplementary_notes
+            WHERE appointment_id = ?
+            ORDER BY timestamp ASC
+        """, (appointment_id,)).fetchall()
+
+        supplementary = [{"note": r[0], "timestamp": r[1]} for r in supp_rows]
+
+    return {
+        "treatment": treatment,
+        "billing": billing,
+        "supplementary": supplementary
+    }
 
     with sqlite3.connect("data/bookings.db") as conn:
         # Check for duplicate billing code for the same profession
@@ -2513,9 +2659,41 @@ def get_Billing_modifiers():
         ]
 
 @app.post("/submit-treatment-note")
-def submit_treatment_note_endpoint(note: dict):
-    """Submit treatment note using the treatment_notes module"""
-    return submit_treatment_note(note)
+def submit_treatment_note(note: dict):
+    required_fields = [
+        "appointment_id", "appointment_date", "start_time", "duration", "patient_name",
+        "patient_id", "profession", "therapist_name", "therapist_id",
+        "subjective_findings", "objective_findings", "treatment", "plan", "note_to_patient"
+    ]
+
+    for field in required_fields:
+        if field not in note:
+            raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+
+    with sqlite3.connect("data/bookings.db") as conn:
+        cursor = conn.cursor()
+        completed_at = datetime.utcnow().isoformat()
+        cursor.execute("""
+            INSERT INTO treatment_notes (
+                appointment_id, appointment_date, start_time, duration,
+                patient_name, patient_id, profession, therapist_name, therapist_id,
+                subjective_findings, objective_findings, treatment, plan, note_to_patient,
+                consent_to_treatment, team_alert, alert_comment, alert_resolved, note_completed_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,(
+            note["appointment_id"], note["appointment_date"], note["start_time"], note["duration"],
+            note["patient_name"], note["patient_id"], note["profession"], note["therapist_name"], note["therapist_id"],
+            note["subjective_findings"], note["objective_findings"], note["treatment"], note["plan"], note["note_to_patient"], 
+            note.get("consent_to_treatment", False), note.get("team_alert", ""),
+            note.get("alert_comment", ""), note.get("alert_resolved", ""), completed_at,
+        )
+        )
+        # Mark booking as having a completed note
+        conn.execute(
+            "UPDATE bookings SET note_completed = 1 WHERE id = ?",
+            (note["appointment_id"],)
+        )
+    return {"detail": "Treatment note submitted successfully"}
     
 
 # --- ICD-10 Codes API Endpoint ---
