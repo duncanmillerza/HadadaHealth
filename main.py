@@ -61,6 +61,10 @@ from modules.auth import (
     security, login_user, logout_user, check_login_status, serve_login_page,
     get_all_users, create_user, signup_user, update_user, delete_user
 )
+from modules.professions_clinics import (
+    get_all_professions, create_profession, update_profession, delete_profession,
+    get_all_clinics, create_clinic, update_clinic, delete_clinic
+)
 
 # Initialize FastAPI app and router
 app = FastAPI()
@@ -1932,87 +1936,49 @@ def delete_patient(patient_id: int):
 from typing import Dict
 
 @app.get("/professions")
-def get_professions():
-    with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.execute("SELECT id, profession_name, practice_name, practice_owner, practice_number, practice_email, clinics FROM professions")
-        columns = [column[0] for column in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+def get_professions_endpoint():
+    """Get all professions using the professions_clinics module"""
+    return get_all_professions()
 
 @app.post("/add-profession")
-def add_profession(profession: Dict):
-    with sqlite3.connect("data/bookings.db") as conn:
-        conn.execute("""
-            INSERT INTO professions (profession_name, practice_name, practice_owner, practice_number, practice_email, clinics)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            profession.get('profession_name'),
-            profession.get('practice_name'),
-            profession.get('practice_owner'),
-            profession.get('practice_number'),
-            profession.get('practice_email'),
-            profession.get('clinics')
-        ))
-    return {"detail": "Profession added successfully"}
+def add_profession_endpoint(profession: Dict):
+    """Create profession using the professions_clinics module"""
+    return create_profession(profession)
 
 # New: Update profession
 @app.put("/update-profession/{profession_id}")
-def update_profession(profession_id: int, profession_data: dict = Body(...)):
-    with sqlite3.connect("data/bookings.db") as conn:
-        columns = ", ".join([f"{key} = ?" for key in profession_data.keys()])
-        values = list(profession_data.values())
-        values.append(profession_id)
-        conn.execute(f"UPDATE professions SET {columns} WHERE id = ?", values)
-    return {"detail": "Profession updated successfully"}
+def update_profession_endpoint(profession_id: int, profession_data: dict = Body(...)):
+    """Update profession using the professions_clinics module"""
+    return update_profession(profession_id, profession_data)
 
-# New: Delete profession
+# Delete profession
 @app.delete("/delete-profession/{profession_id}")
-def delete_profession(profession_id: int):
-    with sqlite3.connect("data/bookings.db") as conn:
-        if not conn.execute("SELECT 1 FROM professions WHERE id = ?", (profession_id,)).fetchone():
-            raise HTTPException(status_code=404, detail="Profession not found")
-        conn.execute("DELETE FROM professions WHERE id = ?", (profession_id,))
-    return {"detail": "Profession deleted"}
+def delete_profession_endpoint(profession_id: int):
+    """Delete profession using the professions_clinics module"""
+    return delete_profession(profession_id)
 
 # Clinics API endpoints
 @app.get("/clinics")
-def get_clinics():
-    with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.execute("SELECT id, clinic_name, address, email, phone FROM clinics")
-        columns = [column[0] for column in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+def get_clinics_endpoint():
+    """Get all clinics using the professions_clinics module"""
+    return get_all_clinics()
 
 @app.post("/add-clinic")
-def add_clinic(clinic: Dict):
-    with sqlite3.connect("data/bookings.db") as conn:
-        conn.execute("""
-            INSERT INTO clinics (clinic_name, address, email, phone)
-            VALUES (?, ?, ?, ?)
-        """, (
-            clinic.get('clinic_name'),
-            clinic.get('address'),
-            clinic.get('email'),
-            clinic.get('phone')
-        ))
-    return {"detail": "Clinic added successfully"}
+def add_clinic_endpoint(clinic: Dict):
+    """Create clinic using the professions_clinics module"""
+    return create_clinic(clinic)
 
-# New: Update clinic
+# Update clinic
 @app.put("/update-clinic/{clinic_id}")
-def update_clinic(clinic_id: int, clinic_data: dict = Body(...)):
-    with sqlite3.connect("data/bookings.db") as conn:
-        columns = ", ".join([f"{key} = ?" for key in clinic_data.keys()])
-        values = list(clinic_data.values())
-        values.append(clinic_id)
-        conn.execute(f"UPDATE clinics SET {columns} WHERE id = ?", values)
-    return {"detail": "Clinic updated successfully"}
+def update_clinic_endpoint(clinic_id: int, clinic_data: dict = Body(...)):
+    """Update clinic using the professions_clinics module"""
+    return update_clinic(clinic_id, clinic_data)
 
-# New: Delete clinic
+# Delete clinic
 @app.delete("/delete-clinic/{clinic_id}")
-def delete_clinic(clinic_id: int):
-    with sqlite3.connect("data/bookings.db") as conn:
-        if not conn.execute("SELECT 1 FROM clinics WHERE id = ?", (clinic_id,)).fetchone():
-            raise HTTPException(status_code=404, detail="Clinic not found")
-        conn.execute("DELETE FROM clinics WHERE id = ?", (clinic_id,))
-    return {"detail": "Clinic deleted"}
+def delete_clinic_endpoint(clinic_id: int):
+    """Delete clinic using the professions_clinics module"""
+    return delete_clinic(clinic_id)
 
 
 @app.get("/login-page")
