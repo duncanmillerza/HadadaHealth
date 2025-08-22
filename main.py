@@ -2085,6 +2085,10 @@ def serve_index(request: Request):
         return FileResponse(os.path.join("templates", "login.html"))
     return FileResponse(os.path.join("templates", "index.html"))
 
+@app.get("/offline.html")
+def serve_offline():
+    return FileResponse(os.path.join("templates", "offline.html"))
+
 @app.get("/add-patient-page")
 def serve_add_patient_page(request: Request):
     if not request.session.get("user_id"):
