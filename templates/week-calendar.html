@@ -1137,6 +1137,67 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   });
 </script>
+<!-- Include Appointment Type Modal -->
+<div id="appointment-type-modal" class="modal appointment-type-modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Select Appointment Type</h3>
+            <span class="close-button" id="close-appointment-type-modal">&times;</span>
+        </div>
+        
+        <div class="modal-body">
+            <div class="modal-description">
+                <p>Choose the type of appointment to create. Each type has default settings that can be customized for your practice.</p>
+            </div>
+            
+            <!-- Appointment Type Tree Container -->
+            <div id="appointment-type-tree" class="appointment-type-tree">
+                <!-- Tree will be populated by JavaScript -->
+                <div class="loading-spinner" id="appointment-type-loading">
+                    <div class="spinner"></div>
+                    <span>Loading appointment types...</span>
+                </div>
+            </div>
+            
+            <!-- Selected Type Preview -->
+            <div id="selected-type-preview" class="selected-type-preview" style="display: none;">
+                <div class="preview-header">
+                    <strong>Selected:</strong>
+                </div>
+                <div class="preview-content">
+                    <div class="preview-type">
+                        <span class="preview-color"></span>
+                        <span class="preview-name"></span>
+                        <span class="preview-duration"></span>
+                    </div>
+                    <div class="preview-details">
+                        <small class="preview-description"></small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button id="confirm-appointment-type" class="btn btn-primary" disabled>
+                Create Appointment
+            </button>
+            <button id="cancel-appointment-type" class="btn btn-secondary">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Backdrop -->
+<div id="appointment-type-modal-backdrop" class="modal-backdrop" style="display: none;"></div>
+
+<!-- Appointment Type Modal Styles -->
+<link rel="stylesheet" href="/static/css/appointment-type-modal.css">
+
+<!-- Appointment Type Modal Scripts -->
+<script src="/static/js/appointment-type-modal.js"></script>
+<script src="/static/js/calendar-appointment-type-integration.js"></script>
+
 <script src="/static/js/nav-bar.js"></script>
 <div id="bottom-nav"></div>
 <script src="/static/js/summary-modal.js"></script>

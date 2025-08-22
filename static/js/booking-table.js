@@ -98,10 +98,11 @@ document.addEventListener("DOMContentLoaded", () => {
         id: document.getElementById("booking-id").value,
         name: document.getElementById("booking-name").value,
         date: document.getElementById("booking-date").value,
-        time: document.getElementById("booking-time").value,
+        time: document.getElementById("booking-time").value || document.getElementById("start-time").value,
         duration: parseInt(document.getElementById("booking-duration").value),
         therapist_id: document.getElementById("booking-therapist").value,
-        notes: document.getElementById("booking-notes").value
+        notes: document.getElementById("booking-notes").value,
+        appointment_type_id: document.getElementById("appointment-type-id")?.value || null
       };
   
       // Post or patch booking here

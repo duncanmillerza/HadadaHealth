@@ -1453,8 +1453,8 @@ def add_booking(booking: Booking, request: Request):
     with sqlite3.connect("data/bookings.db") as conn:
         try:
             conn.execute("""
-                INSERT INTO bookings (id, name, therapist, date, day, time, duration, notes, colour, user_id, profession, patient_id)
-                VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO bookings (id, name, therapist, date, day, time, duration, notes, colour, user_id, profession, patient_id, appointment_type_id)
+                VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 booking.id,
                 booking.name,
@@ -1467,7 +1467,8 @@ def add_booking(booking: Booking, request: Request):
                 booking.colour,
                 user_id,
                 booking.profession,
-                booking.patient_id
+                booking.patient_id,
+                booking.appointment_type_id
             ))
         except sqlite3.IntegrityError:
             raise HTTPException(status_code=400, detail="Booking ID already exists")
@@ -1485,7 +1486,7 @@ def update_booking(booking_id: str, booking: Booking, request: Request):
         if not conn.execute("SELECT 1 FROM bookings WHERE id = ?", (booking_id,)).fetchone():
             raise HTTPException(status_code=404, detail="Booking not found")
         conn.execute("""
-            UPDATE bookings SET name=?, therapist=?, date=?, day=?, time=?, duration=?, notes=?, colour=?, profession=?, patient_id=?
+            UPDATE bookings SET name=?, therapist=?, date=?, day=?, time=?, duration=?, notes=?, colour=?, profession=?, patient_id=?, appointment_type_id=?
             WHERE id=?
         """, (
             booking.name,
@@ -1498,9 +1499,21 @@ def update_booking(booking_id: str, booking: Booking, request: Request):
             booking.colour,
             booking.profession,
             booking.patient_id,
+            booking.appointment_type_id,
             booking_id
         ))
     return booking
+
+# API endpoints for bookings (used by frontend)
+@app.post("/api/bookings", response_model=Booking)
+def api_add_booking(booking: Booking, request: Request):
+    """API endpoint for creating bookings (matches frontend expectations)"""
+    return add_booking(booking, request)
+
+@app.patch("/api/bookings/{booking_id}", response_model=Booking)
+def api_update_booking(booking_id: str, booking: Booking, request: Request):
+    """API endpoint for updating bookings (matches frontend expectations)"""
+    return update_booking(booking_id, booking, request)
 
 # --- New endpoint: Mark billing complete and auto-create draft invoice ---
 @app.post("/complete-billing/{booking_id}")
@@ -3482,4 +3495,176 @@ def get_ai_security_status(user: dict = Depends(require_admin)):
         "recommendations": recommendations,
         "last_updated": datetime.now().isoformat()
     }
+
+
+# Import appointment type controllers
+from controllers.appointment_types import (
+    AppointmentTypeController, PracticeAppointmentTypeController,
+    AppointmentTypeCreateRequest, AppointmentTypeUpdateRequest,
+    PracticeAppointmentTypeCreateRequest, PracticeAppointmentTypeUpdateRequest
+)
+
+
+# ========================================
+# Appointment Type API Routes  
+# ========================================
+
+@app.get("/api/appointment-types")
+async def get_appointment_types(
+    hierarchical: bool = Query(False, description="Return hierarchical structure"),
+    practice_id: Optional[int] = Query(None, description="Filter by practice ID"),
+    active_only: bool = Query(True, description="Return only active appointment types"),
+    parent_only: bool = Query(False, description="Return only parent (root level) types"),
+    include_global: bool = Query(True, description="Include global appointment types"),
+    user: dict = Depends(require_auth)
+):
+    """Get appointment types with optional filtering and hierarchical structure"""
+    return AppointmentTypeController.index(
+        hierarchical=hierarchical,
+        practice_id=practice_id,
+        active_only=active_only,
+        parent_only=parent_only,
+        include_global=include_global
+    )
+
+
+@app.get("/api/appointment-types/{appointment_type_id}")
+async def get_appointment_type(
+    appointment_type_id: int = Path(..., description="Appointment type ID"),
+    user: dict = Depends(require_auth)
+):
+    """Get a specific appointment type by ID"""
+    return AppointmentTypeController.show(appointment_type_id=appointment_type_id)
+
+
+@app.post("/api/appointment-types", status_code=201)
+async def create_appointment_type(
+    request: AppointmentTypeCreateRequest,
+    user: dict = Depends(require_auth)
+):
+    """Create a new appointment type"""
+    return AppointmentTypeController.store(request=request)
+
+
+@app.put("/api/appointment-types/{appointment_type_id}")
+async def update_appointment_type(
+    request: AppointmentTypeUpdateRequest,
+    appointment_type_id: int = Path(..., description="Appointment type ID"),
+    user: dict = Depends(require_auth)
+):
+    """Update an existing appointment type"""
+    return AppointmentTypeController.update(
+        appointment_type_id=appointment_type_id,
+        request=request
+    )
+
+
+@app.delete("/api/appointment-types/{appointment_type_id}", status_code=204)
+async def delete_appointment_type(
+    appointment_type_id: int = Path(..., description="Appointment type ID"),
+    user: dict = Depends(require_auth)
+):
+    """Delete (soft delete) an appointment type"""
+    AppointmentTypeController.destroy(appointment_type_id=appointment_type_id)
+
+
+@app.get("/api/practices/{practice_id}/appointment-types")
+async def get_practice_appointment_types(
+    practice_id: int = Path(..., description="Practice ID"),
+    active_only: bool = Query(True, description="Return only active appointment types"),
+    include_global: bool = Query(True, description="Include global appointment types"),
+    user: dict = Depends(require_auth)
+):
+    """Get appointment types for a specific practice"""
+    return AppointmentTypeController.get_by_practice(
+        practice_id=practice_id,
+        active_only=active_only,
+        include_global=include_global
+    )
+
+
+# ========================================
+# Practice Appointment Type Customization Routes
+# ========================================
+
+@app.get("/api/practices/{practice_id}/appointment-types/customizations")
+async def get_practice_customizations(
+    practice_id: int = Path(..., description="Practice ID"),
+    enabled_only: bool = Query(True, description="Return only enabled customizations"),
+    user: dict = Depends(require_auth)
+):
+    """Get practice appointment type customizations"""
+    return PracticeAppointmentTypeController.index(
+        practice_id=practice_id,
+        enabled_only=enabled_only
+    )
+
+
+@app.get("/api/practices/{practice_id}/appointment-types/customizations/{customization_id}")
+async def get_practice_customization(
+    practice_id: int = Path(..., description="Practice ID"),
+    customization_id: int = Path(..., description="Customization ID"),
+    user: dict = Depends(require_auth)
+):
+    """Get a specific practice appointment type customization"""
+    return PracticeAppointmentTypeController.show(
+        practice_id=practice_id,
+        customization_id=customization_id
+    )
+
+
+@app.post("/api/practices/{practice_id}/appointment-types/customizations", status_code=201)
+async def create_practice_customization(
+    request: PracticeAppointmentTypeCreateRequest,
+    practice_id: int = Path(..., description="Practice ID"),
+    user: dict = Depends(require_auth)
+):
+    """Create a new practice appointment type customization"""
+    return PracticeAppointmentTypeController.store(
+        practice_id=practice_id,
+        request=request
+    )
+
+
+@app.put("/api/practices/{practice_id}/appointment-types/customizations/{customization_id}")
+async def update_practice_customization(
+    request: PracticeAppointmentTypeUpdateRequest,
+    practice_id: int = Path(..., description="Practice ID"),
+    customization_id: int = Path(..., description="Customization ID"),
+    user: dict = Depends(require_auth)
+):
+    """Update a practice appointment type customization"""
+    return PracticeAppointmentTypeController.update(
+        practice_id=practice_id,
+        customization_id=customization_id,
+        request=request
+    )
+
+
+@app.delete("/api/practices/{practice_id}/appointment-types/customizations/{customization_id}", status_code=204)
+async def delete_practice_customization(
+    practice_id: int = Path(..., description="Practice ID"),
+    customization_id: int = Path(..., description="Customization ID"),
+    user: dict = Depends(require_auth)
+):
+    """Delete a practice appointment type customization"""
+    PracticeAppointmentTypeController.destroy(
+        practice_id=practice_id,
+        customization_id=customization_id
+    )
+
+
+@app.get("/api/practices/{practice_id}/appointment-types/effective")
+async def get_effective_appointment_types(
+    practice_id: int = Path(..., description="Practice ID"),
+    active_only: bool = Query(True, description="Return only active appointment types"),
+    enabled_only: bool = Query(True, description="Return only enabled types for practice"),
+    user: dict = Depends(require_auth)
+):
+    """Get appointment types with effective settings (merged with customizations)"""
+    return PracticeAppointmentTypeController.get_effective_types(
+        practice_id=practice_id,
+        active_only=active_only,
+        enabled_only=enabled_only
+    )
 
