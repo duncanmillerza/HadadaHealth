@@ -256,7 +256,7 @@
 
     async function fetchPatients() {
       try {
-        const res = await fetch("http://127.0.0.1:8000/patients");
+        const res = await fetch("/patients");
         if (!res.ok) throw new Error("Failed to fetch patients");
         patients = await res.json();
         populatePatientDropdown();
@@ -283,7 +283,7 @@
 
     async function fetchTherapists() {
       try {
-        const res = await fetch("http://127.0.0.1:8000/therapists");
+        const res = await fetch("/therapists");
         if (!res.ok) throw new Error("Failed to fetch therapists");
         therapists = await res.json();
 
@@ -810,7 +810,7 @@ function closeModal() {
                 profession: updatedBooking.profession,
                 patient_id: updatedBooking.patient_id
               };
-              fetch(`http://127.0.0.1:8000/bookings/${updatedBooking.id}`, {
+              fetch(`/bookings/${updatedBooking.id}`, {
                 method: "PUT",
                 headers: {
                   "Content-Type": "application/json"
@@ -884,7 +884,7 @@ function closeModal() {
                           profession: booking.profession,
                           patient_id: booking.patient_id
                         };
-                        fetch(`http://127.0.0.1:8000/bookings/${booking.id}`, {
+                        fetch(`/bookings/${booking.id}`, {
                           method: "PUT",
                           headers: {
                             "Content-Type": "application/json"

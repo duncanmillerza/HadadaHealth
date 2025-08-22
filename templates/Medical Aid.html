@@ -121,7 +121,7 @@
 
   <script>
     async function loadAids() {
-      const res = await fetch("http://127.0.0.1:8000/medical_aids_full");
+      const res = await fetch("/medical_aids_full");
       const aids = await res.json();
 
       const tbody = document.querySelector("#medical-aid-table tbody");
@@ -230,7 +230,7 @@
               administrator: adminInput.value.trim()
             };
             try {
-              await fetch(`http://127.0.0.1:8000/medical_aids/${encodeURIComponent(name)}`, {
+              await fetch(`/medical_aids/${encodeURIComponent(name)}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data)
@@ -262,7 +262,7 @@
         delBtn.textContent = "Delete";
         delBtn.onclick = async () => {
           if (!confirm(`Delete ${name}?`)) return;
-          await fetch(`http://127.0.0.1:8000/medical_aids/${encodeURIComponent(name)}`, {
+          await fetch(`/medical_aids/${encodeURIComponent(name)}`, {
             method: "DELETE"
           });
           loadAids();
@@ -294,7 +294,7 @@
         administrator: document.getElementById("new-administrator").value.trim()
       };
       if (!data.name) return;
-      await fetch("http://127.0.0.1:8000/medical_aids", {
+      await fetch("/medical_aids", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data)

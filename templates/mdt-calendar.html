@@ -305,7 +305,7 @@
     async function fetchPatients() {
       try {
         // Fetch patients from FastAPI backend
-        const res = await fetch("http://127.0.0.1:8000/patients");
+        const res = await fetch("/patients");
         if (!res.ok) throw new Error("Failed to fetch patients");
         patients = await res.json();
         populatePatientDropdown();
@@ -331,7 +331,7 @@
     // --- BEGIN: Therapist fetching (from week-calendar.html) ---
     async function fetchTherapists() {
       try {
-        const res = await fetch("http://127.0.0.1:8000/therapists");
+        const res = await fetch("/therapists");
         if (!res.ok) throw new Error("Failed to fetch therapists");
         therapists = await res.json();
         const professions = [...new Set(therapists.map(t => t.profession).filter(Boolean))];
