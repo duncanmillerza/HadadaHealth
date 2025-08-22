@@ -1,656 +1,652 @@
 """
-Outcome measures management functions for HadadaHealth
+Outcome Measures module for HadadaHealth
+Handles outcome measure data storage, calculations, and validation
 """
-from typing import List, Dict, Any, Optional
-from fastapi import HTTPException, Body
-from pydantic import BaseModel
-from datetime import datetime
-from .database import get_db_connection, execute_query
 import sqlite3
+import json
+from typing import List, Dict, Any, Optional, Tuple
+from decimal import Decimal, ROUND_HALF_UP
+from datetime import datetime
+
+from modules.database import get_db_connection, execute_query, execute_many, table_exists
 
 
-class OutcomeMeasureType(BaseModel):
-    """Outcome Measure Type model"""
-    name: str
-    description: Optional[str] = None
-    score_type: Optional[str] = None
-    max_score: Optional[int] = None
-    interpretation: Optional[str] = None
-    category: Optional[str] = None
-    has_subscores: bool = False
-
-
-class OutcomeMeasureTypeSubscore(BaseModel):
-    """Outcome Measure Type Subscore model"""
-    outcome_measure_type_id: int
-    name: str
-    subcategory_name: Optional[str] = None
-    max_score: Optional[int] = None
-
-
-class OutcomeMeasure(BaseModel):
-    """Outcome Measure model"""
-    patient_id: str
-    therapist: str
-    appointment_id: Optional[str] = None
-    date: str
-    outcome_measure_type_id: int
-    score: Optional[float] = None
-    comments: Optional[str] = ""
-
-
-class OutcomeMeasureSubscore(BaseModel):
-    """Outcome Measure Subscore model"""
-    outcome_measure_id: int
-    subcategory_name: str
-    score: Optional[float] = None
-    max_score: Optional[int] = None
-    comments: Optional[str] = ""
-
-
-# ===== OUTCOME MEASURE TYPES MANAGEMENT =====
-
-def get_all_outcome_measure_types() -> List[Dict[str, Any]]:
-    """
-    Get all outcome measure types
-    
-    Returns:
-        List of outcome measure type dictionaries
-    """
-    query = """
-        SELECT id, name, description, score_type, max_score, interpretation, category, has_subscores
-        FROM outcome_measure_types
-        ORDER BY name
-    """
-    results = execute_query(query, fetch='all')
-    return [dict(row) for row in results] if results else []
-
-
-def get_outcome_measure_types_from_subscores() -> List[Dict[str, Any]]:
-    """
-    Get outcome measure types that have subscores (for dropdown usage)
-    
-    Returns:
-        List of outcome measure types with subscore information
-    """
-    query = """
-        SELECT DISTINCT outcome_measure_type_id, subcategory_name
-        FROM outcome_measure_type_subscores
-        ORDER BY subcategory_name
-    """
-    results = execute_query(query, fetch='all')
-    return [
-        {
-            "id": row["outcome_measure_type_id"],
-            "name": row["subcategory_name"]
-        }
-        for row in results
-    ] if results else []
-
-
-def create_outcome_measure_type(data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Create a new outcome measure type
-    
-    Args:
-        data: Dictionary containing outcome measure type information
-        
-    Returns:
-        Success response with new ID
-        
-    Raises:
-        HTTPException: If creation fails
-    """
+def initialize_outcome_measures_schema():
+    """Initialize the outcome measures database schema"""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
+        
+        # Create domains table
         cursor.execute("""
-            INSERT INTO outcome_measure_types (name, description, score_type, max_score, 
-                                             interpretation, category, has_subscores)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            data.get("name"),
-            data.get("description"),
-            data.get("score_type"),
-            data.get("max_score"),
-            data.get("interpretation"),
-            data.get("category"),
-            data.get("has_subscores", False)
-        ))
-        new_id = cursor.lastrowid
-        conn.commit()
-        return {"status": "success", "id": new_id}
-        
-    except sqlite3.IntegrityError:
-        raise HTTPException(status_code=400, detail="Outcome measure type already exists")
-    except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to create outcome measure type: {str(e)}")
-    finally:
-        conn.close()
-
-
-def update_outcome_measure_type(type_id: int, data: Dict[str, Any]) -> Dict[str, str]:
-    """
-    Update an existing outcome measure type
-    
-    Args:
-        type_id: The outcome measure type ID to update
-        data: Dictionary containing updated information
-        
-    Returns:
-        Success message dictionary
-        
-    Raises:
-        HTTPException: If update fails or type not found
-    """
-    # Check if type exists
-    existing = get_outcome_measure_type_by_id(type_id)
-    if not existing:
-        raise HTTPException(status_code=404, detail="Outcome measure type not found")
-    
-    valid_fields = [
-        'name', 'description', 'score_type', 'max_score', 
-        'interpretation', 'category', 'has_subscores'
-    ]
-    
-    update_fields = [field for field in valid_fields if field in data]
-    if not update_fields:
-        return {"detail": "No fields to update"}
-    
-    conn = get_db_connection()
-    try:
-        set_clause = ', '.join([f"{field} = ?" for field in update_fields])
-        values = [data[field] for field in update_fields] + [type_id]
-        
-        query = f"UPDATE outcome_measure_types SET {set_clause} WHERE id = ?"
-        cursor = conn.cursor()
-        cursor.execute(query, values)
-        conn.commit()
-        
-        return {"detail": "Outcome measure type updated successfully"}
-        
-    except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to update outcome measure type: {str(e)}")
-    finally:
-        conn.close()
-
-
-def delete_outcome_measure_type(type_id: int) -> Dict[str, str]:
-    """
-    Delete an outcome measure type
-    
-    Args:
-        type_id: The outcome measure type ID to delete
-        
-    Returns:
-        Success message dictionary
-        
-    Raises:
-        HTTPException: If deletion fails or type not found
-    """
-    # Check if type exists
-    existing = get_outcome_measure_type_by_id(type_id)
-    if not existing:
-        raise HTTPException(status_code=404, detail="Outcome measure type not found")
-    
-    conn = get_db_connection()
-    try:
-        # Check if type is being used
-        measures_check = conn.execute(
-            "SELECT COUNT(*) FROM outcome_measures WHERE outcome_measure_type_id = ?", 
-            (type_id,)
-        ).fetchone()
-        
-        if measures_check and measures_check[0] > 0:
-            raise HTTPException(
-                status_code=400, 
-                detail="Cannot delete outcome measure type with associated measures"
+            CREATE TABLE IF NOT EXISTS outcome_domains (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name VARCHAR(50) NOT NULL,
+                display_order INTEGER DEFAULT 1
             )
+        """)
         
-        cursor = conn.cursor()
-        # Delete associated subscores first
-        cursor.execute("DELETE FROM outcome_measure_type_subscores WHERE outcome_measure_type_id = ?", (type_id,))
-        # Delete the type
-        cursor.execute("DELETE FROM outcome_measure_types WHERE id = ?", (type_id,))
+        # Create measures table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS outcome_measures (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                domain_id INTEGER REFERENCES outcome_domains(id),
+                name VARCHAR(100) NOT NULL,
+                abbreviation VARCHAR(10) NOT NULL,
+                type VARCHAR(20) NOT NULL, -- 'multi_item', 'single_score', 'timed', 'distance'
+                total_items INTEGER,
+                max_score INTEGER,
+                unit VARCHAR(20),
+                allows_individual_items BOOLEAN DEFAULT TRUE,
+                calculation_type VARCHAR(20), -- 'sum', 'average', 'time_to_speed', 'distance'
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # Create outcome entries table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS outcome_entries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                treatment_note_id INTEGER REFERENCES treatment_notes(id),
+                measure_id INTEGER REFERENCES outcome_measures(id),
+                entry_method VARCHAR(20) NOT NULL, -- 'individual_items', 'total_only'
+                total_score DECIMAL(10,2),
+                calculated_result VARCHAR(100),
+                assistive_device TEXT,
+                additional_notes TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                created_by INTEGER REFERENCES users(id)
+            )
+        """)
+        
+        # Create item scores table for multi-item measures
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS outcome_item_scores (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                entry_id INTEGER REFERENCES outcome_entries(id),
+                item_number INTEGER NOT NULL,
+                score INTEGER NOT NULL,
+                max_possible INTEGER NOT NULL
+            )
+        """)
+        
+        # Create raw data table for timed/distance measures
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS outcome_raw_data (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                entry_id INTEGER REFERENCES outcome_entries(id),
+                data_type VARCHAR(50) NOT NULL, -- 'time_seconds', 'distance_meters', 'trial_1_time', etc.
+                value DECIMAL(10,3) NOT NULL,
+                unit VARCHAR(20) NOT NULL
+            )
+        """)
+        
         conn.commit()
         
-        return {"detail": "Outcome measure type deleted successfully"}
+        # Insert default data if tables are empty
+        _insert_default_data(cursor)
+        conn.commit()
         
-    except HTTPException:
-        raise
-    except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to delete outcome measure type: {str(e)}")
     finally:
         conn.close()
 
 
-def get_outcome_measure_type_by_id(type_id: int) -> Optional[Dict[str, Any]]:
-    """
-    Get an outcome measure type by ID
+def _insert_default_data(cursor):
+    """Insert default domains and measures"""
     
-    Args:
-        type_id: The outcome measure type ID
+    # Check if domains exist
+    cursor.execute("SELECT COUNT(*) FROM outcome_domains")
+    if cursor.fetchone()[0] == 0:
+        # Insert domains
+        domains = [
+            ('Balance', 1),
+            ('Mobility', 2),
+            ('Function', 3)
+        ]
+        cursor.executemany(
+            "INSERT INTO outcome_domains (name, display_order) VALUES (?, ?)",
+            domains
+        )
+    
+    # Check if measures exist
+    cursor.execute("SELECT COUNT(*) FROM outcome_measures")
+    if cursor.fetchone()[0] == 0:
+        # Get domain IDs
+        cursor.execute("SELECT id, name FROM outcome_domains")
+        domain_map = {name: id for id, name in cursor.fetchall()}
         
-    Returns:
-        Outcome measure type dictionary or None if not found
-    """
-    query = """
-        SELECT id, name, description, score_type, max_score, interpretation, category, has_subscores
-        FROM outcome_measure_types WHERE id = ?
-    """
-    result = execute_query(query, (type_id,), fetch='one')
-    return dict(result) if result else None
-
-
-def get_outcome_measure_categories() -> List[str]:
-    """
-    Get unique outcome measure categories
-    
-    Returns:
-        List of category names
-    """
-    query = """
-        SELECT DISTINCT category 
-        FROM outcome_measure_types 
-        WHERE category IS NOT NULL AND TRIM(category) != ''
-        ORDER BY category
-    """
-    results = execute_query(query, fetch='all')
-    return [row[0] for row in results] if results else []
-
-
-def get_outcome_measures_by_category(category: str) -> List[Dict[str, Any]]:
-    """
-    Get outcome measures filtered by category
-    
-    Args:
-        category: The category to filter by
+        # Insert measures
+        measures = [
+            (domain_map['Balance'], 'Berg Balance Scale', 'BBS', 'multi_item', 14, 56, 'points', True, 'sum'),
+            (domain_map['Balance'], 'Activities-Specific Balance Confidence Scale', 'ABC', 'multi_item', 16, 100, 'percentage', True, 'average'),
+            (domain_map['Mobility'], '10 Meter Walk Test', '10mWT', 'timed', None, None, 'm/s', False, 'time_to_speed'),
+            (domain_map['Function'], 'Five Times Sit-to-Stand', '5TSTS', 'timed', None, None, 'seconds', False, 'time_only'),
+            (domain_map['Mobility'], 'Functional Gait Assessment', 'FGA', 'multi_item', 10, 30, 'points', True, 'sum'),
+            (domain_map['Function'], 'Six Minute Walk Test', '6MWT', 'distance', None, None, 'meters', False, 'distance_only')
+        ]
         
-    Returns:
-        List of outcome measure dictionaries
-    """
+        cursor.executemany("""
+            INSERT INTO outcome_measures 
+            (domain_id, name, abbreviation, type, total_items, max_score, unit, allows_individual_items, calculation_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, measures)
+
+
+class OutcomeMeasureCalculator:
+    """Handles calculations for different outcome measures"""
+    
+    @staticmethod
+    def calculate_berg_balance_scale(items_scores: List[int]) -> Dict[str, Any]:
+        """BBS: Sum of 14 items (0-4 each) = 0-56 total"""
+        if len(items_scores) != 14:
+            raise ValueError("BBS requires exactly 14 item scores")
+        
+        total = sum(items_scores)
+        if not 0 <= total <= 56:
+            raise ValueError("BBS total must be 0-56")
+            
+        return {
+            'total_score': total,
+            'max_score': 56,
+            'percentage': round((total / 56) * 100, 1),
+            'interpretation': _get_bbs_interpretation(total),
+            'calculated_result': f"{total}/56 ({_get_bbs_interpretation(total)})"
+        }
+    
+    @staticmethod
+    def calculate_abc_scale(items_scores: List[float]) -> Dict[str, Any]:
+        """ABC: Average of 16 items (0-100% each) = 0-100% average"""
+        if len(items_scores) != 16:
+            raise ValueError("ABC requires exactly 16 item scores")
+        
+        average = sum(items_scores) / 16
+        average = float(Decimal(str(average)).quantize(Decimal('0.1'), rounding=ROUND_HALF_UP))
+        
+        return {
+            'total_score': average,
+            'max_score': 100,
+            'unit': 'percentage',
+            'interpretation': _get_abc_interpretation(average),
+            'calculated_result': f"{average}% ({_get_abc_interpretation(average)})"
+        }
+    
+    @staticmethod
+    def calculate_10mwt(comfortable_times: List[float], fast_times: List[float] = None) -> Dict[str, Any]:
+        """10mWT: 6 meters ÷ average time = speed in m/s"""
+        results = {}
+        
+        if comfortable_times and all(t > 0 for t in comfortable_times):
+            avg_time = sum(comfortable_times) / len(comfortable_times)
+            speed = 6.0 / avg_time
+            speed = float(Decimal(str(speed)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
+            
+            results['comfortable'] = {
+                'average_time': round(avg_time, 2),
+                'speed_ms': speed,
+                'interpretation': _get_10mwt_interpretation(speed, 'comfortable')
+            }
+        
+        if fast_times and all(t > 0 for t in fast_times):
+            avg_time = sum(fast_times) / len(fast_times)
+            speed = 6.0 / avg_time
+            speed = float(Decimal(str(speed)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
+            
+            results['fast'] = {
+                'average_time': round(avg_time, 2),
+                'speed_ms': speed,
+                'interpretation': _get_10mwt_interpretation(speed, 'fast')
+            }
+        
+        # Format result string
+        result_parts = []
+        if 'comfortable' in results:
+            result_parts.append(f"Comfortable: {results['comfortable']['speed_ms']} m/s")
+        if 'fast' in results:
+            result_parts.append(f"Fast: {results['fast']['speed_ms']} m/s")
+        
+        results['calculated_result'] = " | ".join(result_parts)
+        return results
+    
+    @staticmethod
+    def calculate_5tsts(time_seconds: float) -> Dict[str, Any]:
+        """5TSTS: Time to complete 5 sit-to-stands"""
+        if time_seconds <= 0:
+            raise ValueError("Time must be positive")
+        
+        return {
+            'time_seconds': round(time_seconds, 1),
+            'interpretation': _get_5tsts_interpretation(time_seconds),
+            'calculated_result': f"{round(time_seconds, 1)}s ({_get_5tsts_interpretation(time_seconds)})"
+        }
+    
+    @staticmethod
+    def calculate_fga(items_scores: List[int]) -> Dict[str, Any]:
+        """FGA: Sum of 10 items (0-3 each) = 0-30 total"""
+        if len(items_scores) != 10:
+            raise ValueError("FGA requires exactly 10 item scores")
+        
+        total = sum(items_scores)
+        if not 0 <= total <= 30:
+            raise ValueError("FGA total must be 0-30")
+        
+        return {
+            'total_score': total,
+            'max_score': 30,
+            'percentage': round((total / 30) * 100, 1),
+            'interpretation': _get_fga_interpretation(total),
+            'calculated_result': f"{total}/30 ({_get_fga_interpretation(total)})"
+        }
+    
+    @staticmethod
+    def calculate_6mwt(distance_meters: float, actual_time_minutes: float = 6.0) -> Dict[str, Any]:
+        """6MWT: Total distance walked in meters"""
+        if distance_meters < 0:
+            raise ValueError("Distance must be non-negative")
+        
+        return {
+            'distance_meters': distance_meters,
+            'actual_time_minutes': actual_time_minutes,
+            'meters_per_minute': round(distance_meters / actual_time_minutes, 1) if actual_time_minutes > 0 else 0,
+            'interpretation': _get_6mwt_interpretation(distance_meters),
+            'calculated_result': f"{distance_meters}m ({_get_6mwt_interpretation(distance_meters)})"
+        }
+
+
+# Interpretation helper functions
+def _get_bbs_interpretation(score: int) -> str:
+    if score >= 45:
+        return "Low fall risk"
+    elif score >= 36:
+        return "Medium fall risk"
+    else:
+        return "High fall risk"
+
+
+def _get_abc_interpretation(score: float) -> str:
+    if score >= 80:
+        return "High level of physical functioning"
+    elif score >= 50:
+        return "Moderate level of physical functioning"
+    else:
+        return "Low level of physical functioning"
+
+
+def _get_10mwt_interpretation(speed: float, test_type: str) -> str:
+    if test_type == 'comfortable':
+        if speed >= 1.0:
+            return "Community ambulator"
+        elif speed >= 0.4:
+            return "Limited community ambulator"
+        else:
+            return "Household ambulator"
+    return f"Fast walking speed: {speed} m/s"
+
+
+def _get_5tsts_interpretation(time: float) -> str:
+    if time <= 11:
+        return "Normal function"
+    elif time <= 13.6:
+        return "Mostly normal function"
+    else:
+        return "Below normal function"
+
+
+def _get_fga_interpretation(score: int) -> str:
+    if score >= 23:
+        return "Low fall risk"
+    elif score >= 19:
+        return "Medium fall risk"
+    else:
+        return "High fall risk"
+
+
+def _get_6mwt_interpretation(distance: float) -> str:
+    if distance >= 400:
+        return "Good functional capacity"
+    elif distance >= 300:
+        return "Moderate functional capacity"
+    else:
+        return "Limited functional capacity"
+
+
+class OutcomeMeasureValidator:
+    """Validates outcome measure entries"""
+    
+    VALIDATION_RULES = {
+        'BBS': {
+            'item_range': (0, 4),
+            'total_items': 14,
+            'total_range': (0, 56)
+        },
+        'ABC': {
+            'item_range': (0, 100),
+            'total_items': 16,
+            'total_range': (0, 100)
+        },
+        '10mWT': {
+            'time_range': (1.0, 60.0),
+            'speed_range': (0.1, 6.0)
+        },
+        '5TSTS': {
+            'time_range': (3.0, 120.0)
+        },
+        'FGA': {
+            'item_range': (0, 3),
+            'total_items': 10,
+            'total_range': (0, 30)
+        },
+        '6MWT': {
+            'distance_range': (0, 1000),
+            'time_range': (0.5, 6.0)
+        }
+    }
+    
+    @classmethod
+    def validate_entry(cls, measure_abbrev: str, data: Dict[str, Any]) -> List[str]:
+        """Validate an outcome measure entry"""
+        rules = cls.VALIDATION_RULES.get(measure_abbrev)
+        if not rules:
+            return [f"Unknown measure: {measure_abbrev}"]
+        
+        errors = []
+        
+        if measure_abbrev in ['BBS', 'ABC', 'FGA']:
+            errors.extend(cls._validate_multi_item(measure_abbrev, data, rules))
+        elif measure_abbrev in ['10mWT', '5TSTS']:
+            errors.extend(cls._validate_timed(measure_abbrev, data, rules))
+        elif measure_abbrev == '6MWT':
+            errors.extend(cls._validate_distance(data, rules))
+        
+        return errors
+    
+    @classmethod
+    def _validate_multi_item(cls, measure: str, data: Dict, rules: Dict) -> List[str]:
+        errors = []
+        
+        if 'individual_items' in data:
+            items = data['individual_items']
+            if len(items) != rules['total_items']:
+                errors.append(f"{measure} requires {rules['total_items']} items")
+            
+            for i, score in enumerate(items, 1):
+                if not (rules['item_range'][0] <= score <= rules['item_range'][1]):
+                    errors.append(f"Item {i} must be {rules['item_range'][0]}-{rules['item_range'][1]}")
+        
+        elif 'total_score' in data:
+            total = data['total_score']
+            if not (rules['total_range'][0] <= total <= rules['total_range'][1]):
+                errors.append(f"Total score must be {rules['total_range'][0]}-{rules['total_range'][1]}")
+        
+        return errors
+    
+    @classmethod
+    def _validate_timed(cls, measure: str, data: Dict, rules: Dict) -> List[str]:
+        errors = []
+        
+        if measure == '10mWT':
+            for trial_type in ['comfortable_trials', 'fast_trials']:
+                if trial_type in data and data[trial_type]:
+                    for i, time_val in enumerate(data[trial_type], 1):
+                        if not (rules['time_range'][0] <= time_val <= rules['time_range'][1]):
+                            errors.append(f"{trial_type.replace('_', ' ').title()} trial {i}: {rules['time_range'][0]}-{rules['time_range'][1]} seconds")
+        
+        elif measure == '5TSTS':
+            if 'time_seconds' in data:
+                time_val = data['time_seconds']
+                if not (rules['time_range'][0] <= time_val <= rules['time_range'][1]):
+                    errors.append(f"Time must be {rules['time_range'][0]}-{rules['time_range'][1]} seconds")
+        
+        return errors
+    
+    @classmethod
+    def _validate_distance(cls, data: Dict, rules: Dict) -> List[str]:
+        errors = []
+        
+        if 'distance_meters' in data:
+            distance = data['distance_meters']
+            if not (rules['distance_range'][0] <= distance <= rules['distance_range'][1]):
+                errors.append(f"Distance must be {rules['distance_range'][0]}-{rules['distance_range'][1]} meters")
+        
+        return errors
+
+
+# Data access functions
+def get_all_domains() -> List[Dict[str, Any]]:
+    """Get all outcome domains"""
+    query = "SELECT * FROM outcome_domains ORDER BY display_order"
+    result = execute_query(query, fetch='all')
+    return [dict(row) for row in result] if result else []
+
+
+def get_measures_by_domain(domain_id: int) -> List[Dict[str, Any]]:
+    """Get measures for a specific domain"""
     query = """
-        SELECT id, name, description, max_score
-        FROM outcome_measure_types 
-        WHERE category = ?
+        SELECT * FROM outcome_measures 
+        WHERE domain_id = ? 
         ORDER BY name
     """
-    results = execute_query(query, (category,), fetch='all')
-    return [dict(row) for row in results] if results else []
+    result = execute_query(query, (domain_id,), fetch='all')
+    return [dict(row) for row in result] if result else []
 
 
-# ===== OUTCOME MEASURE TYPE SUBSCORES MANAGEMENT =====
-
-def create_outcome_measure_type_subscore(data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Create a new outcome measure type subscore
-    
-    Args:
-        data: Dictionary containing subscore information
-        
-    Returns:
-        Success response with new ID
-        
-    Raises:
-        HTTPException: If creation fails
-    """
-    conn = get_db_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO outcome_measure_type_subscores (outcome_measure_type_id, name, subcategory_name, max_score)
-            VALUES (?, ?, ?, ?)
-        """, (
-            data.get("outcome_measure_type_id"),
-            data.get("name"),
-            data.get("subcategory_name"),
-            data.get("max_score")
-        ))
-        new_id = cursor.lastrowid
-        conn.commit()
-        return {"status": "success", "id": new_id}
-        
-    except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to create outcome measure type subscore: {str(e)}")
-    finally:
-        conn.close()
-
-
-def get_outcome_measure_type_subscores(type_id: int) -> List[Dict[str, Any]]:
-    """
-    Get subscores for an outcome measure type
-    
-    Args:
-        type_id: The outcome measure type ID
-        
-    Returns:
-        List of subscore dictionaries
-    """
-    query = """
-        SELECT id, subcategory_name, max_score, name
-        FROM outcome_measure_type_subscores
-        WHERE outcome_measure_type_id = ?
-        ORDER BY subcategory_name
-    """
-    results = execute_query(query, (type_id,), fetch='all')
-    return [dict(row) for row in results] if results else []
-
-
-# ===== OUTCOME MEASURES MANAGEMENT =====
-
-def create_outcome_measure(data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Create a new outcome measure
-    
-    Args:
-        data: Dictionary containing outcome measure information
-        
-    Returns:
-        Success response with new ID
-        
-    Raises:
-        HTTPException: If creation fails
-    """
-    conn = get_db_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO outcome_measures
-              (patient_id, therapist, appointment_id, date, outcome_measure, score, comments)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            data.get("patient_id"),
-            data.get("therapist", ""),
-            data.get("appointment_id"),
-            data.get("date"),
-            data.get("outcome_measure_type_id") or data.get("outcome_measure", ""),
-            data.get("score"),
-            data.get("comments", "")
-        ))
-        new_id = cursor.lastrowid
-        conn.commit()
-        return {"id": new_id}
-        
-    except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to create outcome measure: {str(e)}")
-    finally:
-        conn.close()
-
-
-def get_outcome_measures_by_patient(patient_id: str) -> List[Dict[str, Any]]:
-    """
-    Get outcome measures for a specific patient
-    
-    Args:
-        patient_id: The patient ID
-        
-    Returns:
-        List of outcome measure dictionaries
-    """
-    query = """
-        SELECT om.*, omt.name as type_name, omt.description as type_description
-        FROM outcome_measures om
-        JOIN outcome_measure_types omt ON om.outcome_measure_type_id = omt.id
-        WHERE om.patient_id = ?
-        ORDER BY om.date DESC
-    """
-    results = execute_query(query, (patient_id,), fetch='all')
-    return [dict(row) for row in results] if results else []
-
-
-def get_outcome_measure_by_id(measure_id: int) -> Optional[Dict[str, Any]]:
-    """
-    Get an outcome measure by ID
-    
-    Args:
-        measure_id: The outcome measure ID
-        
-    Returns:
-        Outcome measure dictionary or None if not found
-    """
-    query = """
-        SELECT * FROM outcome_measures WHERE id = ?
-    """
+def get_measure_by_id(measure_id: int) -> Optional[Dict[str, Any]]:
+    """Get measure by ID"""
+    query = "SELECT * FROM outcome_measures WHERE id = ?"
     result = execute_query(query, (measure_id,), fetch='one')
     return dict(result) if result else None
 
 
-def update_outcome_measure(measure_id: int, data: Dict[str, Any]) -> Dict[str, str]:
-    """
-    Update an existing outcome measure
-    
-    Args:
-        measure_id: The outcome measure ID to update
-        data: Dictionary containing updated information
-        
-    Returns:
-        Success message dictionary
-        
-    Raises:
-        HTTPException: If update fails or measure not found
-    """
-    # Check if measure exists
-    existing = get_outcome_measure_by_id(measure_id)
-    if not existing:
-        raise HTTPException(status_code=404, detail="Outcome measure not found")
-    
-    valid_fields = ['patient_id', 'therapist', 'appointment_id', 'date', 'outcome_measure_type_id', 'score', 'comments']
-    update_fields = [field for field in valid_fields if field in data]
-    
-    if not update_fields:
-        return {"detail": "No fields to update"}
-    
+def create_outcome_entry(appointment_id: str, measure_id: int, entry_data: Dict[str, Any], user_id: int) -> int:
+    """Create a new outcome entry"""
     conn = get_db_connection()
     try:
-        set_clause = ', '.join([f"{field} = ?" for field in update_fields])
-        values = [data[field] for field in update_fields] + [measure_id]
-        
-        query = f"UPDATE outcome_measures SET {set_clause} WHERE id = ?"
         cursor = conn.cursor()
-        cursor.execute(query, values)
+        
+        # Insert main entry
+        cursor.execute("""
+            INSERT INTO outcome_entries 
+            (appointment_id, measure_id, entry_method, total_score, calculated_result, 
+             assistive_device, additional_notes, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            appointment_id, measure_id, entry_data.get('entry_method'),
+            entry_data.get('total_score'), entry_data.get('calculated_result'),
+            entry_data.get('assistive_device'), entry_data.get('additional_notes'),
+            user_id
+        ))
+        
+        entry_id = cursor.lastrowid
+        
+        # Insert item scores if provided
+        if entry_data.get('individual_items'):
+            item_scores = []
+            max_score = entry_data.get('max_item_score', 4)  # Default for most measures
+            for i, score in enumerate(entry_data['individual_items'], 1):
+                item_scores.append((entry_id, i, score, max_score))
+            
+            cursor.executemany("""
+                INSERT INTO outcome_item_scores (entry_id, item_number, score, max_possible)
+                VALUES (?, ?, ?, ?)
+            """, item_scores)
+        
+        # Insert raw data if provided
+        if entry_data.get('raw_data'):
+            raw_data_entries = []
+            for data_type, values in entry_data['raw_data'].items():
+                if isinstance(values, list):
+                    for i, value in enumerate(values):
+                        raw_data_entries.append((entry_id, f"{data_type}_trial_{i+1}", value, entry_data.get('unit', 'seconds')))
+                else:
+                    raw_data_entries.append((entry_id, data_type, values, entry_data.get('unit', 'seconds')))
+            
+            cursor.executemany("""
+                INSERT INTO outcome_raw_data (entry_id, data_type, value, unit)
+                VALUES (?, ?, ?, ?)
+            """, raw_data_entries)
+        
         conn.commit()
+        return entry_id
         
-        return {"detail": "Outcome measure updated successfully"}
-        
-    except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to update outcome measure: {str(e)}")
     finally:
         conn.close()
 
 
-def delete_outcome_measure(measure_id: int) -> Dict[str, str]:
-    """
-    Delete an outcome measure
-    
-    Args:
-        measure_id: The outcome measure ID to delete
-        
-    Returns:
-        Success message dictionary
-        
-    Raises:
-        HTTPException: If deletion fails or measure not found
-    """
-    # Check if measure exists
-    existing = get_outcome_measure_by_id(measure_id)
-    if not existing:
-        raise HTTPException(status_code=404, detail="Outcome measure not found")
-    
-    conn = get_db_connection()
-    try:
-        cursor = conn.cursor()
-        # Delete associated subscores first
-        cursor.execute("DELETE FROM outcome_measure_subscores WHERE outcome_measure_id = ?", (measure_id,))
-        # Delete the measure
-        cursor.execute("DELETE FROM outcome_measures WHERE id = ?", (measure_id,))
-        conn.commit()
-        
-        return {"detail": "Outcome measure deleted successfully"}
-        
-    except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to delete outcome measure: {str(e)}")
-    finally:
-        conn.close()
-
-
-# ===== OUTCOME MEASURE SUBSCORES MANAGEMENT =====
-
-def add_outcome_measure_subscores(measure_id: int, subscores: List[Dict[str, Any]]) -> Dict[str, str]:
-    """
-    Add subscores to an outcome measure
-    
-    Args:
-        measure_id: The outcome measure ID
-        subscores: List of subscore dictionaries
-        
-    Returns:
-        Success message dictionary
-        
-    Raises:
-        HTTPException: If creation fails
-    """
-    if not isinstance(subscores, list):
-        raise HTTPException(status_code=400, detail="Subscores must be a list")
-    
-    # Check if measure exists
-    existing = get_outcome_measure_by_id(measure_id)
-    if not existing:
-        raise HTTPException(status_code=404, detail="Outcome measure not found")
-    
-    conn = get_db_connection()
-    try:
-        cursor = conn.cursor()
-        for subscore in subscores:
-            cursor.execute("""
-                INSERT INTO outcome_measure_subscores
-                  (outcome_measure_id, subcategory_name, score, max_score, comments)
-                VALUES (?, ?, ?, ?, ?)
-            """, (
-                measure_id,
-                subscore.get("subcategory_name"),
-                subscore.get("score"),
-                subscore.get("max_score"),
-                subscore.get("comments", "")
-            ))
-        conn.commit()
-        return {"detail": "Subscores added successfully"}
-        
-    except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to add subscores: {str(e)}")
-    finally:
-        conn.close()
-
-
-def get_outcome_measure_subscores(measure_id: int) -> List[Dict[str, Any]]:
-    """
-    Get subscores for an outcome measure
-    
-    Args:
-        measure_id: The outcome measure ID
-        
-    Returns:
-        List of subscore dictionaries
-    """
+def get_outcome_entries_for_treatment_note(appointment_id: str) -> List[Dict[str, Any]]:
+    """Get all outcome entries for a treatment note"""
     query = """
-        SELECT id, outcome_measure_id, subcategory_name, score, max_score, comments
-        FROM outcome_measure_subscores
-        WHERE outcome_measure_id = ?
-        ORDER BY subcategory_name
+        SELECT 
+            oe.*,
+            om.name as measure_name,
+            om.abbreviation as measure_abbreviation,
+            od.name as domain_name
+        FROM outcome_entries oe
+        JOIN outcome_measures om ON oe.measure_id = om.id
+        JOIN outcome_domains od ON om.domain_id = od.id
+        WHERE oe.appointment_id = ?
+        ORDER BY oe.timestamp
     """
-    results = execute_query(query, (measure_id,), fetch='all')
-    return [dict(row) for row in results] if results else []
+    result = execute_query(query, (appointment_id,), fetch='all')
+    return [dict(row) for row in result] if result else []
 
 
-def search_outcome_measures(search_term: str) -> List[Dict[str, Any]]:
-    """
-    Search outcome measures by patient, therapist, or type
-    
-    Args:
-        search_term: The search term
-        
-    Returns:
-        List of matching outcome measure dictionaries
-    """
-    search_pattern = f"%{search_term}%"
-    query = """
-        SELECT om.*, omt.name as type_name, omt.description as type_description
-        FROM outcome_measures om
-        JOIN outcome_measure_types omt ON om.outcome_measure_type_id = omt.id
-        WHERE 
-            om.patient_id LIKE ? OR 
-            om.therapist LIKE ? OR
-            omt.name LIKE ? OR
-            om.comments LIKE ?
-        ORDER BY om.date DESC
-    """
-    
-    params = [search_pattern] * 4
-    results = execute_query(query, tuple(params), fetch='all')
-    return [dict(row) for row in results] if results else []
-
-
-def get_outcome_measures_statistics() -> Dict[str, Any]:
-    """
-    Get statistics about outcome measures
-    
-    Returns:
-        Statistics dictionary
-    """
+def get_outcome_entry_by_id(entry_id: int) -> Optional[Dict[str, Any]]:
+    """Get detailed outcome entry by ID including item scores and raw data"""
     conn = get_db_connection()
     try:
-        stats = {}
+        cursor = conn.cursor()
         
-        # Total outcome measures
-        total_result = conn.execute("SELECT COUNT(*) FROM outcome_measures").fetchone()
-        stats['total_outcome_measures'] = total_result[0] if total_result else 0
+        # Get main entry
+        cursor.execute("""
+            SELECT 
+                oe.*,
+                om.name as measure_name,
+                om.abbreviation as measure_abbreviation,
+                om.type as measure_type,
+                om.total_items,
+                om.max_score,
+                od.name as domain_name
+            FROM outcome_entries oe
+            JOIN outcome_measures om ON oe.measure_id = om.id
+            JOIN outcome_domains od ON om.domain_id = od.id
+            WHERE oe.id = ?
+        """, (entry_id,))
         
-        # Total outcome measure types
-        types_result = conn.execute("SELECT COUNT(*) FROM outcome_measure_types").fetchone()
-        stats['total_outcome_measure_types'] = types_result[0] if types_result else 0
+        entry = cursor.fetchone()
+        if not entry:
+            return None
         
-        # Measures by type
-        type_stats = conn.execute("""
-            SELECT omt.name, COUNT(om.id) as count
-            FROM outcome_measure_types omt
-            LEFT JOIN outcome_measures om ON omt.id = om.outcome_measure_type_id
-            GROUP BY omt.id, omt.name
-            ORDER BY count DESC
-        """).fetchall()
+        entry = dict(entry)
         
-        stats['measures_by_type'] = {}
-        for type_name, count in type_stats:
-            stats['measures_by_type'][type_name] = count
+        # Get item scores if they exist
+        cursor.execute("""
+            SELECT item_number, score, max_possible 
+            FROM outcome_item_scores 
+            WHERE entry_id = ? 
+            ORDER BY item_number
+        """, (entry_id,))
         
-        # Measures by category
-        category_stats = conn.execute("""
-            SELECT omt.category, COUNT(om.id) as count
-            FROM outcome_measure_types omt
-            LEFT JOIN outcome_measures om ON omt.id = om.outcome_measure_type_id
-            WHERE omt.category IS NOT NULL AND omt.category != ''
-            GROUP BY omt.category
-            ORDER BY count DESC
-        """).fetchall()
+        item_scores = cursor.fetchall()
+        if item_scores:
+            entry['individual_items'] = [row[1] for row in item_scores]
         
-        stats['measures_by_category'] = {}
-        for category, count in category_stats:
-            stats['measures_by_category'][category] = count
+        # Get raw data if it exists
+        cursor.execute("""
+            SELECT data_type, value, unit 
+            FROM outcome_raw_data 
+            WHERE entry_id = ?
+            ORDER BY data_type
+        """, (entry_id,))
         
-        # Recent measures (last 30 days)
-        recent_result = conn.execute("""
-            SELECT COUNT(*) FROM outcome_measures 
-            WHERE date >= date('now', '-30 days')
-        """).fetchone()
-        stats['recent_measures_30d'] = recent_result[0] if recent_result else 0
+        raw_data = cursor.fetchall()
+        if raw_data:
+            entry['raw_data'] = {}
+            for data_type, value, unit in raw_data:
+                if data_type not in entry['raw_data']:
+                    entry['raw_data'][data_type] = []
+                entry['raw_data'][data_type].append(value)
         
-        return stats
+        return entry
         
     finally:
         conn.close()
+
+
+def update_outcome_entry(entry_id: int, entry_data: Dict[str, Any]) -> bool:
+    """Update an existing outcome entry"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        
+        # Update main entry
+        cursor.execute("""
+            UPDATE outcome_entries 
+            SET entry_method = ?, total_score = ?, calculated_result = ?,
+                assistive_device = ?, additional_notes = ?, timestamp = CURRENT_TIMESTAMP
+            WHERE id = ?
+        """, (
+            entry_data.get('entry_method'), entry_data.get('total_score'),
+            entry_data.get('calculated_result'), entry_data.get('assistive_device'),
+            entry_data.get('additional_notes'), entry_id
+        ))
+        
+        # Delete existing related data
+        cursor.execute("DELETE FROM outcome_item_scores WHERE entry_id = ?", (entry_id,))
+        cursor.execute("DELETE FROM outcome_raw_data WHERE entry_id = ?", (entry_id,))
+        
+        # Insert new item scores if provided
+        if entry_data.get('individual_items'):
+            item_scores = []
+            max_score = entry_data.get('max_item_score', 4)
+            for i, score in enumerate(entry_data['individual_items'], 1):
+                item_scores.append((entry_id, i, score, max_score))
+            
+            cursor.executemany("""
+                INSERT INTO outcome_item_scores (entry_id, item_number, score, max_possible)
+                VALUES (?, ?, ?, ?)
+            """, item_scores)
+        
+        # Insert new raw data if provided
+        if entry_data.get('raw_data'):
+            raw_data_entries = []
+            for data_type, values in entry_data['raw_data'].items():
+                if isinstance(values, list):
+                    for i, value in enumerate(values):
+                        raw_data_entries.append((entry_id, f"{data_type}_trial_{i+1}", value, entry_data.get('unit', 'seconds')))
+                else:
+                    raw_data_entries.append((entry_id, data_type, values, entry_data.get('unit', 'seconds')))
+            
+            cursor.executemany("""
+                INSERT INTO outcome_raw_data (entry_id, data_type, value, unit)
+                VALUES (?, ?, ?, ?)
+            """, raw_data_entries)
+        
+        conn.commit()
+        return cursor.rowcount > 0
+        
+    finally:
+        conn.close()
+
+
+def delete_outcome_entry(entry_id: int) -> bool:
+    """Delete an outcome entry and all related data"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        
+        # Delete related data first
+        cursor.execute("DELETE FROM outcome_item_scores WHERE entry_id = ?", (entry_id,))
+        cursor.execute("DELETE FROM outcome_raw_data WHERE entry_id = ?", (entry_id,))
+        
+        # Delete main entry
+        cursor.execute("DELETE FROM outcome_entries WHERE id = ?", (entry_id,))
+        
+        conn.commit()
+        return cursor.rowcount > 0
+        
+    finally:
+        conn.close()
+
+
+# Initialize schema when module is imported
+# if not table_exists('outcome_domains'):
+#     initialize_outcome_measures_schema()

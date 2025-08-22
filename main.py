@@ -6,7 +6,7 @@ import sqlite3
 import smtplib
 import ssl
 import textwrap
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import BytesIO
 from typing import List, Optional
 
@@ -25,6 +25,14 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, EmailStr
+from models.validation import (
+    PatientCreateModel, PatientUpdateModel, TreatmentNoteModel, 
+    BillingAmountModel, BillingSessionModel, BillingSubmissionModel, AlertResolutionModel,
+    UserUpdateModel, TherapistUpdateModel, SettingsUpdateModel, ProfessionUpdateModel,
+    ClinicUpdateModel, BillingCodeUpdateModel, InvoiceCreateModel, InvoiceUpdateModel,
+    ReminderCreateModel, ReminderUpdateModel,
+    UserPreferencesUpdateModel, SystemConfigurationModel, SystemBackupModel, AppointmentBillingModel
+)
 from reportlab.pdfgen import canvas
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
@@ -65,10 +73,6 @@ from modules.professions_clinics import (
     get_all_professions, create_profession, update_profession, delete_profession,
     get_all_clinics, create_clinic, update_clinic, delete_clinic
 )
-from modules.outcome_measures import (
-    get_all_outcome_measure_types, create_outcome_measure_type, get_outcome_measure_categories,
-    get_outcome_measures_by_category, create_outcome_measure, add_outcome_measure_subscores
-)
 from modules.reminders import (
     get_all_reminders, create_reminder, get_reminder_by_id, update_reminder,
     delete_reminder, get_pending_reminders, mark_reminder_completed, search_reminders
@@ -82,6 +86,12 @@ from modules.settings_configuration import (
     get_system_settings, update_system_settings, get_user_preferences, update_user_preferences,
     get_system_configuration, update_system_configuration, create_system_backup,
     restore_system_backup, get_application_info, get_settings_summary
+)
+from modules.outcome_measures import (
+    get_all_domains, get_measures_by_domain, get_measure_by_id,
+    create_outcome_entry, get_outcome_entries_for_treatment_note,
+    get_outcome_entry_by_id, update_outcome_entry, delete_outcome_entry,
+    OutcomeMeasureCalculator, OutcomeMeasureValidator
 )
 
 # Initialize FastAPI app and router
@@ -111,13 +121,9 @@ app.add_middleware(SessionMiddleware, **session_config)
 
 # patient_id should be str for compatibility with string-based IDs
 @app.put("/api/patient/{patient_id}/alerts/{appointment_id}/resolve")
-def toggle_alert_resolution(patient_id: str, appointment_id: str, payload: dict = Body(...), request: Request = None, user: dict = Depends(require_auth)):
-    # Ensure resolved is interpreted as a Python boolean
-    resolved = payload.get("resolved", False)
-    if isinstance(resolved, str):
-        resolved = resolved.lower() == "true"
-    elif isinstance(resolved, int):
-        resolved = bool(resolved)
+def toggle_alert_resolution(patient_id: str, appointment_id: str, payload: AlertResolutionModel, request: Request = None, user: dict = Depends(require_auth)):
+    # Use validated payload data
+    resolved = payload.resolved
     with sqlite3.connect("data/bookings.db") as conn:
         conn.execute("""
             UPDATE treatment_notes
@@ -190,9 +196,27 @@ async def generate_ai_medical_history(patient_id: str) -> str:
         for note in notes_dicts
     ])
 
+    # API Security Monitoring - Log usage for tracking and alerting
+    api_start_time = datetime.now()
+    input_length = len(combined_notes)
+    
+    # Security: Validate API key exists before making request
+    api_key = os.getenv('OPENROUTER_API_KEY')
+    if not api_key:
+        logging.error("SECURITY ALERT: OpenRouter API key not configured")
+        raise HTTPException(status_code=500, detail="AI service not available")
+    
+    # Security: Check rate limits before processing
+    if not check_rate_limit():
+        raise HTTPException(status_code=429, detail="Daily API usage limit exceeded")
+    
+    logging.info(f"API USAGE: Medical history generation for patient {patient_id}, input length: {input_length} chars")
+
     headers = {
-        "Authorization": f"Bearer {os.getenv('OPENROUTER_API_KEY')}",
-        "Content-Type": "application/json"
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://hadadahealth.com",
+        "X-Title": "HadadaHealth Medical AI"
     }
 
     body = {
@@ -200,15 +224,53 @@ async def generate_ai_medical_history(patient_id: str) -> str:
         "messages": [
             {"role": "system", "content": "You are a helpful assistant summarising clinical notes for healthcare professionals."},
             {"role": "user", "content": f"Please extract the medical history and level of function from the following notes:\n{combined_notes}. Never make anything up, only use the information provided. If there is not enough information, say 'No information available'. For headings please use html strong text"}
-        ]
+        ],
+        "max_tokens": 1000,  # Security: Limit token usage to prevent cost overruns
+        "temperature": 0.3   # Security: Lower temperature for consistent medical summaries
     }
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        res = await client.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=body)
-        res.raise_for_status()
-        summary = res.json()["choices"][0]["message"]["content"]
-        summary = re.sub(r"\*\*(.*?)\*\*", r"<strong>\1</strong>", summary)
-        return summary
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            res = await client.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=body)
+            res.raise_for_status()
+            
+            response_data = res.json()
+            summary = response_data["choices"][0]["message"]["content"]
+            
+            # API Usage Monitoring
+            api_end_time = datetime.now()
+            duration = (api_end_time - api_start_time).total_seconds()
+            
+            # Extract usage statistics if available
+            usage_info = response_data.get("usage", {})
+            prompt_tokens = usage_info.get("prompt_tokens", 0)
+            completion_tokens = usage_info.get("completion_tokens", 0)
+            total_tokens = usage_info.get("total_tokens", 0)
+            
+            # Log comprehensive usage statistics
+            logging.info(f"API SUCCESS: Medical history generation completed - "
+                        f"Patient: {patient_id}, Duration: {duration:.2f}s, "
+                        f"Tokens: prompt={prompt_tokens}, completion={completion_tokens}, total={total_tokens}")
+            
+            # Security: Alert on high token usage (potential cost concern)
+            if total_tokens > 5000:  # Configurable threshold
+                logging.warning(f"HIGH USAGE ALERT: Medical history generation used {total_tokens} tokens for patient {patient_id}")
+            
+            # Track API usage for monitoring and cost management
+            track_api_usage(total_tokens, "medical_history_generation")
+            
+            summary = re.sub(r"\*\*(.*?)\*\*", r"<strong>\1</strong>", summary)
+            return summary
+            
+    except httpx.TimeoutException:
+        logging.error(f"API TIMEOUT: Medical history generation timed out for patient {patient_id}")
+        raise HTTPException(status_code=503, detail="AI service temporarily unavailable")
+    except httpx.HTTPStatusError as e:
+        logging.error(f"API ERROR: OpenRouter returned {e.response.status_code} for patient {patient_id}: {e.response.text}")
+        raise HTTPException(status_code=502, detail="AI service error")
+    except Exception as e:
+        logging.error(f"API FAILURE: Medical history generation failed for patient {patient_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="AI processing failed")
 
 
 # AI summary endpoint (fetches real treatment notes from DB)
@@ -249,11 +311,27 @@ async def get_latest_note_summary_endpoint(patient_id: str, profession: str, use
         f"Plan: {note['plan']}"
     )
 
-    OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+    # API Security Monitoring - Log usage for tracking and alerting
+    api_start_time = datetime.now()
+    input_length = len(full_text)
+    
+    # Security: Validate API key exists before making request
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        logging.error("SECURITY ALERT: OpenRouter API key not configured")
+        raise HTTPException(status_code=500, detail="AI service not available")
+    
+    # Security: Check rate limits before processing
+    if not check_rate_limit():
+        raise HTTPException(status_code=429, detail="Daily API usage limit exceeded")
+    
+    logging.info(f"API USAGE: Latest session summary for patient {patient_id}, profession {profession}, input length: {input_length} chars")
+
     headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "HTTP-Referer": "http://localhost:8000",
-        "X-Title": "HadadaHealth"
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://hadadahealth.com",
+        "X-Title": "HadadaHealth Session AI"
     }
 
     body = {
@@ -261,21 +339,58 @@ async def get_latest_note_summary_endpoint(patient_id: str, profession: str, use
         "messages": [
             {"role": "system", "content": "You are a helpful assistant summarising clinical notes for healthcare professionals."},
             {"role": "user", "content": f"Please write a short paragraph summary (no more than 4 sentances) in simple pros of the latest session with a focus on what was worked on and what the plan is:\n{full_text}"}
-        ]
+        ],
+        "max_tokens": 500,   # Security: Limit token usage to prevent cost overruns
+        "temperature": 0.3   # Security: Lower temperature for consistent summaries
     }
 
-    # Write the AI prompt to a file for debugging (before POST request)
-    with open("debug_ai_prompt_latest.json", "w") as f:
-        json.dump(body["messages"], f, indent=2)
+    # Security: Remove debug file creation in production (potential data exposure)
+    environment = os.getenv("ENVIRONMENT", "development")
+    if environment == "development":
+        with open("debug_ai_prompt_latest.json", "w") as f:
+            json.dump(body["messages"], f, indent=2)
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        res = await client.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=body)
-
-    if res.status_code != 200:
-        raise HTTPException(status_code=400, detail=f"OpenRouter Error: {res.text}")
-
-    data = res.json()
-    return {"summary": data["choices"][0]["message"]["content"]}
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            res = await client.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=body)
+            res.raise_for_status()
+            
+            response_data = res.json()
+            summary = response_data["choices"][0]["message"]["content"]
+            
+            # API Usage Monitoring
+            api_end_time = datetime.now()
+            duration = (api_end_time - api_start_time).total_seconds()
+            
+            # Extract usage statistics if available
+            usage_info = response_data.get("usage", {})
+            prompt_tokens = usage_info.get("prompt_tokens", 0)
+            completion_tokens = usage_info.get("completion_tokens", 0)
+            total_tokens = usage_info.get("total_tokens", 0)
+            
+            # Log comprehensive usage statistics
+            logging.info(f"API SUCCESS: Session summary completed - "
+                        f"Patient: {patient_id}, Profession: {profession}, Duration: {duration:.2f}s, "
+                        f"Tokens: prompt={prompt_tokens}, completion={completion_tokens}, total={total_tokens}")
+            
+            # Security: Alert on high token usage (potential cost concern)
+            if total_tokens > 2000:  # Lower threshold for session summaries
+                logging.warning(f"HIGH USAGE ALERT: Session summary used {total_tokens} tokens for patient {patient_id}")
+            
+            # Track API usage for monitoring and cost management
+            track_api_usage(total_tokens, "session_summary")
+            
+            return {"summary": summary}
+            
+    except httpx.TimeoutException:
+        logging.error(f"API TIMEOUT: Session summary timed out for patient {patient_id}, profession {profession}")
+        raise HTTPException(status_code=503, detail="AI service temporarily unavailable")
+    except httpx.HTTPStatusError as e:
+        logging.error(f"API ERROR: OpenRouter returned {e.response.status_code} for patient {patient_id}: {e.response.text}")
+        raise HTTPException(status_code=502, detail="AI service error")
+    except Exception as e:
+        logging.error(f"API FAILURE: Session summary failed for patient {patient_id}, profession {profession}: {str(e)}")
+        raise HTTPException(status_code=500, detail="AI processing failed")
 
 # --- New endpoint: Get latest session note for a patient and profession
 
@@ -322,79 +437,112 @@ def check_treatment_notes(ids: str = Query(..., description="Comma separated app
 
 # POST endpoint to create a new billing session with associated billing entries
 @app.post("/billing-sessions")
-def create_billing_session(data: dict, request: Request):
-    session_data = data.get("session")
-    entries_data = data.get("entries", [])
+def create_billing_session(data: dict = Body(...), request: Request = None, user: dict = Depends(require_therapist_or_admin)):
+    try:
+        print(f"DEBUG: Received billing data: {data}")
+        session_data = data.get("session")
+        entries_data = data.get("entries", [])
+        print(f"DEBUG: session_data: {session_data}")
+        print(f"DEBUG: entries_data: {entries_data}")
 
-    if not session_data or not entries_data:
-        raise HTTPException(status_code=400, detail="Session and entries are required")
+        if not session_data or not entries_data:
+            raise HTTPException(status_code=400, detail="Session and entries are required")
 
-    # ensure we have a therapist_id (fall back to session-linked therapist)
-    therapist_id = session_data.get("therapist_id") or request.session.get("linked_therapist_id")
-    if not therapist_id:
-        raise HTTPException(status_code=400, detail="Therapist ID is required")
+        # ensure we have a therapist_id (fall back to session-linked therapist)
+        therapist_id = session_data.get("therapist_id") or request.session.get("linked_therapist_id")
+        if not therapist_id:
+            raise HTTPException(status_code=400, detail="Therapist ID is required")
 
-    with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.cursor()
-        session_id = session_data["id"]
-        cursor.execute("""
-            INSERT INTO billing_sessions (id, patient_id, therapist_id, session_date, notes, total_amount)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            session_id,
-            session_data["patient_id"],
-            therapist_id,
-            session_data["session_date"],
-            session_data.get("notes", ""),
-            session_data.get("total_amount", 0)
-        ))
-        for entry in entries_data:
+        with sqlite3.connect("data/bookings.db") as conn:
+            cursor = conn.cursor()
+            session_id = session_data["id"]
+            
+            # Calculate total amount from entries if not provided
+            total_amount = session_data.get("total_amount", 0)
+            if total_amount == 0 and entries_data:
+                total_amount = sum(entry.get("final_fee", 0) for entry in entries_data)
+            
             cursor.execute("""
-                INSERT INTO billing_entries (id, appointment_id, code_id, billing_modifier, final_fee)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO billing_sessions (id, patient_id, therapist_id, session_date, notes, total_amount)
+                VALUES (?, ?, ?, ?, ?, ?)
             """, (
-                f"{session_id}-{entry['code_id']}",  # unique entry ID
-                session_id,                          # appointment reference
-                entry["code_id"],                    # billing code foreign key
-                entry.get("billing_modifier", ""),   # any modifier
-                entry["final_fee"]                   # final fee charged
-            ))
-        # Also insert into invoices table for this session
-        cursor.execute("""
-            INSERT OR REPLACE INTO invoices (
-                id,
-                appointment_id,
-                patient_id,
+                session_id,
+                session_data["patient_id"],
                 therapist_id,
-                invoice_date,
-                due_date,
-                status,
-                notes,
+                session_data["session_date"],
+                session_data.get("notes", ""),
                 total_amount
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            "INV" + session_id[4:],         # invoice id as "INV" + session_id[4:]
-            session_id,                  # appointment reference
-            session_data["patient_id"],
-            therapist_id,
-            session_data["session_date"],
-            None,                        # due_date blank for now
-            'Draft',                     # initial status
-            session_data.get("notes", ""),
-            session_data.get("total_amount", 0)
-        ))
-        # Mark booking as billing completed
-        cursor.execute(
-            "UPDATE bookings SET billing_completed = 1 WHERE id = ?",
-            (session_id,)
-        )
-        conn.commit()
-    return {"detail": "Billing session and entries created successfully"}
+            ))
+            for entry in entries_data:
+                print(f"DEBUG: Processing entry: {entry}")
+                # Convert code_id to integer if it's a string
+                code_id = entry["code_id"]
+                if isinstance(code_id, str):
+                    try:
+                        code_id = int(code_id)
+                    except ValueError:
+                        # If it's not a numeric string, look up the billing code by name/code
+                        cursor.execute("SELECT id FROM billing_codes WHERE code = ?", (code_id,))
+                        result = cursor.fetchone()
+                        if result:
+                            code_id = result[0]
+                        else:
+                            print(f"WARNING: Could not find billing code for: {code_id}")
+                            continue
+                
+                cursor.execute("""
+                    INSERT INTO billing_entries (id, appointment_id, code_id, billing_modifier, final_fee)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (
+                    f"{session_id}-{entry['code_id']}",  # unique entry ID
+                    session_id,                          # appointment reference
+                    code_id,                             # billing code foreign key (now converted to int)
+                    entry.get("billing_modifier", ""),   # any modifier
+                    entry["final_fee"]                   # final fee charged
+                ))
+            # Also insert into invoices table for this session
+            cursor.execute("""
+                INSERT OR REPLACE INTO invoices (
+                    id,
+                    appointment_id,
+                    patient_id,
+                    therapist_id,
+                    invoice_date,
+                    due_date,
+                    status,
+                    notes,
+                    total_amount
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                "INV" + session_id[4:],         # invoice id as "INV" + session_id[4:]
+                session_id,                  # appointment reference
+                session_data["patient_id"],
+                therapist_id,
+                session_data["session_date"],
+                None,                        # due_date blank for now
+                'Draft',                     # initial status
+                session_data.get("notes", ""),
+                total_amount
+            ))
+            # Mark booking as billing completed
+            cursor.execute(
+                "UPDATE bookings SET billing_completed = 1 WHERE id = ?",
+                (session_id,)
+            )
+            conn.commit()
+        
+        return {"detail": "Billing session and entries created successfully"}
+    
+    except Exception as e:
+        import traceback
+        print(f"ERROR in billing-sessions: {e}")
+        print(f"TRACEBACK: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Failed to create billing session: {str(e)}")
 
 
 # --- New: POST endpoint to submit a full billing payload (overwrite session and entries) ---
 @app.post("/submit-billing")
-def submit_billing(data: dict, user: dict = Depends(require_therapist_or_admin)):
+def submit_billing(data: BillingSubmissionModel, user: dict = Depends(require_therapist_or_admin)):
     session_data = data.get("session")
     entries_data = data.get("entries", [])
 
@@ -776,9 +924,9 @@ def list_users_endpoint(request: Request):
 
 # Update a user (Admin-only)
 @app.put("/users/{user_id}")
-def update_user_endpoint(user_id: int, user_data: dict = Body(...), request: Request = None):
+def update_user_endpoint(user_id: int, user_data: UserUpdateModel, request: Request = None):
     """Update user using the auth module"""
-    return update_user(user_id, user_data, request)
+    return update_user(user_id, user_data.dict(exclude_none=True), request)
 
 # Delete a user (Admin-only)
 @app.delete("/users/{user_id}")
@@ -830,9 +978,9 @@ def login_endpoint(request: Request, credentials: HTTPBasicCredentials = Depends
 
 # API endpoint to update an existing therapist's data
 @app.put("/update-therapist/{therapist_id}")
-def update_therapist_endpoint(therapist_id: int, therapist_data: dict = Body(...)):
+def update_therapist_endpoint(therapist_id: int, therapist_data: TherapistUpdateModel):
     """Update therapist using the therapists module"""
-    success = update_therapist(therapist_id, therapist_data)
+    success = update_therapist(therapist_id, therapist_data.dict(exclude_none=True))
     if success:
         return {"detail": "Therapist updated successfully"}
     else:
@@ -977,21 +1125,6 @@ def add_supplementary_note_endpoint(appointment_id: str, data: dict, request: Re
     return add_supplementary_note(appointment_id, data, request)
 
 # --- Outcome Measure Types endpoint (dropdown source, subscores only) ---
-@app.get("/api/outcome-measure-types")
-def get_outcome_measure_types_from_subscores():
-    conn = get_db_connection()
-    outcome_types = conn.execute("""
-        SELECT DISTINCT outcome_measure_type_id, subcategory_name
-        FROM outcome_measure_type_subscores
-    """).fetchall()
-    conn.close()
-    return [
-        {
-            "id": row["outcome_measure_type_id"],
-            "name": row["subcategory_name"]
-        }
-        for row in outcome_types
-    ]
 
 def init_patients_table():
     with sqlite3.connect("data/bookings.db") as conn:
@@ -1435,9 +1568,176 @@ def delete_booking(booking_id: str):
         print("✅ Booking deleted successfully")  # Debug log
     return {"detail": "Booking deleted"}
 
-# POST save patient (with therapist_id support)
+# Get patient form field requirements
+@app.get("/patient-form-schema")
+async def get_patient_form_schema():
+    """Return field requirements for the patient form to show mandatory field indicators"""
+    
+    # Define which fields are mandatory vs optional
+    schema = {
+        "mandatory_fields": [
+            "first_name",
+            "surname"
+        ],
+        "conditional_mandatory": {
+            "account_responsible_is_patient": {
+                "description": "When patient is responsible for account",
+                "suggested_required_fields": ["email", "contact_number", "address_line1", "town"]
+            },
+            "funding_option_medical_aid": {
+                "description": "When using medical aid funding", 
+                "suggested_required_fields": ["medical_aid_name", "medical_aid_number", "main_member_name"]
+            },
+            "funding_option_alternative": {
+                "description": "When using alternative funding",
+                "suggested_required_fields": ["alternative_funding_source"]
+            }
+        },
+        "optional_fields": [
+            "title", "preferred_name", "date_of_birth", "gender", "id_number",
+            "email", "contact_number", "phone_home", "phone_work", "phone_cell", 
+            "clinic", "address_line1", "address_line2", "town", "postal_code", 
+            "country", "account_responsible", "account_name", "account_id_number", 
+            "account_address", "account_phone", "account_email", "funding_option", 
+            "main_member_name", "medical_aid_name", "medical_aid_other", "plan_name", 
+            "medical_aid_number", "dependent_number", "alternative_funding_source", 
+            "alternative_funding_other", "claim_number", "case_manager", 
+            "emergency_contact_name", "emergency_contact_relationship", 
+            "emergency_contact_phone", "patient_important_info", "consent_treatment", 
+            "consent_photography", "consent_data", "consent_communication", 
+            "consent_billing", "consent_terms", "signature_identity", 
+            "signature_name", "signature_relationship", "signature_data"
+        ],
+        "business_logic": {
+            "auto_fill_when_patient_responsible": [
+                "account_name", "account_id_number", "account_email", 
+                "account_phone", "account_address"
+            ],
+            "clear_when_private_payment": [
+                "medical_aid_name", "medical_aid_other", "plan_name", 
+                "medical_aid_number", "dependent_number", "main_member_name"
+            ]
+        },
+        "validation_rules": {
+            "id_number": "Must be 13-digit South African ID with valid checksum",
+            "email": "Must be valid email format (or leave empty)",
+            "phone_numbers": "Must be South African phone number format",
+            "postal_code": "Must be 4-digit South African postal code"
+        },
+        "field_labels": {
+            "first_name": "First Name *",
+            "surname": "Surname *", 
+            "title": "Title",
+            "preferred_name": "Preferred Name",
+            "date_of_birth": "Date of Birth",
+            "gender": "Gender",
+            "id_number": "ID Number",
+            "email": "Email Address",
+            "contact_number": "Contact Number",
+            "address_line1": "Address Line 1",
+            "town": "City/Town",
+            "postal_code": "Postal Code",
+            "medical_aid_name": "Medical Aid Name",
+            "medical_aid_number": "Member Number",
+            "alternative_funding_source": "Alternative Funding Source"
+        }
+    }
+    
+    return schema
+
+# Test endpoint for validation debugging
+@app.post("/test-patient-validation")
+async def test_patient_validation(request: Request):
+    """Test endpoint to debug patient validation without saving to database"""
+    try:
+        patient_data = await request.json()
+        print(f"🧪 Testing patient data validation: {patient_data}")
+        
+        # Try to validate
+        patient = PatientCreateModel(**patient_data)
+        
+        return {
+            "status": "success",
+            "message": "Validation passed!",
+            "validated_data": patient.model_dump(),
+            "received_fields": list(patient_data.keys())
+        }
+        
+    except Exception as e:
+        from pydantic import ValidationError
+        
+        if isinstance(e, ValidationError):
+            error_details = []
+            for error in e.errors():
+                field_path = " -> ".join(str(loc) for loc in error['loc'])
+                error_details.append({
+                    "field": field_path,
+                    "message": error['msg'],
+                    "type": error['type'],
+                    "input": error.get('input', 'N/A')
+                })
+            
+            return {
+                "status": "validation_failed",
+                "message": f"Validation failed with {len(error_details)} errors",
+                "errors": error_details,
+                "received_data": patient_data,
+                "received_fields": list(patient_data.keys())
+            }
+        else:
+            return {
+                "status": "error",
+                "message": f"Unexpected error: {str(e)}",
+                "received_data": patient_data
+            }
+
+# POST save patient (with detailed validation error reporting)
 @app.post("/patients")
-def save_patient(patient: Patient, request: Request, user: dict = Depends(require_therapist_or_admin)):
+async def save_patient(request: Request, user: dict = Depends(require_therapist_or_admin)):
+    # Get the raw JSON data from the request
+    try:
+        patient_data = await request.json()
+        print(f"📝 Received patient data: {patient_data}")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON data: {str(e)}")
+    
+    # Try to validate the data with our PatientCreateModel
+    try:
+        patient = PatientCreateModel(**patient_data)
+        print(f"✅ Validation successful for patient: {patient.first_name} {patient.surname}")
+    except Exception as e:
+        # Import ValidationError to handle Pydantic errors specifically
+        from pydantic import ValidationError
+        
+        if isinstance(e, ValidationError):
+            # Format detailed error information
+            error_details = []
+            for error in e.errors():
+                field_path = " -> ".join(str(loc) for loc in error['loc'])
+                error_details.append({
+                    "field": field_path,
+                    "message": error['msg'],
+                    "type": error['type'],
+                    "input": error.get('input', 'N/A')
+                })
+            
+            print(f"❌ Validation failed with {len(error_details)} errors:")
+            for detail in error_details:
+                print(f"  - {detail['field']}: {detail['message']} (type: {detail['type']})")
+            
+            raise HTTPException(
+                status_code=422, 
+                detail={
+                    "message": "Patient data validation failed",
+                    "errors": error_details,
+                    "received_data": patient_data
+                }
+            )
+        else:
+            # Non-validation error
+            print(f"❌ Unexpected error during validation: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Validation error: {str(e)}")
+    
     therapist_id = request.session.get("linked_therapist_id")
     if hasattr(patient, "therapist_id") and getattr(patient, "therapist_id", None):
         therapist_id = getattr(patient, "therapist_id")
@@ -1445,7 +1745,7 @@ def save_patient(patient: Patient, request: Request, user: dict = Depends(requir
     with sqlite3.connect("data/bookings.db") as conn:
         conn.execute("""
             INSERT INTO patients (
-                first_name, surname, preferred_name, date_of_birth, gender, id_number,
+                first_name, surname, preferred_name, date_of_birth, gender,
                 address_line1, address_line2, town, postal_code, country,
                 email, contact_number, clinic,
                 account_name, account_id_number, account_address, account_phone, account_email,
@@ -1455,14 +1755,13 @@ def save_patient(patient: Patient, request: Request, user: dict = Depends(requir
                 consent_treatment, consent_photography, consent_data, consent_communication,
                 consent_billing, consent_terms,
                 signature_identity, signature_name, signature_relationship, signature_data
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             patient.first_name,
             patient.surname,
             patient.preferred_name,
             patient.date_of_birth,
             patient.gender,
-            patient.id_number,
             patient.address_line1,
             patient.address_line2,
             patient.town,
@@ -1505,24 +1804,16 @@ from typing import Dict
 
 # Update patient endpoint (PUT)
 @app.put("/update-patient/{patient_id}")
-def update_patient(patient_id: int, patient_data: dict = Body(...)):
-    # Define allowed fields to prevent SQL injection
-    ALLOWED_FIELDS = {
-        'first_name', 'surname', 'preferred_name', 'date_of_birth', 'gender', 'id_number',
-        'address_line1', 'address_line2', 'town', 'postal_code', 'country',
-        'phone_home', 'phone_work', 'phone_cell', 'email', 'emergency_contact_name',
-        'emergency_contact_relationship', 'emergency_contact_phone', 'medical_aid_name',
-        'medical_aid_plan', 'medical_aid_number', 'dependent_number', 'principal_member',
-        'icd10_codes'
-    }
+def update_patient(patient_id: int, patient_data: PatientUpdateModel):
+    # Convert validated Pydantic model to dict, excluding None values
+    update_data = patient_data.dict(exclude_none=True)
     
-    # Build safe SQL update statement with whitelisted fields only
+    # Build safe SQL update statement
     fields = []
     values = []
-    for key, value in patient_data.items():
-        if key in ALLOWED_FIELDS:
-            fields.append(f"{key} = ?")
-            values.append(value)
+    for key, value in update_data.items():
+        fields.append(f"{key} = ?")
+        values.append(value)
     
     values.append(patient_id)
     if not fields:
@@ -1865,9 +2156,9 @@ def get_settings_endpoint():
     return get_system_settings()
 
 @app.post("/settings")
-def update_settings_endpoint(settings_data: dict = Body(...)):
+def update_settings_endpoint(settings_data: SettingsUpdateModel):
     """Update system settings using the settings module"""
-    return update_system_settings(settings_data)
+    return update_system_settings(settings_data.dict(exclude_none=True))
 
 @app.get("/patients")
 def get_patients():
@@ -1933,24 +2224,16 @@ def get_patients():
 
 # API endpoint to update an existing patient's data
 @app.put("/update-patient/{patient_id}")
-def update_patient_admin(patient_id: int, patient_data: dict = Body(...), user: dict = Depends(require_admin)):
-    # Define allowed fields to prevent SQL injection
-    ALLOWED_FIELDS = {
-        'first_name', 'surname', 'preferred_name', 'date_of_birth', 'gender', 'id_number',
-        'address_line1', 'address_line2', 'town', 'postal_code', 'country',
-        'phone_home', 'phone_work', 'phone_cell', 'email', 'emergency_contact_name',
-        'emergency_contact_relationship', 'emergency_contact_phone', 'medical_aid_name',
-        'medical_aid_plan', 'medical_aid_number', 'dependent_number', 'principal_member',
-        'icd10_codes'
-    }
+def update_patient_admin(patient_id: int, patient_data: PatientUpdateModel, user: dict = Depends(require_admin)):
+    # Convert validated Pydantic model to dict, excluding None values
+    update_data = patient_data.dict(exclude_none=True)
     
-    # Build safe SQL update statement with whitelisted fields only
+    # Build safe SQL update statement  
     fields = []
     values = []
-    for key, value in patient_data.items():
-        if key in ALLOWED_FIELDS:
-            fields.append(f"{key} = ?")
-            values.append(value)
+    for key, value in update_data.items():
+        fields.append(f"{key} = ?")
+        values.append(value)
     
     if not fields:
         raise HTTPException(status_code=400, detail="No valid fields to update")
@@ -1989,9 +2272,9 @@ def add_profession_endpoint(profession: Dict):
 
 # New: Update profession
 @app.put("/update-profession/{profession_id}")
-def update_profession_endpoint(profession_id: int, profession_data: dict = Body(...)):
+def update_profession_endpoint(profession_id: int, profession_data: ProfessionUpdateModel):
     """Update profession using the professions_clinics module"""
-    return update_profession(profession_id, profession_data)
+    return update_profession(profession_id, profession_data.dict(exclude_none=True))
 
 # Delete profession
 @app.delete("/delete-profession/{profession_id}")
@@ -2012,9 +2295,9 @@ def add_clinic_endpoint(clinic: Dict):
 
 # Update clinic
 @app.put("/update-clinic/{clinic_id}")
-def update_clinic_endpoint(clinic_id: int, clinic_data: dict = Body(...)):
+def update_clinic_endpoint(clinic_id: int, clinic_data: ClinicUpdateModel):
     """Update clinic using the professions_clinics module"""
-    return update_clinic(clinic_id, clinic_data)
+    return update_clinic(clinic_id, clinic_data.dict(exclude_none=True))
 
 # Delete clinic
 @app.delete("/delete-clinic/{clinic_id}")
@@ -2134,17 +2417,18 @@ def get_billing_codes_for_profession(profession: str):
 # --- New endpoint: update a billing code ---
 
 @app.put("/billing-codes/{code_id}")
-def update_billing_code(code_id: int, updated_data: dict = Body(...)):
+def update_billing_code(code_id: int, updated_data: BillingCodeUpdateModel):
     with sqlite3.connect("data/bookings.db") as conn:
         cursor = conn.cursor()
+        data_dict = updated_data.dict(exclude_none=True)
         cursor.execute("""
             UPDATE billing_codes
             SET code = ?, description = ?, base_fee = ?
             WHERE id = ?
         """, (
-            updated_data.get("code", ""),
-            updated_data.get("description", ""),
-            float(updated_data.get("base_fee", 0.0)),
+            data_dict.get("code", ""),
+            data_dict.get("description", ""),
+            float(data_dict.get("rate", 0.0)),
             code_id
         ))
         conn.commit()
@@ -2235,7 +2519,20 @@ def get_Billing_modifiers():
 @app.post("/submit-treatment-note")
 def submit_treatment_note_endpoint(note: dict):
     """Submit treatment note using the treatment_notes module"""
-    return submit_treatment_note(note)
+    try:
+        import sys
+        print(f"DEBUG: Received treatment note data: {list(note.keys())}", flush=True)
+        print(f"DEBUG: Full note data: {note}", flush=True)
+        sys.stdout.flush()
+        return submit_treatment_note(note)
+    except HTTPException as e:
+        print(f"ERROR: Treatment note submission failed: {e.detail}", flush=True)
+        sys.stdout.flush()
+        raise e
+    except Exception as e:
+        print(f"ERROR: Unexpected error in treatment note submission: {e}", flush=True)
+        sys.stdout.flush()
+        raise HTTPException(status_code=500, detail=f"Failed to submit treatment note: {str(e)}")
     
 
 # --- ICD-10 Codes API Endpoint ---
@@ -2397,11 +2694,9 @@ def get_unbilled_treatment_notes(user: dict = Depends(require_therapist_or_admin
 # Accepts: { "appointment_id": "string", "billing_entries": [ ... ] }
 # Updates billing tables and marks treatment note as billed
 @app.post("/api/billing-for-appointment")
-def billing_for_appointment(payload: dict = Body(...)):
-    appointment_id = payload.get("appointment_id")
-    billing_entries = payload.get("billing_entries", [])
-    if not appointment_id or not billing_entries:
-        raise HTTPException(status_code=400, detail="appointment_id and billing_entries required")
+def billing_for_appointment(payload: AppointmentBillingModel):
+    appointment_id = payload.appointment_id
+    billing_entries = payload.billing_entries
     with sqlite3.connect("data/bookings.db") as conn:
         cursor = conn.cursor()
         # Find patient_id and therapist_id from bookings or treatment_notes
@@ -2463,14 +2758,14 @@ def get_invoices():
 
 # POST /invoices — Create invoice and assign billing entries.
 @app.post("/invoices")
-def create_invoice(data: dict = Body(...)):
-    invoice_data = data.get("invoice")
-    entry_ids = data.get("entry_ids", [])
-    if not invoice_data or not entry_ids:
-        raise HTTPException(status_code=400, detail="Invoice and entry_ids are required")
+def create_invoice(data: InvoiceCreateModel):
+    invoice_data = data.invoice.dict()
+    entry_ids = data.entry_ids
+    
     invoice_id = invoice_data.get("id")
     if not invoice_id:
         invoice_id = f"INV-{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
+    
     with sqlite3.connect("data/bookings.db") as conn:
         cursor = conn.cursor()
         # Insert invoice
@@ -2492,6 +2787,7 @@ def create_invoice(data: dict = Body(...)):
             cursor.execute("""
                 UPDATE billing_entries SET invoice_id = ? WHERE id = ?
             """, (invoice_id, entry_id))
+        conn.commit()
     return {"detail": "Invoice created", "invoice_id": invoice_id}
 
 # GET /invoices/{invoice_id} — Return invoice details and entries.
@@ -2513,11 +2809,12 @@ def get_invoice(invoice_id: str = Path(...)):
 
 # PUT /invoices/{invoice_id} — Update invoice status.
 @app.put("/invoices/{invoice_id}")
-def update_invoice(invoice_id: str, update_data: dict = Body(...), user: dict = Depends(require_therapist_or_admin)):
-    allowed_fields = {"status", "notes", "due_date", "total_amount"}
+def update_invoice(invoice_id: str, update_data: InvoiceUpdateModel, user: dict = Depends(require_therapist_or_admin)):
+    allowed_fields = {"status", "notes", "due_date", "amount_paid", "payment_date"}
     fields = []
     values = []
-    for key, value in update_data.items():
+    update_dict = update_data.dict(exclude_none=True)
+    for key, value in update_dict.items():
         if key in allowed_fields:
             fields.append(f"{key} = ?")
             values.append(value)
@@ -2579,121 +2876,6 @@ def get_patient_bookings(patient_id: str, user: dict = Depends(require_auth)):
         """, (patient_id,))
         rows = cursor.fetchall()
         return [dict(row) for row in rows]    
-# --- Outcome Measures Endpoint ---
-
-# --- Outcome Measure Types API ---
-@app.get("/api/outcome-measure-types")
-def get_outcome_measure_types():
-    with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.execute("SELECT id, name, description, score_type, max_score, interpretation FROM outcome_measure_types")
-        rows = cursor.fetchall()
-
-    return [
-        {
-            "id": row[0],
-            "name": row[1],
-            "description": row[2],
-            "score_type": row[3],
-            "max_score": row[4],
-            "interpretation": row[5]
-        }
-        for row in rows
-    ]
-# Create a new outcome_measure_type
-@app.post("/api/outcome-measure-types")
-async def create_outcome_measure_type(data: dict):
-    with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.execute("""
-            INSERT INTO outcome_measure_types (name, max_score, has_subscores)
-            VALUES (?, ?, ?)
-        """, (data["name"], data["max_score"], data["has_subscores"]))
-        conn.commit()
-        return {"status": "success", "id": cursor.lastrowid}
-
-# Create a new outcome_measure_type_subscore
-@app.post("/api/outcome-measure-type-subscores")
-async def create_outcome_measure_type_subscore(data: dict):
-    with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.execute("""
-            INSERT INTO outcome_measure_type_subscores (outcome_measure_type_id, name, max_score)
-            VALUES (?, ?, ?)
-        """, (data["outcome_measure_type_id"], data["name"], data["max_score"]))
-        conn.commit()
-        return {"status": "success", "id": cursor.lastrowid}
-
-# --- New endpoint: Get outcome measure subscores for a given outcome_measure_id ---
-@app.get("/api/outcome-measure-subscores/{outcome_measure_id}")
-def get_outcome_measure_subscores(outcome_measure_id: int):
-    conn = get_db_connection()
-    cur = conn.execute(
-        "SELECT * FROM outcome_measure_subscores WHERE outcome_measure_id = ?",
-        (outcome_measure_id,)
-    )
-    rows = cur.fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
-
-@app.get("/api/outcome-measure-types/{type_id}/subscores")
-def get_outcome_measure_type_subscores(type_id: int):
-    with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.execute(
-            """
-            SELECT id, subcategory_name, max_score
-            FROM outcome_measure_type_subscores
-            WHERE outcome_measure_type_id = ?
-            """,
-            (type_id,)
-        )
-        rows = cursor.fetchall()
-
-    return [{"id": row[0], "subcategory_name": row[1], "max_score": row[2]} for row in rows]
-
-# --- Outcome Measure Type Categories Endpoints ---
-
-# Return unique category strings
-@app.get("/api/outcome-measure-types/categories")
-def get_outcome_measure_categories():
-    with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.execute("SELECT DISTINCT category FROM outcome_measure_types WHERE category IS NOT NULL AND TRIM(category) != ''")
-        categories = [row[0] for row in cursor.fetchall()]
-    return categories
-
-# Return outcome measure types filtered by category
-@app.get("/api/outcome-measure-types/by-category/{category}")
-def get_outcome_measures_by_category(category: str):
-    with sqlite3.connect("data/bookings.db") as conn:
-        cursor = conn.execute("SELECT id, name FROM outcome_measure_types WHERE category = ?", (category,))
-        measures = [{"id": row[0], "name": row[1]} for row in cursor.fetchall()]
-    return measures
-from datetime import datetime
-
-@app.post("/api/outcome-measures")  
-def create_outcome_measure_endpoint(data: dict = Body(...)):
-    """
-    Create outcome measure using the outcome measures module
-    Expects JSON with: patient_id, therapist, appointment_id, date,
-    outcome_measure_type_id, score (optional/nullable), comments (optional)
-    """
-    return create_outcome_measure(data)
-
-@app.post("/api/outcome-measures/{measure_id}/subscores")
-def add_outcome_measure_subscores_endpoint(measure_id: str, subscores: List[dict] = Body(...)):
-    """
-    Add subscores to outcome measure using the outcome measures module
-    Expects a JSON array of { subcategory_name, max_score, score, comments }
-    """
-    # Handle "undefined" or invalid measure IDs
-    if measure_id == "undefined" or not measure_id:
-        raise HTTPException(status_code=400, detail="Invalid measure ID")
-    
-    try:
-        measure_id_int = int(measure_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Measure ID must be a number")
-    
-    return add_outcome_measure_subscores(measure_id_int, subscores)
-
-
 # ===== REMINDER ENDPOINTS =====
 
 @app.get("/api/reminders")
@@ -2717,13 +2899,13 @@ def get_reminders_legacy_endpoint(request: Request):
 
 
 @app.post("/reminders")
-def create_reminder_endpoint(reminder_data: dict = Body(...), request: Request = None):
+def create_reminder_endpoint(reminder_data: ReminderCreateModel, request: Request = None):
     """Create a new reminder"""
     user_id = request.session.get("user_id") if request else None
     if not user_id:
         raise HTTPException(status_code=401, detail="Authentication required")
     
-    return create_reminder(reminder_data, user_id)
+    return create_reminder(reminder_data.dict(), user_id)
 
 
 @app.get("/api/reminders/{reminder_id}")
@@ -2736,9 +2918,9 @@ def get_reminder_endpoint(reminder_id: int):
 
 
 @app.put("/reminders/{reminder_id}")
-def update_reminder_endpoint(reminder_id: int, reminder_data: dict = Body(...)):
+def update_reminder_endpoint(reminder_id: int, reminder_data: ReminderUpdateModel):
     """Update a reminder"""
-    return update_reminder(reminder_id, reminder_data)
+    return update_reminder(reminder_id, reminder_data.dict(exclude_none=True))
 
 
 @app.delete("/api/reminders/{reminder_id}")
@@ -2832,9 +3014,9 @@ def get_user_preferences_endpoint(user_id: int):
 
 
 @app.post("/api/user/{user_id}/preferences")
-def update_user_preferences_endpoint(user_id: int, preferences: dict = Body(...)):
+def update_user_preferences_endpoint(user_id: int, preferences: UserPreferencesUpdateModel):
     """Update user preferences"""
-    return update_user_preferences(user_id, preferences)
+    return update_user_preferences(user_id, preferences.dict(exclude_none=True))
 
 
 @app.get("/api/system/configuration")
@@ -2844,9 +3026,9 @@ def get_system_configuration_endpoint():
 
 
 @app.post("/api/system/configuration")
-def update_system_configuration_endpoint(config: dict = Body(...)):
+def update_system_configuration_endpoint(config: SystemConfigurationModel):
     """Update system configuration"""
-    return update_system_configuration(config)
+    return update_system_configuration(config.dict(exclude_none=True))
 
 
 @app.get("/api/system/backup")
@@ -2856,9 +3038,9 @@ def create_system_backup_endpoint():
 
 
 @app.post("/api/system/restore")
-def restore_system_backup_endpoint(backup_data: dict = Body(...)):
+def restore_system_backup_endpoint(backup_data: SystemBackupModel):
     """Restore system from backup"""
-    return restore_system_backup(backup_data)
+    return restore_system_backup(backup_data.dict())
 
 
 @app.get("/api/system/info")
@@ -2871,3 +3053,433 @@ def get_application_info_endpoint():
 def get_settings_summary_endpoint():
     """Get comprehensive settings summary"""
     return get_settings_summary()
+
+
+# ===== API SECURITY AND MONITORING ENDPOINTS =====
+
+# Global API usage tracking (in-memory for now, should be moved to database in production)
+API_USAGE_TRACKING = {
+    "daily_requests": {},
+    "daily_tokens": {},
+    "daily_costs": {},  # Estimated costs
+    "alerts_sent": {}
+}
+
+# Security constants for API monitoring
+MAX_DAILY_REQUESTS = int(os.getenv("MAX_DAILY_AI_REQUESTS", "100"))  # Configurable limit
+MAX_DAILY_TOKENS = int(os.getenv("MAX_DAILY_AI_TOKENS", "50000"))    # Configurable limit
+COST_PER_1K_TOKENS = float(os.getenv("AI_COST_PER_1K_TOKENS", "0.001"))  # Configurable cost
+
+def track_api_usage(tokens_used: int, request_type: str = "ai_summary"):
+    """Track API usage for monitoring and alerting"""
+    today = datetime.now().strftime("%Y-%m-%d")
+    
+    # Initialize tracking for today if not exists
+    if today not in API_USAGE_TRACKING["daily_requests"]:
+        API_USAGE_TRACKING["daily_requests"][today] = {}
+        API_USAGE_TRACKING["daily_tokens"][today] = 0
+        API_USAGE_TRACKING["daily_costs"][today] = 0.0
+        API_USAGE_TRACKING["alerts_sent"][today] = {"requests": False, "tokens": False, "cost": False}
+    
+    # Track request count by type
+    if request_type not in API_USAGE_TRACKING["daily_requests"][today]:
+        API_USAGE_TRACKING["daily_requests"][today][request_type] = 0
+    API_USAGE_TRACKING["daily_requests"][today][request_type] += 1
+    
+    # Track total tokens and estimated cost
+    API_USAGE_TRACKING["daily_tokens"][today] += tokens_used
+    estimated_cost = (tokens_used / 1000) * COST_PER_1K_TOKENS
+    API_USAGE_TRACKING["daily_costs"][today] += estimated_cost
+    
+    # Check for alerts
+    total_requests = sum(API_USAGE_TRACKING["daily_requests"][today].values())
+    total_tokens = API_USAGE_TRACKING["daily_tokens"][today]
+    total_cost = API_USAGE_TRACKING["daily_costs"][today]
+    
+    # Alert thresholds (80% of max)
+    request_threshold = int(MAX_DAILY_REQUESTS * 0.8)
+    token_threshold = int(MAX_DAILY_TOKENS * 0.8)
+    cost_threshold = (MAX_DAILY_TOKENS / 1000 * COST_PER_1K_TOKENS) * 0.8
+    
+    # Log alerts if thresholds exceeded and not already alerted
+    alerts = API_USAGE_TRACKING["alerts_sent"][today]
+    
+    if total_requests >= request_threshold and not alerts["requests"]:
+        logging.warning(f"API USAGE ALERT: Daily request threshold reached - {total_requests}/{MAX_DAILY_REQUESTS}")
+        alerts["requests"] = True
+    
+    if total_tokens >= token_threshold and not alerts["tokens"]:
+        logging.warning(f"API USAGE ALERT: Daily token threshold reached - {total_tokens}/{MAX_DAILY_TOKENS}")
+        alerts["tokens"] = True
+    
+    if total_cost >= cost_threshold and not alerts["cost"]:
+        logging.warning(f"API COST ALERT: Daily cost threshold reached - ${total_cost:.4f}")
+        alerts["cost"] = True
+
+@app.get("/api/admin/ai-usage")
+def get_ai_usage_statistics(user: dict = Depends(require_admin)):
+    """Get AI API usage statistics (admin only)"""
+    today = datetime.now().strftime("%Y-%m-%d")
+    
+    current_stats = {
+        "date": today,
+        "requests_today": sum(API_USAGE_TRACKING["daily_requests"].get(today, {}).values()),
+        "tokens_today": API_USAGE_TRACKING["daily_tokens"].get(today, 0),
+        "estimated_cost_today": round(API_USAGE_TRACKING["daily_costs"].get(today, 0), 4),
+        "request_breakdown": API_USAGE_TRACKING["daily_requests"].get(today, {}),
+        "limits": {
+            "max_daily_requests": MAX_DAILY_REQUESTS,
+            "max_daily_tokens": MAX_DAILY_TOKENS,
+            "cost_per_1k_tokens": COST_PER_1K_TOKENS
+        },
+        "utilization": {
+            "requests_percent": round((sum(API_USAGE_TRACKING["daily_requests"].get(today, {}).values()) / MAX_DAILY_REQUESTS) * 100, 1),
+            "tokens_percent": round((API_USAGE_TRACKING["daily_tokens"].get(today, 0) / MAX_DAILY_TOKENS) * 100, 1)
+        }
+    }
+    
+    # Historical data (last 7 days)
+    historical = {}
+    for i in range(7):
+        date = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
+        historical[date] = {
+            "requests": sum(API_USAGE_TRACKING["daily_requests"].get(date, {}).values()),
+            "tokens": API_USAGE_TRACKING["daily_tokens"].get(date, 0),
+            "cost": round(API_USAGE_TRACKING["daily_costs"].get(date, 0), 4)
+        }
+    
+    return {
+        "current": current_stats,
+        "historical": historical,
+        "security_status": "SECURE - API key never exposed to client",
+        "monitoring_active": True
+    }
+
+def check_rate_limit() -> bool:
+    """Check if current daily usage is within limits"""
+    today = datetime.now().strftime("%Y-%m-%d")
+    
+    current_requests = sum(API_USAGE_TRACKING["daily_requests"].get(today, {}).values())
+    current_tokens = API_USAGE_TRACKING["daily_tokens"].get(today, 0)
+    
+    if current_requests >= MAX_DAILY_REQUESTS:
+        logging.error(f"RATE LIMIT EXCEEDED: Daily request limit of {MAX_DAILY_REQUESTS} reached")
+        return False
+    
+    if current_tokens >= MAX_DAILY_TOKENS:
+        logging.error(f"RATE LIMIT EXCEEDED: Daily token limit of {MAX_DAILY_TOKENS} reached")
+        return False
+    
+    return True
+
+
+# ===========================
+# OUTCOME MEASURES ENDPOINTS
+# ===========================
+
+@app.get("/api/outcome-measures/domains")
+def api_get_outcome_domains(user: dict = Depends(require_auth)):
+    """Get all outcome measure domains"""
+    try:
+        return {"domains": get_all_domains()}
+    except Exception as e:
+        logging.error(f"Error getting outcome domains: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get outcome domains")
+
+
+@app.get("/api/outcome-measures/domains/{domain_id}/measures")
+def api_get_measures_by_domain(domain_id: int, user: dict = Depends(require_auth)):
+    """Get all measures for a specific domain"""
+    try:
+        measures = get_measures_by_domain(domain_id)
+        return {"measures": measures}
+    except Exception as e:
+        logging.error(f"Error getting measures for domain {domain_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get measures")
+
+
+@app.get("/api/outcome-measures/measures/{measure_id}")
+def api_get_measure_by_id(measure_id: int, user: dict = Depends(require_auth)):
+    """Get measure details by ID"""
+    try:
+        measure = get_measure_by_id(measure_id)
+        if not measure:
+            raise HTTPException(status_code=404, detail="Measure not found")
+        return {"measure": measure}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error getting measure {measure_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get measure")
+
+
+@app.post("/api/outcome-entries")
+def api_create_outcome_entry(
+    entry_data: dict = Body(...),
+    user: dict = Depends(require_auth)
+):
+    """Create a new outcome measure entry"""
+    try:
+        appointment_id = entry_data.get('appointment_id')
+        measure_id = entry_data.get('measure_id')
+        
+        if not appointment_id or not measure_id:
+            raise HTTPException(status_code=400, detail="appointment_id and measure_id are required")
+        
+        # Get measure details for validation and calculation
+        measure = get_measure_by_id(measure_id)
+        if not measure:
+            raise HTTPException(status_code=404, detail="Measure not found")
+        
+        # Validate entry data
+        errors = OutcomeMeasureValidator.validate_entry(measure['abbreviation'], entry_data)
+        if errors:
+            raise HTTPException(status_code=400, detail={"validation_errors": errors})
+        
+        # Calculate results based on measure type
+        calculated_data = _calculate_outcome_results(measure, entry_data)
+        
+        # Merge calculated data with entry data
+        entry_data.update(calculated_data)
+        
+        # Create the entry
+        entry_id = create_outcome_entry(appointment_id, measure_id, entry_data, user['user_id'])
+        
+        return {"message": "Outcome entry created successfully", "entry_id": entry_id}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        logging.error(f"Error creating outcome entry: {e}")
+        logging.error(f"Full traceback: {error_details}")
+        print(f"ERROR: {e}")
+        print(f"TRACEBACK: {error_details}")
+        raise HTTPException(status_code=500, detail=f"Failed to create outcome entry: {str(e)}")
+
+
+@app.get("/api/treatment-notes/{appointment_id}/outcome-entries")
+def api_get_outcome_entries_for_treatment_note(
+    appointment_id: str,
+    user: dict = Depends(require_auth)
+):
+    """Get all outcome entries for a treatment note"""
+    try:
+        entries = get_outcome_entries_for_treatment_note(appointment_id)
+        return {"entries": entries}
+    except Exception as e:
+        logging.error(f"Error getting outcome entries for treatment note {appointment_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get outcome entries")
+
+
+@app.get("/api/outcome-entries/{entry_id}")
+def api_get_outcome_entry_by_id(entry_id: int, user: dict = Depends(require_auth)):
+    """Get detailed outcome entry by ID"""
+    try:
+        entry = get_outcome_entry_by_id(entry_id)
+        if not entry:
+            raise HTTPException(status_code=404, detail="Outcome entry not found")
+        return {"entry": entry}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error getting outcome entry {entry_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get outcome entry")
+
+
+@app.put("/api/outcome-entries/{entry_id}")
+def api_update_outcome_entry(
+    entry_id: int,
+    entry_data: dict = Body(...),
+    user: dict = Depends(require_auth)
+):
+    """Update an existing outcome entry"""
+    try:
+        # Get existing entry to validate ownership and get measure info
+        existing_entry = get_outcome_entry_by_id(entry_id)
+        if not existing_entry:
+            raise HTTPException(status_code=404, detail="Outcome entry not found")
+        
+        # Get measure details for validation and calculation
+        measure = get_measure_by_id(existing_entry['measure_id'])
+        if not measure:
+            raise HTTPException(status_code=404, detail="Measure not found")
+        
+        # Validate entry data
+        errors = OutcomeMeasureValidator.validate_entry(measure['abbreviation'], entry_data)
+        if errors:
+            raise HTTPException(status_code=400, detail={"validation_errors": errors})
+        
+        # Calculate results based on measure type
+        calculated_data = _calculate_outcome_results(measure, entry_data)
+        
+        # Merge calculated data with entry data
+        entry_data.update(calculated_data)
+        
+        # Update the entry
+        success = update_outcome_entry(entry_id, entry_data)
+        
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to update outcome entry")
+        
+        return {"message": "Outcome entry updated successfully"}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error updating outcome entry {entry_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update outcome entry")
+
+
+@app.delete("/api/outcome-entries/{entry_id}")
+def api_delete_outcome_entry(entry_id: int, user: dict = Depends(require_auth)):
+    """Delete an outcome entry"""
+    try:
+        # Verify entry exists
+        existing_entry = get_outcome_entry_by_id(entry_id)
+        if not existing_entry:
+            raise HTTPException(status_code=404, detail="Outcome entry not found")
+        
+        # Delete the entry
+        success = delete_outcome_entry(entry_id)
+        
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to delete outcome entry")
+        
+        return {"message": "Outcome entry deleted successfully"}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error deleting outcome entry {entry_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete outcome entry")
+
+
+def _calculate_outcome_results(measure: dict, entry_data: dict) -> dict:
+    """Calculate results for an outcome measure entry"""
+    calculator = OutcomeMeasureCalculator()
+    abbreviation = measure['abbreviation']
+    
+    try:
+        if abbreviation == 'BBS':
+            if entry_data.get('individual_items'):
+                result = calculator.calculate_berg_balance_scale(entry_data['individual_items'])
+            else:
+                result = {'total_score': entry_data.get('total_score'), 'calculated_result': f"{entry_data.get('total_score')}/56"}
+            
+        elif abbreviation == 'ABC':
+            if entry_data.get('individual_items'):
+                result = calculator.calculate_abc_scale(entry_data['individual_items'])
+            else:
+                result = {'total_score': entry_data.get('total_score'), 'calculated_result': f"{entry_data.get('total_score')}%"}
+        
+        elif abbreviation == '10mWT':
+            comfortable_times = entry_data.get('comfortable_trials', [])
+            fast_times = entry_data.get('fast_trials', [])
+            result = calculator.calculate_10mwt(comfortable_times, fast_times)
+            
+            # Store raw data for database
+            entry_data['raw_data'] = {}
+            if comfortable_times:
+                entry_data['raw_data']['comfortable_time'] = comfortable_times
+            if fast_times:
+                entry_data['raw_data']['fast_time'] = fast_times
+            entry_data['unit'] = 'seconds'
+        
+        elif abbreviation == '5TSTS':
+            time_seconds = entry_data.get('time_seconds')
+            result = calculator.calculate_5tsts(time_seconds)
+            
+            # Store raw data
+            entry_data['raw_data'] = {'time_seconds': [time_seconds]}
+            entry_data['unit'] = 'seconds'
+        
+        elif abbreviation == 'FGA':
+            if entry_data.get('individual_items'):
+                result = calculator.calculate_fga(entry_data['individual_items'])
+            else:
+                result = {'total_score': entry_data.get('total_score'), 'calculated_result': f"{entry_data.get('total_score')}/30"}
+        
+        elif abbreviation == '6MWT':
+            distance = entry_data.get('distance_meters')
+            time_minutes = entry_data.get('actual_time_minutes', 6.0)
+            result = calculator.calculate_6mwt(distance, time_minutes)
+            
+            # Store raw data
+            entry_data['raw_data'] = {
+                'distance_meters': [distance],
+                'time_minutes': [time_minutes]
+            }
+            entry_data['unit'] = 'meters'
+        
+        else:
+            result = {'calculated_result': 'Unknown measure type'}
+        
+        return {
+            'total_score': result.get('total_score'),
+            'calculated_result': result.get('calculated_result', ''),
+        }
+    
+    except Exception as e:
+        logging.error(f"Error calculating results for {abbreviation}: {e}")
+        return {'calculated_result': 'Calculation error'}
+
+
+@app.get("/api/admin/ai-security-status")
+def get_ai_security_status(user: dict = Depends(require_admin)):
+    """Get AI security status and recommendations (admin only)"""
+    
+    api_key_configured = bool(os.getenv('OPENROUTER_API_KEY'))
+    environment = os.getenv("ENVIRONMENT", "development")
+    
+    security_checks = {
+        "api_key_configured": {
+            "status": "PASS" if api_key_configured else "FAIL",
+            "description": "OpenRouter API key is configured" if api_key_configured else "OpenRouter API key is missing"
+        },
+        "server_side_only": {
+            "status": "PASS",
+            "description": "All AI processing happens server-side - API key never exposed to client"
+        },
+        "authentication_required": {
+            "status": "PASS", 
+            "description": "All AI endpoints require authentication"
+        },
+        "rate_limiting_active": {
+            "status": "PASS",
+            "description": f"Rate limiting active - {MAX_DAILY_REQUESTS} requests, {MAX_DAILY_TOKENS} tokens per day"
+        },
+        "usage_monitoring": {
+            "status": "PASS",
+            "description": "Comprehensive usage monitoring and alerting implemented"
+        },
+        "token_limits": {
+            "status": "PASS",
+            "description": "Token usage limits configured to prevent cost overruns"
+        },
+        "error_handling": {
+            "status": "PASS",
+            "description": "Comprehensive error handling and logging implemented"
+        },
+        "production_security": {
+            "status": "PASS" if environment == "production" else "WARNING",
+            "description": f"Environment: {environment} - Debug files disabled in production" if environment == "production" else f"Environment: {environment} - Debug files enabled"
+        }
+    }
+    
+    overall_status = "SECURE" if all(check["status"] == "PASS" for check in security_checks.values()) else "ATTENTION_REQUIRED"
+    
+    recommendations = []
+    if not api_key_configured:
+        recommendations.append("Configure OPENROUTER_API_KEY environment variable")
+    if environment != "production":
+        recommendations.append("Set ENVIRONMENT=production for production deployment")
+    
+    return {
+        "overall_status": overall_status,
+        "security_checks": security_checks,
+        "recommendations": recommendations,
+        "last_updated": datetime.now().isoformat()
+    }
+

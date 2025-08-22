@@ -4,12 +4,10 @@ Reports and analytics functions for HadadaHealth
 from typing import List, Dict, Any, Optional
 from fastapi import HTTPException
 from datetime import datetime, timedelta
-import sqlite3
 from .database import get_db_connection, execute_query
 from .therapists import get_therapist_stats
 from .auth import get_user_statistics
 from .medical_aids import get_medical_aids_statistics
-from .outcome_measures import get_outcome_measures_statistics
 from .professions_clinics import get_profession_clinic_statistics
 from .reminders import get_reminders_statistics
 
@@ -41,7 +39,7 @@ def get_dashboard_summary(user_id: Optional[int] = None, therapist_id: Optional[
         
         # Get general statistics
         summary['medical_aid_stats'] = get_medical_aids_statistics()
-        summary['outcome_measure_stats'] = get_outcome_measures_statistics()
+        # outcome_measures module was removed - skip this statistic
         summary['profession_clinic_stats'] = get_profession_clinic_statistics()
         
         # Get appointment statistics
@@ -505,7 +503,7 @@ def get_system_overview_report() -> Dict[str, Any]:
         # Get module-specific statistics
         report['module_stats'] = {
             'medical_aids': get_medical_aids_statistics(),
-            'outcome_measures': get_outcome_measures_statistics(),
+            # 'outcome_measures': get_outcome_measures_statistics(), # module removed
             'professions_clinics': get_profession_clinic_statistics(),
             'appointments': get_appointment_statistics()
         }

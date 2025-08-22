@@ -55,12 +55,16 @@ def submit_treatment_note(note: Dict[str, Any]) -> Dict[str, str]:
     required_fields = [
         "appointment_id", "appointment_date", "start_time", "duration", "patient_name",
         "patient_id", "profession", "therapist_name", "therapist_id",
-        "subjective_findings", "objective_findings", "treatment", "plan", "note_to_patient"
+        "subjective_findings", "objective_findings", "treatment", "plan"
     ]
 
     for field in required_fields:
         if field not in note:
             raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+    
+    # Set default for note_to_patient if not provided
+    if "note_to_patient" not in note:
+        note["note_to_patient"] = ""
 
     conn = get_db_connection()
     try:
