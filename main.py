@@ -2166,6 +2166,13 @@ def serve_manage_users_page(request: Request):
         return FileResponse(os.path.join("templates", "login.html"))
     return FileResponse(os.path.join("templates", "manage-users.html"))
 
+# Serve the appointment types management page
+@app.get("/appointment-types-management-page")
+def serve_appointment_types_management_page(request: Request):
+    if not request.session.get("user_id"):
+        return FileResponse(os.path.join("templates", "login.html"))
+    return FileResponse(os.path.join("templates", "appointment-types-management.html"))
+
 # Settings API endpoints
 @app.get("/settings")
 def get_settings_endpoint():
