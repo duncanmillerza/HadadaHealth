@@ -2177,6 +2177,29 @@ def update_settings_endpoint(settings_data: SettingsUpdateModel):
     """Update system settings using the settings module"""
     return update_system_settings(settings_data.dict(exclude_none=True))
 
+# System Configuration endpoints
+@app.get("/system-configuration")
+def get_system_configuration_endpoint():
+    """Get system configuration"""
+    return get_system_configuration()
+
+@app.post("/system-configuration")
+def update_system_configuration_endpoint(config_data: SystemConfigurationModel):
+    """Update system configuration"""
+    return update_system_configuration(config_data.dict(exclude_none=True))
+
+# Application Information endpoint
+@app.get("/application-info")
+def get_application_info_endpoint():
+    """Get application information and status"""
+    return get_application_info()
+
+# System Backup endpoint
+@app.get("/system-backup")
+def create_system_backup_endpoint():
+    """Create and return system backup"""
+    return create_system_backup()
+
 @app.get("/patients")
 def get_patients():
     with sqlite3.connect("data/bookings.db") as conn:
@@ -3035,23 +3058,6 @@ def update_user_preferences_endpoint(user_id: int, preferences: UserPreferencesU
     """Update user preferences"""
     return update_user_preferences(user_id, preferences.dict(exclude_none=True))
 
-
-@app.get("/api/system/configuration")
-def get_system_configuration_endpoint():
-    """Get system configuration"""
-    return get_system_configuration()
-
-
-@app.post("/api/system/configuration")
-def update_system_configuration_endpoint(config: SystemConfigurationModel):
-    """Update system configuration"""
-    return update_system_configuration(config.dict(exclude_none=True))
-
-
-@app.get("/api/system/backup")
-def create_system_backup_endpoint():
-    """Create system backup"""
-    return create_system_backup()
 
 
 @app.post("/api/system/restore")
