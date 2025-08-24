@@ -107,8 +107,10 @@ function proceedToBookingWithAppointmentType(data) {
     // Call original openModal to show booking form
     originalOpenModal(cell, null, dayOverride);
 
-    // Pre-fill appointment type data in booking form
-    fillBookingFormWithAppointmentType(appointmentType, slotData);
+    // Wait a moment for the modal to be fully rendered, then pre-fill
+    setTimeout(() => {
+        fillBookingFormWithAppointmentType(appointmentType, slotData);
+    }, 100);
 }
 
 /**
@@ -118,6 +120,15 @@ function proceedToBookingWithAppointmentType(data) {
  * @param {Object} slotData - Slot data
  */
 function fillBookingFormWithAppointmentType(appointmentType, slotData) {
+    console.log('🔧 Filling booking form with appointment type:', appointmentType.name);
+    
+    // Verify booking modal is visible
+    const bookingModal = document.getElementById('booking-modal');
+    if (!bookingModal || bookingModal.style.display === 'none') {
+        console.error('❌ Booking modal not found or not visible');
+        return;
+    }
+    
     // Set appointment type ID (add hidden field if needed)
     let appointmentTypeField = document.getElementById('appointment-type-id');
     if (!appointmentTypeField) {
@@ -125,21 +136,27 @@ function fillBookingFormWithAppointmentType(appointmentType, slotData) {
         appointmentTypeField.type = 'hidden';
         appointmentTypeField.id = 'appointment-type-id';
         appointmentTypeField.name = 'appointment_type_id';
-        document.getElementById('booking-form') ? 
-            document.getElementById('booking-form').appendChild(appointmentTypeField) :
-            document.querySelector('#booking-modal form').appendChild(appointmentTypeField);
+        bookingModal.appendChild(appointmentTypeField);
+        console.log('✅ Created appointment type hidden field');
     }
     appointmentTypeField.value = appointmentType.id;
+    console.log(`✅ Set appointment type ID to ${appointmentType.id}`);
 
     // Set duration from appointment type
     const durationField = document.getElementById('booking-duration') || document.getElementById('duration');
     if (durationField) {
-        durationField.value = appointmentType.effective_duration || appointmentType.duration;
+        const duration = appointmentType.effective_duration || appointmentType.duration;
+        durationField.value = duration;
+        console.log(`✅ Set booking duration to ${duration} minutes`);
         
         // Trigger duration change to update end time
         if (typeof updateEndTime === 'function') {
             updateEndTime();
+        } else if (typeof window.updateEndTime === 'function') {
+            window.updateEndTime();
         }
+    } else {
+        console.warn('⚠️  Duration field not found');
     }
 
     // Set color based on appointment type
@@ -149,7 +166,12 @@ function fillBookingFormWithAppointmentType(appointmentType, slotData) {
         const colorValue = mapHexColorToDropdownValue(appointmentType.color);
         if (colorValue) {
             colorField.value = colorValue;
+            console.log(`✅ Set booking color to ${colorValue}`);
+        } else {
+            console.warn(`⚠️  Could not map color ${appointmentType.color} to dropdown value`);
         }
+    } else {
+        console.warn('⚠️  Color field not found or no color specified');
     }
 
     // Pre-fill billing code if available
@@ -161,11 +183,16 @@ function fillBookingFormWithAppointmentType(appointmentType, slotData) {
     }
 
     // Pre-fill notes if available
-    if (appointmentType.default_notes) {
-        const notesField = document.getElementById('booking-notes') || document.getElementById('notes');
-        if (notesField && !notesField.value.trim()) {
+    const notesField = document.getElementById('booking-notes') || document.getElementById('notes');
+    if (notesField) {
+        if (appointmentType.default_notes && !notesField.value.trim()) {
             notesField.value = appointmentType.default_notes;
+            console.log(`✅ Set booking notes: ${appointmentType.default_notes}`);
+        } else if (!appointmentType.default_notes) {
+            console.log('ℹ️  No default notes for appointment type');
         }
+    } else {
+        console.warn('⚠️  Notes field not found');
     }
 
     // Add appointment type info display
@@ -297,6 +324,7 @@ function getCurrentPracticeId() {
  */
 function mapHexColorToDropdownValue(hexColor) {
     const colorMapping = {
+        // Basic colors
         '#ff0000': 'red',
         '#ffa500': 'orange', 
         '#ffff00': 'yellow',
@@ -304,13 +332,28 @@ function mapHexColorToDropdownValue(hexColor) {
         '#0000ff': 'blue',
         '#800080': 'purple',
         '#808080': 'grey',
-        '#2D6356': 'green', // Default theme color maps to green
-        '#EA580C': 'orange', // Admin color
-        '#1E40AF': 'blue', // Meeting color
-        '#7C3AED': 'purple' // Travel color
+        
+        // Theme-specific colors
+        '#2D6356': 'green',   // Default Patient color
+        '#EA580C': 'orange',  // Admin color
+        '#1E40AF': 'blue',    // Meeting color  
+        '#7C3AED': 'purple',  // Travel color
+        
+        // Additional common colors
+        '#16A34A': 'green',   // New Assessment
+        '#8B5CF6': 'purple',  // Consultation
+        '#F59E0B': 'yellow',  // Documentation
+        '#EF4444': 'red',     // Equipment/Emergency
+        '#3B82F6': 'blue',    // Family Meeting
+        '#0891B2': 'blue',    // Group Therapy
+        '#0D9488': 'green',   // Neurological
+        '#A855F7': 'purple',  // Home Visit
+        '#6366F1': 'blue',    // Academic
+        '#2563EB': 'blue'     // MDT Meeting
     };
 
-    return colorMapping[hexColor.toLowerCase()] || null;
+    const normalizedColor = hexColor.toLowerCase();
+    return colorMapping[normalizedColor] || 'green'; // Default to green if no match
 }
 
 /**
