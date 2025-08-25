@@ -505,6 +505,12 @@ function closeModal() {
       // Get the profession value from the dropdown
       const profession = document.getElementById("therapist-profession").value;
       
+      // Get appointment type ID if available (set by appointment type selection)
+      const appointmentTypeField = document.getElementById("appointment-type-id");
+      const appointmentTypeId = appointmentTypeField ? appointmentTypeField.value : null;
+      
+      const selectedColor = document.getElementById("booking-colour").value;
+      
       const bookingData = {
         id: apptId || `appt-${Date.now()}`,
         name,
@@ -515,9 +521,17 @@ function closeModal() {
         duration,
         notes,
         patient_id: patientId,
-        colour: document.getElementById("booking-colour").value,
+        colour: selectedColor,
         profession,
+        appointment_type_id: appointmentTypeId
       };
+      
+      // Log color information for debugging
+      if (appointmentTypeId) {
+        console.log(`🎨 Submitting booking with appointment type ${appointmentTypeId} and color '${selectedColor}'`);
+      } else {
+        console.log(`🎨 Submitting booking with manual color '${selectedColor}'`);
+      }
 
       const method = apptId ? "PUT" : "POST";
       const endpoint = apptId ? `/bookings/${bookingData.id}` : "/bookings";
@@ -547,13 +561,13 @@ function closeModal() {
       allAppointments.forEach(appt => appt.remove());
 
       const colourMap = {
-        red: "#96364C",       // soft red
-        orange: "#D9832F",    // warm muted orange
-        yellow: "#E5C17C",    // earthy yellow
-        green: "#2D6356",     // brand green
-        blue: "#32517A",      // brand blue
-        purple: "#7A5C94",    // gentle purple
-        grey: "#CDD3CE"       // soft grey
+        red: "#EF4444",       // Equipment/Emergency red (matches appointment types)
+        orange: "#EA580C",    // Admin orange (matches appointment types)
+        yellow: "#F59E0B",    // Documentation yellow (matches appointment types)
+        green: "#2D6356",     // Patient green (matches appointment types)
+        blue: "#1E40AF",      // Meeting blue (matches appointment types)
+        purple: "#7C3AED",    // Travel purple (matches appointment types)
+        grey: "#6B7280"       // Neutral grey
       };
 
       bookings.forEach(booking => {
@@ -590,6 +604,9 @@ function closeModal() {
           }
           if (booking.colour && colourMap[booking.colour]) {
             appt.style.backgroundColor = colourMap[booking.colour];
+            console.log(`🎨 Applied color to appointment: '${booking.colour}' → ${colourMap[booking.colour]}`);
+          } else if (booking.colour) {
+            console.warn(`⚠️  Unknown color '${booking.colour}' for booking ${booking.id}`);
           }
           appt.id = booking.id;
           appt.draggable = !booking.hasTreatmentNote;

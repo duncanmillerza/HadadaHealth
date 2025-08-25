@@ -162,16 +162,23 @@ function fillBookingFormWithAppointmentType(appointmentType, slotData) {
     // Set color based on appointment type
     const colorField = document.getElementById('booking-colour') || document.getElementById('colour');
     if (colorField && appointmentType.color) {
+        console.log(`🎨 Mapping appointment type color: ${appointmentType.color}`);
+        
         // Map hex color to dropdown value if needed
         const colorValue = mapHexColorToDropdownValue(appointmentType.color);
         if (colorValue) {
             colorField.value = colorValue;
-            console.log(`✅ Set booking color to ${colorValue}`);
+            console.log(`✅ Set booking color dropdown to '${colorValue}' (from ${appointmentType.color})`);
+            
+            // Verify the mapping will work in calendar display
+            console.log(`🔍 Calendar will display this as: ${getCalendarColorForDropdown(colorValue)}`);
         } else {
             console.warn(`⚠️  Could not map color ${appointmentType.color} to dropdown value`);
         }
+    } else if (!appointmentType.color) {
+        console.warn('⚠️  Appointment type has no color specified');
     } else {
-        console.warn('⚠️  Color field not found or no color specified');
+        console.warn('⚠️  Color field not found in booking form');
     }
 
     // Pre-fill billing code if available
@@ -317,6 +324,27 @@ function getCurrentPracticeId() {
 }
 
 /**
+ * Get the calendar color that will be displayed for a dropdown value
+ * 
+ * @param {string} dropdownValue - The dropdown value (e.g., 'red', 'green') 
+ * @returns {string} - The hex color that will be displayed in calendar
+ */
+function getCalendarColorForDropdown(dropdownValue) {
+    // This should match the colourMap in week-calendar.html
+    const calendarColourMap = {
+        red: "#EF4444",       // Equipment/Emergency red (matches appointment types)
+        orange: "#EA580C",    // Admin orange (matches appointment types)
+        yellow: "#F59E0B",    // Documentation yellow (matches appointment types)
+        green: "#2D6356",     // Patient green (matches appointment types)
+        blue: "#1E40AF",      // Meeting blue (matches appointment types)
+        purple: "#7C3AED",    // Travel purple (matches appointment types)
+        grey: "#6B7280"       // Neutral grey
+    };
+    
+    return calendarColourMap[dropdownValue] || "#2D6356"; // Default to green
+}
+
+/**
  * Map hex color to dropdown value
  * 
  * @param {string} hexColor - Hex color code
@@ -324,36 +352,45 @@ function getCurrentPracticeId() {
  */
 function mapHexColorToDropdownValue(hexColor) {
     const colorMapping = {
-        // Basic colors
+        // Exact matches for calendar colourMap
+        '#EF4444': 'red',     // Equipment/Emergency red 
+        '#EA580C': 'orange',  // Admin orange
+        '#F59E0B': 'yellow',  // Documentation yellow
+        '#2D6356': 'green',   // Patient green
+        '#1E40AF': 'blue',    // Meeting blue
+        '#7C3AED': 'purple',  // Travel purple
+        '#6B7280': 'grey',    // Neutral grey
+        
+        // Additional appointment type colors mapped to closest dropdown option
+        '#16A34A': 'green',   // New Assessment (closer to green)
+        '#8B5CF6': 'purple',  // Consultation (close to purple)
+        '#3B82F6': 'blue',    // Family Meeting (close to blue)
+        '#0891B2': 'blue',    // Group Therapy (close to blue)
+        '#0D9488': 'green',   // Neurological (closer to green)
+        '#A855F7': 'purple',  // Home Visit (close to purple)
+        '#6366F1': 'blue',    // Academic (close to blue)
+        '#2563EB': 'blue',    // MDT Meeting (close to blue)
+        
+        // Fallback basic colors
         '#ff0000': 'red',
         '#ffa500': 'orange', 
         '#ffff00': 'yellow',
         '#008000': 'green',
         '#0000ff': 'blue',
         '#800080': 'purple',
-        '#808080': 'grey',
-        
-        // Theme-specific colors
-        '#2D6356': 'green',   // Default Patient color
-        '#EA580C': 'orange',  // Admin color
-        '#1E40AF': 'blue',    // Meeting color  
-        '#7C3AED': 'purple',  // Travel color
-        
-        // Additional common colors
-        '#16A34A': 'green',   // New Assessment
-        '#8B5CF6': 'purple',  // Consultation
-        '#F59E0B': 'yellow',  // Documentation
-        '#EF4444': 'red',     // Equipment/Emergency
-        '#3B82F6': 'blue',    // Family Meeting
-        '#0891B2': 'blue',    // Group Therapy
-        '#0D9488': 'green',   // Neurological
-        '#A855F7': 'purple',  // Home Visit
-        '#6366F1': 'blue',    // Academic
-        '#2563EB': 'blue'     // MDT Meeting
+        '#808080': 'grey'
     };
 
     const normalizedColor = hexColor.toLowerCase();
-    return colorMapping[normalizedColor] || 'green'; // Default to green if no match
+    const mappedColor = colorMapping[normalizedColor];
+    
+    if (mappedColor) {
+        console.log(`🎯 Color mapping: ${hexColor} → '${mappedColor}' → ${getCalendarColorForDropdown(mappedColor)}`);
+        return mappedColor;
+    } else {
+        console.warn(`⚠️  No mapping found for color ${hexColor}, defaulting to 'green'`);
+        return 'green'; // Default to green if no match
+    }
 }
 
 /**
