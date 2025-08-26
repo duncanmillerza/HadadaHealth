@@ -4,6 +4,7 @@ AppointmentType API Controllers for HadadaHealth
 Provides RESTful API endpoints for managing appointment types with hierarchical structure
 and practice-specific customizations.
 """
+import json
 from typing import List, Optional, Dict, Any
 from fastapi import HTTPException, Query, Path
 from pydantic import BaseModel, Field
@@ -341,6 +342,7 @@ class PracticeAppointmentTypeUpdateRequest(BaseModel):
     """Request model for updating practice appointment type customizations"""
     default_duration: Optional[int] = Field(None, ge=5, le=480, description="Custom default duration")
     default_billing_code: Optional[str] = Field(None, max_length=20, description="Default billing code")
+    default_billing_codes: Optional[List[dict]] = Field(None, description="Array of billing codes with quantity and modifiers")
     default_notes: Optional[str] = Field(None, max_length=1000, description="Default notes template")
     is_enabled: Optional[bool] = Field(None, description="Whether enabled for practice")
     sort_order: Optional[int] = Field(None, description="Sort order for UI")
@@ -359,6 +361,7 @@ class EffectiveAppointmentTypeResponse(BaseModel):
     # Effective settings (from customization if exists, else defaults)
     effective_duration: int
     default_billing_code: Optional[str] = None
+    default_billing_codes: Optional[List[dict]] = None
     default_notes: Optional[str] = None
     is_enabled: bool
     sort_order: int
@@ -518,6 +521,10 @@ class PracticeAppointmentTypeController:
                 update_data['default_duration'] = request.default_duration
             if request.default_billing_code is not None:
                 update_data['default_billing_code'] = request.default_billing_code
+            if request.default_billing_codes is not None:
+                # Convert array of billing codes to JSON string for storage
+                import json
+                update_data['default_billing_codes'] = json.dumps(request.default_billing_codes)
             if request.default_notes is not None:
                 update_data['default_notes'] = request.default_notes
             if request.is_enabled is not None:
@@ -635,6 +642,7 @@ class PracticeAppointmentTypeController:
                     # Effective settings
                     effective_duration=customization.get_effective_duration() if customization else appointment_type.duration,
                     default_billing_code=customization.default_billing_code if customization else None,
+                    default_billing_codes=json.loads(customization.default_billing_codes) if customization and customization.default_billing_codes else None,
                     default_notes=customization.default_notes if customization else None,
                     is_enabled=customization.is_enabled if customization else True,
                     sort_order=customization.sort_order if customization else 0,

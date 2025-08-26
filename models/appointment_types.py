@@ -390,6 +390,7 @@ class PracticeAppointmentType(BaseModel):
     appointment_type_id: int = Field(..., description="Appointment type ID")
     default_duration: Optional[int] = Field(None, ge=5, le=480, description="Custom default duration in minutes")
     default_billing_code: Optional[str] = Field(None, max_length=20, description="Default billing code")
+    default_billing_codes: Optional[str] = Field(None, description="JSON array of billing codes with quantity and modifiers")
     default_notes: Optional[str] = Field(None, max_length=1000, description="Default notes template")
     is_enabled: bool = Field(default=True, description="Whether this appointment type is enabled for the practice")
     sort_order: int = Field(default=0, description="Sort order for UI display")
@@ -413,8 +414,8 @@ class PracticeAppointmentType(BaseModel):
     @classmethod
     def create(cls, practice_id: int, appointment_type_id: int, 
                default_duration: Optional[int] = None, default_billing_code: Optional[str] = None,
-               default_notes: Optional[str] = None, is_enabled: bool = True,
-               sort_order: int = 0) -> "PracticeAppointmentType":
+               default_billing_codes: Optional[str] = None, default_notes: Optional[str] = None, 
+               is_enabled: bool = True, sort_order: int = 0) -> "PracticeAppointmentType":
         """
         Create practice-specific appointment type customization
         
@@ -439,6 +440,7 @@ class PracticeAppointmentType(BaseModel):
             appointment_type_id=appointment_type_id,
             default_duration=default_duration,
             default_billing_code=default_billing_code,
+            default_billing_codes=default_billing_codes,
             default_notes=default_notes,
             is_enabled=is_enabled,
             sort_order=sort_order
@@ -466,10 +468,10 @@ class PracticeAppointmentType(BaseModel):
             cursor.execute("""
                 INSERT INTO practice_appointment_types 
                 (practice_id, appointment_type_id, default_duration, default_billing_code, 
-                 default_notes, is_enabled, sort_order)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                 default_billing_codes, default_notes, is_enabled, sort_order)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (practice_id, appointment_type_id, default_duration, default_billing_code,
-                  default_notes, is_enabled, sort_order))
+                  default_billing_codes, default_notes, is_enabled, sort_order))
             
             practice_type_id = cursor.lastrowid
             conn.commit()
@@ -604,7 +606,7 @@ class PracticeAppointmentType(BaseModel):
         
         # Validate allowed fields
         allowed_fields = {
-            'default_duration', 'default_billing_code', 'default_notes', 
+            'default_duration', 'default_billing_code', 'default_billing_codes', 'default_notes', 
             'is_enabled', 'sort_order'
         }
         update_fields = {k: v for k, v in kwargs.items() if k in allowed_fields}
@@ -658,6 +660,7 @@ class PracticeAppointmentType(BaseModel):
             appointment_type_id=row['appointment_type_id'],
             default_duration=row['default_duration'],
             default_billing_code=row['default_billing_code'],
+            default_billing_codes=row['default_billing_codes'],
             default_notes=row['default_notes'],
             is_enabled=bool(row['is_enabled']),
             sort_order=row['sort_order'],

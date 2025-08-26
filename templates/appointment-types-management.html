@@ -20,30 +20,49 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 2rem;
-            padding: 1.5rem;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 2rem;
+            background: linear-gradient(135deg, #2D6356 0%, #1d4a3a 100%);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(45, 99, 86, 0.2);
+            color: white;
         }
         
         .management-header h1 {
-            color: #2D6356;
+            color: white;
             margin: 0;
+            font-size: 2rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .management-header h1::before {
+            content: '🗂️';
+            font-size: 2rem;
         }
         
         .btn-primary {
-            background: #2D6356;
+            background: rgba(255, 255, 255, 0.2);
             color: white;
             padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 6px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
             cursor: pointer;
             font-size: 1rem;
-            transition: background 0.2s;
+            font-weight: 600;
+            transition: all 0.2s;
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
         
         .btn-primary:hover {
-            background: #1d4a3a;
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
         
         .appointment-types-grid {
@@ -233,6 +252,322 @@
             background: #2D6356;
             color: white;
         }
+        
+        /* Quick Add Styles */
+        .add-type-buttons {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+        
+        .btn-add-type-quick {
+            background: #16a34a;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .btn-add-type-quick:hover {
+            background: #15803d;
+        }
+        
+        .btn-add-type {
+            background: transparent;
+            color: #2D6356;
+            border: 1px solid #2D6356;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .quick-add-container {
+            margin-bottom: 1rem;
+        }
+        
+        .quick-add-form {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .quick-add-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 0.5rem;
+            border: 2px solid #2D6356;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+        
+        .quick-add-input:focus {
+            outline: none;
+            border-color: #16a34a;
+            box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+        }
+        
+        .btn-quick-save {
+            background: #16a34a;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .btn-quick-save:hover {
+            background: #15803d;
+        }
+        
+        .btn-quick-cancel {
+            background: #6b7280;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .btn-quick-cancel:hover {
+            background: #4b5563;
+        }
+        
+        /* Category Management Styles */
+        .category-header {
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .category-expand-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #6b7280;
+            transition: all 0.2s ease;
+            padding: 0.25rem;
+            border-radius: 4px;
+            margin-right: 0.5rem;
+        }
+        
+        .category-expand-btn:hover {
+            background: rgba(0, 0, 0, 0.1);
+            color: #374151;
+        }
+        
+        .category-expand-btn.expanded {
+            transform: rotate(90deg);
+        }
+        
+        .appointment-type-list.collapsed {
+            display: none;
+        }
+        
+        .add-type-row.collapsed {
+            display: none;
+        }
+        
+        .category-inline-edit {
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            flex: 1;
+        }
+        
+        .category-name-input {
+            flex: 1;
+            padding: 0.5rem;
+            border: 2px solid #2D6356;
+            border-radius: 4px;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        
+        .category-color-input {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #d1d5db;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .category-edit-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn-category-save, .btn-category-cancel {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+        
+        .btn-category-save {
+            background: #16a34a;
+            color: white;
+        }
+        
+        .btn-category-save:hover {
+            background: #15803d;
+        }
+        
+        .btn-category-cancel {
+            background: #6b7280;
+            color: white;
+        }
+        
+        .btn-category-cancel:hover {
+            background: #4b5563;
+        }
+        
+        .category-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-icon.btn-reorder {
+            color: #9ca3af;
+            cursor: grab;
+        }
+        
+        .btn-icon.btn-reorder:active {
+            cursor: grabbing;
+        }
+        
+        .btn-icon.btn-reorder:hover {
+            color: #6b7280;
+        }
+        
+        /* Drag and Drop Styles */
+        .category-section.dragging {
+            opacity: 0.5;
+        }
+        
+        .category-section.drag-over {
+            border-top: 3px solid #2D6356;
+        }
+        
+        /* Visual Enhancement Styles */
+        .category-count-badge {
+            background: #e5e7eb;
+            color: #374151;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            margin-left: 0.5rem;
+            min-width: 24px;
+            text-align: center;
+        }
+        
+        .category-count-badge.has-types {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .category-section {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .category-section:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .appointment-type-item {
+            transition: background-color 0.2s ease;
+        }
+        
+        .appointment-type-item:hover {
+            background: #f8fafc;
+            border-left: 4px solid #2D6356;
+            padding-left: calc(1.5rem - 4px);
+        }
+        
+        .type-color-indicator {
+            transition: all 0.2s ease;
+        }
+        
+        .appointment-type-item:hover .type-color-indicator {
+            transform: scale(1.2);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .category-header {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            transition: background 0.2s ease;
+        }
+        
+        .category-section:hover .category-header {
+            background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+        }
+        
+        .btn-icon {
+            transition: all 0.2s ease;
+        }
+        
+        .btn-icon:hover {
+            transform: scale(1.1);
+        }
+        
+        .status-active {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            border: 1px solid #10b981;
+        }
+        
+        .status-inactive {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            border: 1px solid #ef4444;
+        }
+        
+        .type-billing {
+            background: linear-gradient(135deg, #f3f1ff 0%, #ede9fe 100%);
+            border: 1px solid #8b5cf6;
+        }
+        
+        .type-duration {
+            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+            border: 1px solid #6b7280;
+        }
+        
+        .empty-state {
+            background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            margin: 1rem;
+            color: #9ca3af;
+            font-style: italic;
+        }
+        
+        .add-type-buttons {
+            background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+            border-top: 1px solid #e5e7eb;
+            transition: background 0.2s ease;
+        }
+        
+        .add-type-buttons:hover {
+            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        }
 
         /* Modal Styles */
         .modal-overlay {
@@ -345,6 +680,120 @@
         .btn-secondary:hover {
             background: #f9fafb;
         }
+        
+        /* Override appointment-type-modal.css that interferes with main page */
+        .management-container .appointment-type-list {
+            max-height: none !important;
+            height: auto !important;
+            overflow: visible !important;
+        }
+        
+        /* Modal CSS - Fix for missing modal styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.19);
+        }
+        
+        .modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 25px;
+        }
+        
+        .modal-header {
+            flex-shrink: 0;
+            padding: 20px 25px 15px 25px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .modal-footer {
+            flex-shrink: 0;
+            padding: 15px 25px 20px 25px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .modal-header {
+            padding: 20px 25px 15px 25px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            color: #2D6356;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        
+        .modal-body {
+            padding: 20px 25px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        
+        .modal-footer {
+            padding: 15px 25px 20px 25px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        
+        /* Override button styles for modal - fix invisible save button */
+        .modal-footer .btn-primary {
+            background: #2D6356 !important;
+            color: white !important;
+            border: 1px solid #2D6356 !important;
+            backdrop-filter: none !important;
+            padding: 8px 16px !important;
+            border-radius: 6px !important;
+            font-size: 14px !important;
+            font-weight: 500 !important;
+        }
+        
+        .modal-footer .btn-primary:hover {
+            background: #1d4a3a !important;
+            border-color: #1d4a3a !important;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+        
+        .modal-footer .btn-secondary {
+            padding: 8px 16px !important;
+            font-size: 14px !important;
+            font-weight: 500 !important;
+        }
     </style>
 </head>
 <body>
@@ -355,7 +804,8 @@
         <div class="management-header">
             <h1>Appointment Types Management</h1>
             <button class="btn-primary" onclick="openCreateModal()">
-                <span style="margin-right: 0.5rem;">+</span> Add Appointment Type
+                <span class="material-icons">add</span>
+                Add Appointment Type
             </button>
         </div>
         
@@ -409,8 +859,33 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="type-billing-code">Default Billing Code</label>
-                        <input type="text" id="type-billing-code" placeholder="e.g., 101, 8618">
+                        <label>Default Billing Codes</label>
+                        <div class="billing-codes-section">
+                            <table id="type-billing-table" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                                <thead>
+                                    <tr style="background-color: #f5f5f5;">
+                                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Code</th>
+                                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Description</th>
+                                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Qty</th>
+                                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Modifier</th>
+                                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Rate</th>
+                                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Total</th>
+                                        <th style="padding: 8px; border: 1px solid #ddd; text-align: center; width: 40px;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="type-billing-table-body">
+                                    <!-- Initial row will be added by JavaScript -->
+                                </tbody>
+                            </table>
+                            <button type="button" id="add-billing-code-btn" onclick="addTypeBillingRow()" 
+                                    style="margin-top: 10px; padding: 5px 10px; background: #2D6356; color: white; border: none; border-radius: 4px;">
+                                + Add Billing Code
+                            </button>
+                            <div id="type-billing-total" style="margin-top: 10px; font-weight: bold; text-align: right; color: #2D6356;">
+                                Total: R0.00
+                            </div>
+                            <datalist id="type-billing-codes-datalist"></datalist>
+                        </div>
                     </div>
                     
                     <div class="form-group">
@@ -470,6 +945,7 @@
         // Load appointment types on page load
         window.addEventListener('DOMContentLoaded', () => {
             loadAppointmentTypes();
+            loadBillingCodes();
             setupEventListeners();
         });
 
@@ -497,29 +973,264 @@
                     closeModal();
                 }
             });
+
+            // Billing codes functionality is handled by the table functions
         }
+
+        // Store billing codes and modifiers globally
+        let allBillingCodes = [];
+        let allBillingModifiers = [];
+
+        // Load billing codes from the system
+        async function loadBillingCodes() {
+            try {
+                console.log('🔄 Loading billing codes...');
+                const response = await fetch('/api/billing-codes');
+                if (!response.ok) throw new Error('Failed to load billing codes');
+                
+                allBillingCodes = await response.json();
+                console.log('✅ Loaded billing codes:', allBillingCodes.length);
+                
+                // Populate datalist for billing codes
+                const datalist = document.getElementById('type-billing-codes-datalist');
+                datalist.innerHTML = '';
+                allBillingCodes.forEach(code => {
+                    const option = document.createElement('option');
+                    option.value = code.code;
+                    option.textContent = `${code.code} - ${code.description}`;
+                    datalist.appendChild(option);
+                });
+                
+                // Load billing modifiers
+                await loadBillingModifiers();
+                
+                // Add initial billing row
+                addTypeBillingRow();
+                
+                console.log('✅ Billing codes system initialized');
+            } catch (error) {
+                console.error('❌ Error loading billing codes:', error);
+                showError('Failed to load billing codes');
+            }
+        }
+
+        // Load billing modifiers
+        async function loadBillingModifiers() {
+            try {
+                const response = await fetch('/api/billing_modifiers');
+                if (!response.ok) throw new Error('Failed to load billing modifiers');
+                
+                allBillingModifiers = await response.json();
+                console.log('✅ Loaded billing modifiers:', allBillingModifiers.length);
+            } catch (error) {
+                console.error('❌ Error loading billing modifiers:', error);
+                allBillingModifiers = [];
+            }
+        }
+
+        // Add a new billing code row
+        function addTypeBillingRow() {
+            const tableBody = document.getElementById('type-billing-table-body');
+            const row = document.createElement('tr');
+            row.className = 'type-billing-entry';
+            
+            row.innerHTML = `
+                <td style="padding: 5px; border: 1px solid #ddd;">
+                    <input type="text" list="type-billing-codes-datalist" placeholder="Start typing code" 
+                           style="width: 100%; border: none; outline: none;"
+                           oninput="populateTypeBillingRow(this)">
+                </td>
+                <td style="padding: 5px; border: 1px solid #ddd; font-size: 0.9em;" class="description-cell">—</td>
+                <td style="padding: 5px; border: 1px solid #ddd;">
+                    <input type="number" value="1" min="1" style="width: 60px; border: none; outline: none;"
+                           onchange="recalculateTypeBillingTotal(this)">
+                </td>
+                <td style="padding: 5px; border: 1px solid #ddd;">
+                    <select style="width: 100%; border: none; outline: none;" onchange="applyTypeBillingModifier(this)">
+                        <option value="">None</option>
+                    </select>
+                </td>
+                <td style="padding: 5px; border: 1px solid #ddd; font-size: 0.9em;" class="rate-cell">—</td>
+                <td style="padding: 5px; border: 1px solid #ddd; font-size: 0.9em; font-weight: bold;" class="total-cell">—</td>
+                <td style="padding: 5px; border: 1px solid #ddd; text-align: center;">
+                    <button type="button" onclick="removeTypeBillingRow(this)" 
+                            style="background: #dc3545; color: white; border: none; border-radius: 3px; padding: 2px 6px;">✕</button>
+                </td>
+            `;
+            
+            tableBody.appendChild(row);
+            
+            // Populate modifier dropdown
+            const modifierSelect = row.querySelector('select');
+            allBillingModifiers.forEach(modifier => {
+                const option = document.createElement('option');
+                option.value = modifier.code;
+                option.textContent = `${modifier.code} - ${modifier.description}`;
+                option.dataset.adjustmentFactor = modifier.adjustment_factor;
+                modifierSelect.appendChild(option);
+            });
+            
+            console.log('✅ Added new billing code row');
+        }
+
+        // Remove a billing code row
+        function removeTypeBillingRow(button) {
+            const row = button.closest('tr');
+            row.remove();
+            recalculateTypeBillingTotal();
+        }
+
+        // Populate billing row when code is entered
+        function populateTypeBillingRow(input) {
+            const code = input.value;
+            const row = input.closest('tr');
+            const descriptionCell = row.querySelector('.description-cell');
+            const rateCell = row.querySelector('.rate-cell');
+            const totalCell = row.querySelector('.total-cell');
+            const qtyInput = row.querySelector('input[type="number"]');
+            
+            const billingCode = allBillingCodes.find(bc => bc.code === code);
+            if (billingCode) {
+                descriptionCell.textContent = billingCode.description;
+                rateCell.textContent = `R${billingCode.base_fee || '0'}`;
+                
+                // Calculate total
+                const qty = parseInt(qtyInput.value) || 1;
+                const rate = parseFloat(billingCode.base_fee) || 0;
+                const total = qty * rate;
+                totalCell.textContent = `R${total.toFixed(2)}`;
+                
+                recalculateTypeBillingTotal();
+            } else {
+                descriptionCell.textContent = '—';
+                rateCell.textContent = '—';
+                totalCell.textContent = '—';
+            }
+        }
+
+        // Apply billing modifier
+        function applyTypeBillingModifier(select) {
+            const row = select.closest('tr');
+            const rateCell = row.querySelector('.rate-cell');
+            const totalCell = row.querySelector('.total-cell');
+            const qtyInput = row.querySelector('input[type="number"]');
+            const codeInput = row.querySelector('input[list]');
+            
+            const billingCode = allBillingCodes.find(bc => bc.code === codeInput.value);
+            if (!billingCode) return;
+            
+            const modifier = allBillingModifiers.find(m => m.code === select.value);
+            const adjustmentFactor = modifier ? parseFloat(modifier.adjustment_factor) : 1;
+            const baseRate = parseFloat(billingCode.base_fee) || 0;
+            const adjustedRate = baseRate * adjustmentFactor;
+            
+            rateCell.textContent = `R${adjustedRate.toFixed(2)}`;
+            
+            // Calculate total
+            const qty = parseInt(qtyInput.value) || 1;
+            const total = qty * adjustedRate;
+            totalCell.textContent = `R${total.toFixed(2)}`;
+            
+            recalculateTypeBillingTotal();
+        }
+
+        // Recalculate total for billing table
+        function recalculateTypeBillingTotal(changedInput) {
+            // If a quantity changed, recalculate that row first
+            if (changedInput) {
+                const row = changedInput.closest('tr');
+                const rateText = row.querySelector('.rate-cell').textContent;
+                const rate = parseFloat(rateText.replace('R', '')) || 0;
+                const qty = parseInt(changedInput.value) || 1;
+                const total = qty * rate;
+                row.querySelector('.total-cell').textContent = `R${total.toFixed(2)}`;
+            }
+            
+            // Calculate overall total
+            const totalCells = document.querySelectorAll('#type-billing-table-body .total-cell');
+            let grandTotal = 0;
+            
+            totalCells.forEach(cell => {
+                const amount = parseFloat(cell.textContent.replace('R', '')) || 0;
+                grandTotal += amount;
+            });
+            
+            document.getElementById('type-billing-total').textContent = `Total: R${grandTotal.toFixed(2)}`;
+        }
+
+        // Billing code info display is now handled by the table rows
 
         async function loadAppointmentTypes() {
             try {
-                const response = await fetch(`/api/practices/${currentPracticeId}/appointment-types/effective?enabled_only=false`);
-                if (!response.ok) throw new Error('Failed to load appointment types');
+                // Try the authenticated endpoint first
+                let response = await fetch(`/api/practices/${currentPracticeId}/appointment-types/effective?enabled_only=false`);
+                
+                // If authentication fails, try alternative approaches
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        console.log('🔐 Authentication required for practice endpoint, trying alternatives...');
+                        
+                        // Since all endpoints require auth, redirect to login
+                        console.log('🔐 All API endpoints require authentication');
+                        window.location.href = '/login';
+                        return;
+                    } else {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                }
                 
                 appointmentTypes = await response.json();
+                console.log(`✅ Successfully loaded ${appointmentTypes.length} appointment types`);
+                
                 renderAppointmentTypes();
                 updateCategoryDropdown();
+                
+                // Ensure all categories are expanded by default
+                setTimeout(() => {
+                    expandAllCategories();
+                }, 100);
+                
             } catch (error) {
-                console.error('Error loading appointment types:', error);
-                showError('Failed to load appointment types');
+                console.error('❌ Error loading appointment types:', error);
+                showError(`Failed to load appointment types: ${error.message}`);
+                
+                // Show helpful guidance
+                const container = document.getElementById('appointment-types-container');
+                if (container) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 3rem; background: #f9fafb; border-radius: 8px; border: 2px dashed #d1d5db;">
+                            <div style="font-size: 3rem; margin-bottom: 1rem;">🔐</div>
+                            <h3 style="color: #374151; margin-bottom: 1rem;">Authentication Required</h3>
+                            <p style="color: #6b7280; margin-bottom: 2rem;">This page requires authentication to load and manage appointment types.</p>
+                            <a href="/login" style="background: #2D6356; color: white; padding: 1rem 2rem; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                                🔑 Log In to Continue
+                            </a>
+                        </div>
+                    `;
+                }
             }
         }
 
         function renderAppointmentTypes() {
             const container = document.getElementById('appointment-types-container');
             
+            console.log('🔍 Rendering appointment types...', appointmentTypes.length, 'types loaded');
+            console.log('🔍 Raw appointmentTypes data:', appointmentTypes);
+            
             // Group types by category
             const categories = new Map();
             
-            appointmentTypes.forEach(type => {
+            appointmentTypes.forEach((type, index) => {
+                console.log(`🔄 Processing type ${index + 1}/${appointmentTypes.length}: ${type.name} (ID: ${type.id}, Parent: ${type.parent_id})`);
+                console.log(`   📝 Type details:`, {
+                    id: type.id,
+                    name: type.name,
+                    parent_id: type.parent_id,
+                    color: type.color,
+                    is_active: type.is_active,
+                    duration: type.duration
+                });
+                
                 if (!type.parent_id) {
                     // This is a category
                     if (!categories.has(type.id)) {
@@ -527,20 +1238,39 @@
                             ...type,
                             children: []
                         });
+                        console.log(`✅ Added category: ${type.name} (ID: ${type.id})`);
                     }
                 } else {
                     // This is a child type
                     const parent = appointmentTypes.find(t => t.id === type.parent_id);
+                    console.log(`🔍 Looking for parent ID ${type.parent_id} for child ${type.name}`);
                     if (parent) {
                         if (!categories.has(parent.id)) {
                             categories.set(parent.id, {
                                 ...parent,
                                 children: []
                             });
+                            console.log(`✅ Added category from child: ${parent.name} (ID: ${parent.id})`);
                         }
                         categories.get(parent.id).children.push(type);
+                        console.log(`✅ Added child ${type.name} to category ${parent.name}. Category now has ${categories.get(parent.id).children.length} children`);
+                    } else {
+                        console.warn(`⚠️ Orphaned child type: ${type.name} (parent ID ${type.parent_id} not found)`);
+                        console.warn(`   Available parent IDs:`, appointmentTypes.filter(t => !t.parent_id).map(t => t.id));
                     }
                 }
+            });
+            
+            console.log(`📊 Categories processed: ${categories.size}`);
+            categories.forEach((category, id) => {
+                console.log(`📁 Category: ${category.name} (ID: ${id}): ${category.children.length} children`);
+                console.log(`   📝 Category details:`, {
+                    id: category.id,
+                    name: category.name,
+                    color: category.color,
+                    children_count: category.children.length,
+                    children_names: category.children.map(c => c.name)
+                });
             });
 
             // Render categories and their types
@@ -556,35 +1286,56 @@
                 return;
             }
 
+            console.log('🏗️ Starting to render category sections...');
+            let categoryIndex = 0;
             categories.forEach(category => {
+                categoryIndex++;
+                console.log(`🏗️ Rendering category ${categoryIndex}/${categories.size}: ${category.name} with ${category.children.length} children`);
+                
                 const categorySection = document.createElement('div');
                 categorySection.className = 'category-section';
+                console.log(`   📦 Created category section div for ${category.name}`);
                 
-                categorySection.innerHTML = `
-                    <div class="category-header">
-                        <div class="category-title">
-                            <div class="category-color" style="background-color: ${category.color}"></div>
-                            <span class="category-name">${category.name}</span>
-                        </div>
-                        <div class="category-actions">
-                            <button class="btn-icon btn-edit" onclick="editCategory(${category.id})" title="Edit Category">
-                                <span class="material-icons">edit</span>
-                            </button>
-                            <button class="btn-icon btn-delete" onclick="deleteCategory(${category.id})" title="Delete Category">
-                                <span class="material-icons">delete</span>
-                            </button>
-                        </div>
-                    </div>
-                    <ul class="appointment-type-list">
-                        ${category.children.length > 0 ? category.children.map(type => `
+                console.log(`🎨 About to render template for category ${category.name} with ${category.children.length} children`);
+                console.log(`🎨 Children data:`, category.children);
+                
+                const childrenHtml = category.children.length > 0 ? category.children.map(type => {
+                    console.log(`🎨 Rendering child: ${type.name} (ID: ${type.id})`);
+                    return `
                             <li class="appointment-type-item">
                                 <div class="type-info">
                                     <div class="type-color-indicator" style="background-color: ${type.color || category.color}"></div>
                                     <span class="type-name">${type.name}</span>
                                     <div class="type-details">
-                                        <span class="type-duration">${type.effective_duration || type.duration}min</span>
-                                        ${type.default_billing_code ? `<span class="type-billing">${type.default_billing_code}</span>` : ''}
+                                        <span class="type-duration">
+                                            <span class="material-icons" style="font-size: 14px; margin-right: 2px;">schedule</span>
+                                            ${type.effective_duration || type.duration}min
+                                        </span>
+                                        ${(() => {
+                                            // Handle both old single billing code and new array format
+                                            const billingCodes = [];
+                                            
+                                            // Check for old format
+                                            if (type.default_billing_code) {
+                                                billingCodes.push(type.default_billing_code);
+                                            }
+                                            
+                                            // Check for new array format
+                                            if (type.default_billing_codes && Array.isArray(type.default_billing_codes)) {
+                                                billingCodes.push(...type.default_billing_codes.map(bc => bc.code));
+                                            }
+                                            
+                                            // Remove duplicates and return spans
+                                            const uniqueCodes = [...new Set(billingCodes)];
+                                            return uniqueCodes.map(code => `<span class="type-billing">
+                                                <span class="material-icons" style="font-size: 14px; margin-right: 2px;">attach_money</span>
+                                                ${code}
+                                            </span>`).join('');
+                                        })()}
                                         <span class="type-status ${type.is_active ? 'status-active' : 'status-inactive'}">
+                                            <span class="material-icons" style="font-size: 14px; margin-right: 2px;">
+                                                ${type.is_active ? 'check_circle' : 'cancel'}
+                                            </span>
                                             ${type.is_active ? 'Active' : 'Inactive'}
                                         </span>
                                     </div>
@@ -602,17 +1353,76 @@
                                     </button>
                                 </div>
                             </li>
-                        `).join('') : '<li class="empty-state">No appointment types in this category</li>'}
+                        `;
+                }).join('') : '<li class="empty-state">No appointment types in this category</li>';
+                
+                console.log(`🎨 Generated childrenHtml for ${category.name}:`, childrenHtml.substring(0, 200) + '...');
+                
+                categorySection.innerHTML = `
+                    <div class="category-header" onclick="toggleCategoryExpansion(${category.id}, event)">
+                        <div class="category-title" id="category-title-${category.id}">
+                            <button class="category-expand-btn expanded" id="expand-btn-${category.id}">
+                                <span class="material-icons">chevron_right</span>
+                            </button>
+                            <div class="category-color" style="background-color: ${category.color}"></div>
+                            <span class="category-name">${category.name}</span>
+                            <span class="category-count-badge ${category.children.length > 0 ? 'has-types' : ''}">${category.children.length}</span>
+                        </div>
+                        <div class="category-inline-edit" id="category-edit-${category.id}">
+                            <input type="color" class="category-color-input" value="${category.color}">
+                            <input type="text" class="category-name-input" value="${category.name}" 
+                                   onkeypress="handleCategoryEditKeypress(event, ${category.id})">
+                            <div class="category-edit-actions">
+                                <button class="btn-category-save" onclick="saveCategoryEdit(${category.id})">Save</button>
+                                <button class="btn-category-cancel" onclick="cancelCategoryEdit(${category.id})">Cancel</button>
+                            </div>
+                        </div>
+                        <div class="category-actions" onclick="event.stopPropagation()">
+                            <button class="btn-icon btn-reorder" title="Drag to reorder category" draggable="true" 
+                                    onmousedown="startCategoryDrag(event, ${category.id})">
+                                <span class="material-icons">drag_indicator</span>
+                            </button>
+                            <button class="btn-icon btn-edit" onclick="startCategoryEdit(${category.id})" title="Edit Category">
+                                <span class="material-icons">edit</span>
+                            </button>
+                            <button class="btn-icon btn-delete" onclick="deleteCategory(${category.id})" title="Delete Category">
+                                <span class="material-icons">delete</span>
+                            </button>
+                        </div>
+                    </div>
+                    <ul class="appointment-type-list" id="type-list-${category.id}" style="display: block;">
+                        ${childrenHtml}
                     </ul>
-                    <div class="add-type-row">
-                        <button class="btn-add-type" onclick="openCreateModal(${category.id})">
-                            + Add Type to ${category.name}
-                        </button>
+                    <div class="add-type-row" id="add-row-${category.id}" style="display: block;">
+                        <div class="quick-add-container" id="quick-add-${category.id}" style="display: none;">
+                            <div class="quick-add-form">
+                                <input type="text" placeholder="Appointment type name" class="quick-add-input" 
+                                       onkeypress="handleQuickAddKeypress(event, ${category.id})"
+                                       maxlength="100">
+                                <button class="btn-quick-save" onclick="saveQuickAdd(${category.id})">Save</button>
+                                <button class="btn-quick-cancel" onclick="cancelQuickAdd(${category.id})">Cancel</button>
+                            </div>
+                        </div>
+                        <div class="add-type-buttons" id="add-buttons-${category.id}">
+                            <button class="btn-add-type-quick" onclick="showQuickAdd(${category.id})">
+                                <span class="material-icons">add</span> Quick Add
+                            </button>
+                            <button class="btn-add-type" onclick="openCreateModal(${category.id})">
+                                <span class="material-icons">settings</span> Advanced Add
+                            </button>
+                        </div>
                     </div>
                 `;
                 
                 container.appendChild(categorySection);
+                
+                // Debug: Check if the appointment type list has the collapsed class
+                const typeList = categorySection.querySelector(`#type-list-${category.id}`);
+                console.log(`🔍 Type list for ${category.name} has classes:`, typeList?.className);
+                console.log(`🔍 Type list display style:`, window.getComputedStyle(typeList).display);
             });
+            
+            console.log('✅ All category sections rendered, container HTML length:', container.innerHTML.length);
         }
 
         function updateCategoryDropdown() {
@@ -641,16 +1451,35 @@
 
         function openCreateModal(categoryId = null) {
             editingTypeId = null;
-            document.getElementById('modal-title').textContent = 'Create Appointment Type';
+            
+            // Set modal title based on whether adding to specific category
+            const modalTitle = document.getElementById('modal-title');
+            if (categoryId) {
+                const category = appointmentTypes.find(t => t.id === categoryId);
+                const categoryName = category ? category.name : 'Category';
+                modalTitle.textContent = `Add Appointment Type to ${categoryName}`;
+            } else {
+                modalTitle.textContent = 'Create Appointment Type';
+            }
+            
             document.getElementById('appointment-type-form').reset();
             document.getElementById('type-status').value = 'active';
             document.getElementById('type-billable').checked = true;
             
             if (categoryId) {
                 document.getElementById('type-category').value = categoryId;
+                // Use category color as default
+                const category = appointmentTypes.find(t => t.id === categoryId);
+                if (category && category.color) {
+                    document.getElementById('type-color').value = category.color;
+                    document.getElementById('color-preview').style.backgroundColor = category.color;
+                } else {
+                    document.getElementById('color-preview').style.backgroundColor = '#2D6356';
+                }
+            } else {
+                document.getElementById('color-preview').style.backgroundColor = '#2D6356';
             }
             
-            document.getElementById('color-preview').style.backgroundColor = '#2D6356';
             document.getElementById('appointment-type-modal').classList.add('active');
         }
 
@@ -666,7 +1495,32 @@
             document.getElementById('type-duration').value = type.duration;
             document.getElementById('type-color').value = type.color;
             document.getElementById('color-preview').style.backgroundColor = type.color;
-            document.getElementById('type-billing-code').value = type.default_billing_code || '';
+            // Clear and populate billing codes table
+            document.getElementById('type-billing-table-body').innerHTML = '';
+            if (type.default_billing_codes && type.default_billing_codes.length > 0) {
+                type.default_billing_codes.forEach(billingCode => {
+                    addTypeBillingRow();
+                    const lastRow = document.querySelector('#type-billing-table-body tr:last-child');
+                    const codeInput = lastRow.querySelector('input[list]');
+                    const qtyInput = lastRow.querySelector('input[type="number"]');
+                    const modifierSelect = lastRow.querySelector('select');
+                    
+                    codeInput.value = billingCode.code;
+                    qtyInput.value = billingCode.quantity || 1;
+                    if (billingCode.modifier) {
+                        modifierSelect.value = billingCode.modifier;
+                    }
+                    
+                    populateTypeBillingRow(codeInput);
+                    if (billingCode.modifier) {
+                        applyTypeBillingModifier(modifierSelect);
+                    }
+                });
+            } else {
+                // Add one empty row if no billing codes exist
+                addTypeBillingRow();
+            }
+            
             document.getElementById('type-default-notes').value = type.default_notes || '';
             document.getElementById('type-description').value = type.description || '';
             document.getElementById('type-sort-order').value = type.sort_order || 0;
@@ -741,6 +1595,23 @@
                 is_active: document.getElementById('type-status').value === 'active'
             };
             
+            // Collect billing codes data
+            const billingCodes = [];
+            const billingRows = document.querySelectorAll('#type-billing-table-body tr');
+            billingRows.forEach(row => {
+                const codeInput = row.querySelector('input[list]');
+                const qtyInput = row.querySelector('input[type="number"]');
+                const modifierSelect = row.querySelector('select');
+                
+                if (codeInput.value.trim()) {
+                    billingCodes.push({
+                        code: codeInput.value.trim(),
+                        quantity: parseInt(qtyInput.value) || 1,
+                        modifier: modifierSelect.value || null
+                    });
+                }
+            });
+            
             // Add practice customization data
             const customizationData = {
                 appointment_type_id: editingTypeId,
@@ -748,7 +1619,7 @@
                 enabled: typeData.is_active,
                 effective_duration: typeData.duration,
                 effective_color: typeData.color,
-                default_billing_code: document.getElementById('type-billing-code').value.trim() || null,
+                default_billing_codes: billingCodes,
                 default_notes: document.getElementById('type-default-notes').value.trim() || null,
                 sort_order: parseInt(document.getElementById('type-sort-order').value) || 0,
                 requires_authorization: document.getElementById('type-requires-auth').checked,
@@ -768,11 +1639,26 @@
                     
                     // Also update practice customization
                     if (response.ok) {
-                        await fetch(`/api/practices/${currentPracticeId}/appointment-types/customizations/${editingTypeId}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(customizationData)
-                        });
+                        // First, find the customization ID for this appointment type
+                        const customizationsResponse = await fetch(`/api/practices/${currentPracticeId}/appointment-types/customizations`);
+                        const customizations = await customizationsResponse.json();
+                        const existingCustomization = customizations.find(c => c.appointment_type_id === editingTypeId);
+                        
+                        if (existingCustomization) {
+                            // Update existing customization
+                            await fetch(`/api/practices/${currentPracticeId}/appointment-types/customizations/${existingCustomization.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(customizationData)
+                            });
+                        } else {
+                            // Create new customization
+                            await fetch(`/api/practices/${currentPracticeId}/appointment-types/customizations`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(customizationData)
+                            });
+                        }
                     }
                 } else {
                     // Create new type
@@ -910,6 +1796,391 @@
             `;
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), 5000);
+        }
+
+        // Quick Add Functionality
+        function showQuickAdd(categoryId) {
+            const quickAddContainer = document.getElementById(`quick-add-${categoryId}`);
+            const buttonsContainer = document.getElementById(`add-buttons-${categoryId}`);
+            
+            if (quickAddContainer && buttonsContainer) {
+                quickAddContainer.style.display = 'block';
+                buttonsContainer.style.display = 'none';
+                
+                // Focus on the input
+                const input = quickAddContainer.querySelector('.quick-add-input');
+                if (input) {
+                    input.focus();
+                    input.value = ''; // Clear any previous value
+                }
+            }
+        }
+        
+        function cancelQuickAdd(categoryId) {
+            const quickAddContainer = document.getElementById(`quick-add-${categoryId}`);
+            const buttonsContainer = document.getElementById(`add-buttons-${categoryId}`);
+            
+            if (quickAddContainer && buttonsContainer) {
+                quickAddContainer.style.display = 'none';
+                buttonsContainer.style.display = 'flex';
+                
+                // Clear the input
+                const input = quickAddContainer.querySelector('.quick-add-input');
+                if (input) {
+                    input.value = '';
+                }
+            }
+        }
+        
+        function handleQuickAddKeypress(event, categoryId) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                saveQuickAdd(categoryId);
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                cancelQuickAdd(categoryId);
+            }
+        }
+        
+        async function saveQuickAdd(categoryId) {
+            const quickAddContainer = document.getElementById(`quick-add-${categoryId}`);
+            const input = quickAddContainer?.querySelector('.quick-add-input');
+            
+            if (!input) {
+                showError('Could not find input field');
+                return;
+            }
+            
+            const typeName = input.value.trim();
+            if (!typeName) {
+                showError('Please enter an appointment type name');
+                input.focus();
+                return;
+            }
+            
+            try {
+                // Find the category to get its color
+                const category = appointmentTypes.find(t => t.id === categoryId);
+                const categoryColor = category ? category.color : '#2D6356';
+                
+                // Create the appointment type with minimal required fields
+                const typeData = {
+                    name: typeName,
+                    parent_id: categoryId,
+                    practice_id: currentPracticeId,
+                    color: categoryColor, // Use category color as default
+                    duration: 30, // Default duration
+                    is_active: true
+                };
+                
+                // Show loading state
+                input.disabled = true;
+                const saveBtn = quickAddContainer.querySelector('.btn-quick-save');
+                const originalText = saveBtn.textContent;
+                saveBtn.textContent = 'Saving...';
+                
+                // Create the appointment type
+                const response = await fetch('/api/appointment-types', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(typeData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const newType = await response.json();
+                
+                // Create practice customization with default settings
+                const customizationData = {
+                    appointment_type_id: newType.id,
+                    practice_id: currentPracticeId,
+                    enabled: true,
+                    effective_duration: 30,
+                    effective_color: categoryColor,
+                    default_billing_codes: [],
+                    default_notes: null,
+                    sort_order: 0,
+                    requires_authorization: false,
+                    is_billable: true
+                };
+                
+                await fetch(`/api/practices/${currentPracticeId}/appointment-types/customizations`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(customizationData)
+                });
+                
+                // Success!
+                showSuccess(`"${typeName}" added to category successfully`);
+                cancelQuickAdd(categoryId);
+                loadAppointmentTypes(); // Reload to show the new type
+                
+            } catch (error) {
+                console.error('Error in quick add:', error);
+                showError(`Failed to add appointment type: ${error.message}`);
+                
+                // Reset the form state
+                input.disabled = false;
+                const saveBtn = quickAddContainer.querySelector('.btn-quick-save');
+                saveBtn.textContent = originalText;
+                input.focus();
+            }
+        }
+        
+        // Category Management Functions
+        function startCategoryEdit(categoryId) {
+            const titleDiv = document.getElementById(`category-title-${categoryId}`);
+            const editDiv = document.getElementById(`category-edit-${categoryId}`);
+            
+            if (titleDiv && editDiv) {
+                titleDiv.style.display = 'none';
+                editDiv.style.display = 'flex';
+                
+                // Focus on the name input
+                const nameInput = editDiv.querySelector('.category-name-input');
+                if (nameInput) {
+                    nameInput.focus();
+                    nameInput.select();
+                }
+            }
+        }
+        
+        function cancelCategoryEdit(categoryId) {
+            const titleDiv = document.getElementById(`category-title-${categoryId}`);
+            const editDiv = document.getElementById(`category-edit-${categoryId}`);
+            
+            if (titleDiv && editDiv) {
+                titleDiv.style.display = 'flex';
+                editDiv.style.display = 'none';
+                
+                // Reset the input values to original
+                const category = appointmentTypes.find(t => t.id === categoryId);
+                if (category) {
+                    const nameInput = editDiv.querySelector('.category-name-input');
+                    const colorInput = editDiv.querySelector('.category-color-input');
+                    if (nameInput) nameInput.value = category.name;
+                    if (colorInput) colorInput.value = category.color;
+                }
+            }
+        }
+        
+        function handleCategoryEditKeypress(event, categoryId) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                saveCategoryEdit(categoryId);
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                cancelCategoryEdit(categoryId);
+            }
+        }
+        
+        async function saveCategoryEdit(categoryId) {
+            const editDiv = document.getElementById(`category-edit-${categoryId}`);
+            if (!editDiv) return;
+            
+            const nameInput = editDiv.querySelector('.category-name-input');
+            const colorInput = editDiv.querySelector('.category-color-input');
+            
+            if (!nameInput || !colorInput) {
+                showError('Could not find edit inputs');
+                return;
+            }
+            
+            const newName = nameInput.value.trim();
+            const newColor = colorInput.value;
+            
+            if (!newName) {
+                showError('Category name cannot be empty');
+                nameInput.focus();
+                return;
+            }
+            
+            try {
+                // Show loading state
+                const saveBtn = editDiv.querySelector('.btn-category-save');
+                const originalText = saveBtn.textContent;
+                saveBtn.textContent = 'Saving...';
+                saveBtn.disabled = true;
+                
+                // Update the category
+                const response = await fetch(`/api/appointment-types/${categoryId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: newName,
+                        color: newColor
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                // Success!
+                showSuccess(`Category "${newName}" updated successfully`);
+                cancelCategoryEdit(categoryId);
+                loadAppointmentTypes(); // Reload to show the changes
+                
+            } catch (error) {
+                console.error('Error saving category:', error);
+                showError(`Failed to update category: ${error.message}`);
+                
+                // Reset button state
+                const saveBtn = editDiv.querySelector('.btn-category-save');
+                saveBtn.textContent = originalText;
+                saveBtn.disabled = false;
+            }
+        }
+        
+        // Replace the old editCategory function with the new inline editing
+        function editCategory(categoryId) {
+            startCategoryEdit(categoryId);
+        }
+        
+        // Category Drag and Drop Functions
+        let draggedCategoryId = null;
+        let draggedElement = null;
+        
+        function startCategoryDrag(event, categoryId) {
+            draggedCategoryId = categoryId;
+            draggedElement = event.target.closest('.category-section');
+            
+            if (draggedElement) {
+                draggedElement.classList.add('dragging');
+                
+                // Set up drag events
+                draggedElement.addEventListener('dragstart', handleCategoryDragStart);
+                draggedElement.addEventListener('dragend', handleCategoryDragEnd);
+                
+                // Add drop zones to all category sections
+                const allCategories = document.querySelectorAll('.category-section');
+                allCategories.forEach(cat => {
+                    cat.addEventListener('dragover', handleCategoryDragOver);
+                    cat.addEventListener('drop', handleCategoryDrop);
+                    cat.addEventListener('dragleave', handleCategoryDragLeave);
+                });
+            }
+        }
+        
+        function handleCategoryDragStart(event) {
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', draggedCategoryId);
+        }
+        
+        function handleCategoryDragEnd(event) {
+            // Clean up drag styles
+            const allCategories = document.querySelectorAll('.category-section');
+            allCategories.forEach(cat => {
+                cat.classList.remove('dragging', 'drag-over');
+                cat.removeEventListener('dragover', handleCategoryDragOver);
+                cat.removeEventListener('drop', handleCategoryDrop);
+                cat.removeEventListener('dragleave', handleCategoryDragLeave);
+            });
+            
+            draggedCategoryId = null;
+            draggedElement = null;
+        }
+        
+        function handleCategoryDragOver(event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+            
+            const targetCategory = event.currentTarget;
+            if (targetCategory !== draggedElement) {
+                targetCategory.classList.add('drag-over');
+            }
+        }
+        
+        function handleCategoryDragLeave(event) {
+            const targetCategory = event.currentTarget;
+            targetCategory.classList.remove('drag-over');
+        }
+        
+        function handleCategoryDrop(event) {
+            event.preventDefault();
+            
+            const targetCategory = event.currentTarget;
+            const targetCategoryId = extractCategoryIdFromElement(targetCategory);
+            
+            if (draggedCategoryId && targetCategoryId && draggedCategoryId !== targetCategoryId) {
+                reorderCategories(draggedCategoryId, targetCategoryId);
+            }
+            
+            targetCategory.classList.remove('drag-over');
+        }
+        
+        function extractCategoryIdFromElement(element) {
+            // Extract category ID from the element's HTML content
+            const editButton = element.querySelector('[onclick*="startCategoryEdit"]');
+            if (editButton) {
+                const onclickValue = editButton.getAttribute('onclick');
+                const match = onclickValue.match(/startCategoryEdit\\((\\d+)\\)/);
+                return match ? parseInt(match[1]) : null;
+            }
+            return null;
+        }
+        
+        async function reorderCategories(draggedId, targetId) {
+            try {
+                // For now, we'll implement a simple swap
+                // In a more complex implementation, you might want to track sort_order in the database
+                showSuccess(`Category reordering: ${draggedId} → ${targetId} (implementation pending)`);
+                
+                // TODO: Implement actual reordering API call
+                // This would involve updating sort_order values in the database
+                // and then reloading the appointment types
+                
+            } catch (error) {
+                console.error('Error reordering categories:', error);
+                showError('Failed to reorder categories');
+            }
+        }
+        
+        // Category Expand/Collapse Functions
+        function toggleCategoryExpansion(categoryId, event) {
+            // Prevent event bubbling if clicking on other elements
+            if (event && (event.target.closest('.category-actions') || event.target.closest('.category-inline-edit'))) {
+                return;
+            }
+            
+            const expandBtn = document.getElementById(`expand-btn-${categoryId}`);
+            const typeList = document.getElementById(`type-list-${categoryId}`);
+            const addRow = document.getElementById(`add-row-${categoryId}`);
+            
+            if (expandBtn && typeList && addRow) {
+                const isExpanded = expandBtn.classList.contains('expanded');
+                
+                if (isExpanded) {
+                    // Collapse
+                    expandBtn.classList.remove('expanded');
+                    typeList.classList.add('collapsed');
+                    addRow.classList.add('collapsed');
+                } else {
+                    // Expand
+                    expandBtn.classList.add('expanded');
+                    typeList.classList.remove('collapsed');
+                    addRow.classList.remove('collapsed');
+                }
+            }
+        }
+        
+        // Expand all categories by default when page loads
+        function expandAllCategories() {
+            console.log('🔧 Expanding all categories...');
+            const expandBtns = document.querySelectorAll('.category-expand-btn');
+            console.log(`🔍 Found ${expandBtns.length} expand buttons`);
+            expandBtns.forEach((btn, index) => {
+                console.log(`🔍 Button ${index + 1}: ID=${btn.id}, classes=${btn.className}`);
+                if (!btn.classList.contains('expanded')) {
+                    const categoryId = btn.id.replace('expand-btn-', '');
+                    console.log(`🔧 Expanding category ${categoryId}`);
+                    toggleCategoryExpansion(categoryId);
+                } else {
+                    console.log(`✅ Button ${index + 1} is already expanded`);
+                }
+            });
         }
     </script>
     

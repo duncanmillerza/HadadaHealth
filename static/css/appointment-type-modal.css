@@ -153,12 +153,12 @@
     transform: rotate(90deg);
 }
 
-.appointment-type-list {
+.appointment-type-modal .appointment-type-list {
     display: none;
     background: #ffffff;
 }
 
-.category-expanded .appointment-type-list {
+.appointment-type-modal .category-expanded .appointment-type-list {
     display: block;
 }
 
@@ -411,13 +411,13 @@
     }
 }
 
-/* Animation for smooth expand/collapse */
-.appointment-type-list {
+/* Animation for smooth expand/collapse - ONLY apply to modal */
+.appointment-type-modal .appointment-type-list {
     transition: max-height 0.3s ease;
     max-height: 0;
     overflow: hidden;
 }
 
-.category-expanded .appointment-type-list {
+.appointment-type-modal .category-expanded .appointment-type-list {
     max-height: 500px;
 }
