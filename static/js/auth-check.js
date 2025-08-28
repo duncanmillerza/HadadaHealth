@@ -26,7 +26,17 @@
     const needsAuth = protectedPages.includes(currentPath) || currentPath === '/';
     
     if (needsAuth) {
-        // Check authentication before page fully loads
+        // Add small delay to allow session cookies to propagate after login
+        const authCheckDelay = window.location.search.includes('_login=') ? 200 : 50;
+        
+        setTimeout(() => {
+            checkAuthenticationWithRetry();
+        }, authCheckDelay);
+    }
+    
+    function checkAuthenticationWithRetry(attempt = 1, maxAttempts = 3) {
+        console.log(`🔐 Auth check attempt ${attempt}/${maxAttempts}`);
+        
         fetch('/check-login', {
             method: 'GET',
             credentials: 'include',
@@ -34,22 +44,39 @@
         })
         .then(response => {
             if (!response.ok) {
-                throw new Error('Auth check failed');
+                throw new Error(`Auth check failed: ${response.status}`);
             }
             return response.json();
         })
         .then(data => {
             if (!data.logged_in) {
-                console.log('🔐 Not authenticated, redirecting to login');
-                // Redirect to login if not authenticated
-                window.location.replace('/login-page');
+                if (attempt < maxAttempts) {
+                    // Retry after a short delay if we still have attempts left
+                    console.log(`🔄 Auth check failed, retrying in 100ms (attempt ${attempt + 1}/${maxAttempts})`);
+                    setTimeout(() => {
+                        checkAuthenticationWithRetry(attempt + 1, maxAttempts);
+                    }, 100);
+                } else {
+                    console.log('🔐 Not authenticated after retries, redirecting to login');
+                    window.location.replace('/login-page');
+                }
+            } else {
+                console.log('✅ Authentication verified, page can continue loading');
             }
-            // If authenticated, page will continue loading normally
         })
         .catch(error => {
-            console.error('Authentication check failed:', error);
-            // On error, redirect to login as a safety measure
-            window.location.replace('/login-page');
+            console.error(`Authentication check failed (attempt ${attempt}):`, error);
+            
+            if (attempt < maxAttempts) {
+                // Retry on network errors too
+                console.log(`🔄 Retrying auth check in 150ms (attempt ${attempt + 1}/${maxAttempts})`);
+                setTimeout(() => {
+                    checkAuthenticationWithRetry(attempt + 1, maxAttempts);
+                }, 150);
+            } else {
+                console.error('🚨 Final auth check failed, redirecting to login as safety measure');
+                window.location.replace('/login-page');
+            }
         });
     }
 })();

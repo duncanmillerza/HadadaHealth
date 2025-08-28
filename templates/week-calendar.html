@@ -1622,7 +1622,7 @@ function closeUnifiedPatientSearch() {
 window.loadWeekView = async function() {
     console.log('📅 Refreshing calendar view...');
     try {
-        await loadBookings();
+        await fetchBookings();
         console.log('✅ Calendar refreshed successfully');
     } catch (error) {
         console.error('❌ Error refreshing calendar:', error);

@@ -1248,18 +1248,25 @@ class UnifiedBookingModal {
             const savedBooking = await response.json();
             console.log('✅ Booking saved successfully:', savedBooking);
 
-            // Close modal and refresh calendar
+            // Close modal first
             this.closeModal();
             
-            // Trigger calendar refresh if available
-            if (window.loadWeekView) {
-                window.loadWeekView();
-            } else if (window.refreshCalendar) {
-                window.refreshCalendar();
-            }
-
-            // Show success message
+            // Show success message immediately
             this.showSuccessMessage(this.isEditing ? 'Appointment updated successfully!' : 'Appointment created successfully!');
+            
+            // Refresh calendar after a small delay to ensure modal is closed
+            setTimeout(() => {
+                if (window.loadWeekView) {
+                    console.log('🔄 Refreshing calendar with loadWeekView()');
+                    window.loadWeekView();
+                } else if (window.refreshCalendar) {
+                    console.log('🔄 Refreshing calendar with refreshCalendar()');
+                    window.refreshCalendar();
+                } else {
+                    console.log('🔄 Refreshing page as fallback');
+                    window.location.reload();
+                }
+            }, 100);
 
         } catch (error) {
             console.error('❌ Error saving booking:', error);
@@ -1748,16 +1755,8 @@ class UnifiedBookingModal {
             errors.push('Patient selection is required when billing codes are present');
         }
 
-        // Date validation
-        if (formData.date) {
-            const selectedDate = new Date(formData.date);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            if (selectedDate < today) {
-                errors.push('Cannot create appointments in the past');
-            }
-        }
+        // Date validation - Allow past dates for healthcare providers
+        // who often need to book historical appointments
 
         // Duration validation
         if (formData.duration < 15 || formData.duration > 480) {
@@ -1854,17 +1853,35 @@ class UnifiedBookingModal {
     }
 
     /**
-     * Show success message to user
+     * Show success message to user as toast notification
      */
     showSuccessMessage(message) {
-        // Use existing notification system if available, otherwise alert
-        if (window.showNotification) {
-            window.showNotification(message, 'success');
-        } else if (window.toastr && window.toastr.success) {
-            window.toastr.success(message);
-        } else {
-            alert(message);
-        }
+        this.showToast(message, 'success');
+    }
+    
+    /**
+     * Show toast notification
+     */
+    showToast(message, type = 'info', duration = 4000) {
+        // Create toast element
+        const toast = document.createElement('div');
+        toast.className = `notification ${type}`;
+        toast.textContent = message;
+        
+        // Add to page
+        document.body.appendChild(toast);
+        
+        // Auto-remove after duration
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.style.animation = 'slideOut 0.3s ease forwards';
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        document.body.removeChild(toast);
+                    }
+                }, 300);
+            }
+        }, duration);
     }
 
     /**
