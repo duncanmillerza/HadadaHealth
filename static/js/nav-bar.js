@@ -54,7 +54,9 @@ function logout() {
   fetch('/logout', { credentials: 'include' })
     .then(res => {
       if (res.ok) {
-        window.location.href = '/';
+        // Force cache bypass by adding timestamp and using replace
+        const timestamp = new Date().getTime();
+        window.location.replace(`/?_logout=${timestamp}`);
       } else {
         console.error('Logout failed');
       }

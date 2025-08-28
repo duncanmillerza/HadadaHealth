@@ -102,7 +102,8 @@ document.addEventListener("DOMContentLoaded", () => {
         duration: parseInt(document.getElementById("booking-duration").value),
         therapist_id: document.getElementById("booking-therapist").value,
         notes: document.getElementById("booking-notes").value,
-        appointment_type_id: document.getElementById("appointment-type-id")?.value || null
+        appointment_type_id: document.getElementById("appointment-type-id")?.value || null,
+        appointment_type_color: document.getElementById("appointment-type-color")?.value || null
       };
   
       // Post or patch booking here

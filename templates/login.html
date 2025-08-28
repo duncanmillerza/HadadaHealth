@@ -285,7 +285,7 @@
           <input type="password" id="password" required>
         </div>
         
-        <button class="login-button" onclick="submitLogin()">Sign In</button>
+        <button class="login-button" id="loginButton" onclick="submitLogin()">Sign In</button>
       </div>
     </div>
   </div>
@@ -294,6 +294,8 @@ async function submitLogin() {
   const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value.trim();
   const errorDiv = document.getElementById('error');
+  const loginButton = document.getElementById('loginButton');
+  
   errorDiv.style.display = "none";
   errorDiv.textContent = "";
 
@@ -302,6 +304,11 @@ async function submitLogin() {
     errorDiv.style.display = "block";
     return;
   }
+  
+  // Show loading state
+  loginButton.disabled = true;
+  loginButton.textContent = "Signing In...";
+  loginButton.style.backgroundColor = "#666";
 
   const credentials = btoa(username + ":" + password);
   try {
@@ -313,20 +320,73 @@ async function submitLogin() {
       credentials: 'include'
     });
     if (res.ok) {
-      // Small delay to ensure session is established
-      setTimeout(() => {
-        window.location.replace("/");
-      }, 100);
+      const data = await res.json();
+      // Use redirect URL from server response with fallback
+      const redirectUrl = data.redirect_url || "/";
+      
+      console.log('Login successful, verifying session before redirect...');
+      
+      // Verify session is established with polling approach
+      await verifySessionAndRedirect(redirectUrl);
     } else {
       const data = await res.json();
       errorDiv.textContent = data.detail || "Login failed.";
       errorDiv.style.display = "block";
+      // Reset button state on error
+      resetLoginButton();
     }
   } catch (err) {
     console.error('Login error:', err);
     errorDiv.textContent = "Login failed.";
     errorDiv.style.display = "block";
+    // Reset button state on error
+    resetLoginButton();
   }
+}
+
+function resetLoginButton() {
+  const loginButton = document.getElementById('loginButton');
+  loginButton.disabled = false;
+  loginButton.textContent = "Sign In";
+  loginButton.style.backgroundColor = ""; // Reset to original color
+}
+
+async function verifySessionAndRedirect(redirectUrl) {
+  const maxAttempts = 10;
+  const delayMs = 200;
+  
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      console.log(`Session verification attempt ${attempt}/${maxAttempts}...`);
+      
+      // Wait before checking
+      await new Promise(resolve => setTimeout(resolve, delayMs * attempt));
+      
+      // Check session
+      const sessionCheck = await fetch('/check-login', {
+        credentials: 'include',
+        cache: 'no-cache'
+      });
+      
+      if (sessionCheck.ok) {
+        const sessionData = await sessionCheck.json();
+        if (sessionData.logged_in) {
+          console.log('✅ Session verified successfully, redirecting to:', redirectUrl);
+          window.location.replace(redirectUrl);
+          return; // Success - exit function
+        }
+      }
+      
+      console.log(`❌ Session not ready, attempt ${attempt}/${maxAttempts}`);
+      
+    } catch (error) {
+      console.error(`Session check error on attempt ${attempt}:`, error);
+    }
+  }
+  
+  // If we get here, all attempts failed - force redirect anyway
+  console.warn('⚠️ Session verification failed after all attempts, forcing redirect...');
+  window.location.replace(redirectUrl);
 }
 // Automatically focus on username field when page loads and allow Enter to submit login
 window.onload = function() {

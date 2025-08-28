@@ -77,15 +77,21 @@ class Config:
     
     def get_session_config(self) -> dict:
         """Get secure session configuration"""
+        # Get session timeout from environment or default to 1 hour
+        session_timeout = int(os.getenv("SESSION_TIMEOUT", "3600"))
+        
         base_config = {
             "secret_key": self.session_secret_key,
+            "max_age": session_timeout,  # Session timeout in seconds
+            "same_site": "lax",  # CSRF protection while allowing some cross-site usage
+            "path": "/",  # Ensure cookies work for all paths
         }
         
         # Add production-specific security settings
         if self.is_production():
             base_config.update({
                 "https_only": True,
-                "same_site": "strict",
+                "same_site": "strict",  # Stricter in production
             })
         
         return base_config

@@ -6,6 +6,10 @@
 *.pem
 *.cert
 
+# Virtual Environment
+venv/
+env/
+
 # Python
 __pycache__/
 *.py[cod]

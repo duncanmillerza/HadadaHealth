@@ -1453,8 +1453,8 @@ def add_booking(booking: Booking, request: Request):
     with sqlite3.connect("data/bookings.db") as conn:
         try:
             conn.execute("""
-                INSERT INTO bookings (id, name, therapist, date, day, time, duration, notes, colour, user_id, profession, patient_id, appointment_type_id)
-                VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO bookings (id, name, therapist, date, day, time, duration, notes, colour, user_id, profession, patient_id, appointment_type_id, billing_code)
+                VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 booking.id,
                 booking.name,
@@ -1468,10 +1468,93 @@ def add_booking(booking: Booking, request: Request):
                 user_id,
                 booking.profession,
                 booking.patient_id,
-                booking.appointment_type_id
+                booking.appointment_type_id,
+                booking.billing_code
             ))
+            
+            # Auto-create billing entry if appointment has billing codes and appointment type
+            if booking.appointment_type_id and booking.billing_code:
+                try:
+                    # Get appointment type details to get default billing codes
+                    appointment_type_cursor = conn.execute("""
+                        SELECT default_billing_codes, default_billing_code, is_enabled 
+                        FROM practice_appointment_types 
+                        WHERE appointment_type_id = ? AND practice_id = ?
+                    """, (booking.appointment_type_id, 1))  # TODO: Get practice_id from session
+                    
+                    appointment_type_data = appointment_type_cursor.fetchone()
+                    
+                    if appointment_type_data and appointment_type_data[2]:  # is_enabled (billable)
+                        # Create billing session
+                        session_date = f"{booking.date[:10]}T{booking.time}:00"
+                        conn.execute("""
+                            INSERT INTO billing_sessions (id, patient_id, therapist_id, session_date, notes, total_amount)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        """, (
+                            booking.id,  # Use booking ID as session ID
+                            booking.patient_id,
+                            therapist_id,
+                            session_date,
+                            f"Auto-generated from appointment: {booking.name}",
+                            0  # Will be calculated when billing codes are added
+                        ))
+                        
+                        # Parse and add billing codes (try new format first, then fallback to legacy)
+                        billing_codes_json = appointment_type_data[0] or appointment_type_data[1]  # default_billing_codes or default_billing_code
+                        if billing_codes_json:
+                            import json
+                            try:
+                                # Try parsing as multiple codes first
+                                if appointment_type_data[0]:  # default_billing_codes (new format)
+                                    billing_codes = json.loads(appointment_type_data[0])
+                                else:  # default_billing_code (legacy format)
+                                    billing_codes = [{"code": appointment_type_data[1], "quantity": 1, "modifier": None}]
+                                for i, billing_code in enumerate(billing_codes):
+                                    # Get billing code details
+                                    code_cursor = conn.execute("""
+                                        SELECT id, base_fee FROM billing_codes WHERE code = ?
+                                    """, (billing_code['code'],))
+                                    
+                                    code_data = code_cursor.fetchone()
+                                    if code_data:
+                                        quantity = billing_code.get('quantity', 1)
+                                        modifier = billing_code.get('modifier', '')
+                                        base_fee = float(code_data[1]) if code_data[1] else 0
+                                        
+                                        # Apply modifier if exists
+                                        if modifier:
+                                            modifier_cursor = conn.execute("""
+                                                SELECT adjustment_factor FROM billing_modifiers WHERE code = ?
+                                            """, (modifier,))
+                                            modifier_data = modifier_cursor.fetchone()
+                                            if modifier_data:
+                                                base_fee *= float(modifier_data[0])
+                                        
+                                        final_fee = base_fee * quantity
+                                        
+                                        # Insert billing entry
+                                        conn.execute("""
+                                            INSERT INTO billing_entries (id, appointment_id, code_id, billing_modifier, final_fee)
+                                            VALUES (?, ?, ?, ?, ?)
+                                        """, (
+                                            f"{booking.id}-{i}",  # Unique entry ID
+                                            booking.id,
+                                            code_data[0],
+                                            modifier,
+                                            final_fee
+                                        ))
+                            except json.JSONDecodeError:
+                                print(f"Invalid JSON in default_billing_codes for appointment type {booking.appointment_type_id}")
+                        
+                        print(f"✅ Auto-created billing entries for appointment {booking.id}")
+                        
+                except Exception as e:
+                    print(f"⚠️  Failed to auto-create billing entries: {e}")
+                    # Don't fail the booking creation if billing creation fails
+                    
         except sqlite3.IntegrityError:
             raise HTTPException(status_code=400, detail="Booking ID already exists")
+    
     return booking
 
 
@@ -2082,8 +2165,18 @@ from starlette.requests import Request
 @app.get("/")
 def serve_index(request: Request):
     if not request.session.get("user_id"):
-        return FileResponse(os.path.join("templates", "login.html"))
-    return FileResponse(os.path.join("templates", "index.html"))
+        response = FileResponse(os.path.join("templates", "login.html"))
+        # Prevent caching of login page to ensure proper logout flow
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
+    response = FileResponse(os.path.join("templates", "index.html"))
+    # Prevent caching of authenticated pages
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 @app.get("/offline.html")
 def serve_offline():

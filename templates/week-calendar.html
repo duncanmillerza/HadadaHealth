@@ -9,6 +9,7 @@
   <link rel="preload" href="/static/fonts/MaterialIcons-Regular.woff2" as="font" type="font/woff2" crossorigin="anonymous">
   <link rel="icon" href="/static/favicon.ico" type="image/x-icon" />
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <script src="/static/js/auth-check.js"></script>
   <script src="/static/js/add-billing.js"></script>
 </head>
 <body>
@@ -75,16 +76,18 @@
     </label><br/><br/>
     <label>
       Colour:
-      <select id="booking-colour">
-        <option value="">Default</option>
-        <option value="red">Red</option>
-        <option value="orange">Orange</option>
-        <option value="yellow">Yellow</option>
-        <option value="green">Green</option>
-        <option value="blue">Blue</option>
-        <option value="purple">Purple</option>
-        <option value="grey">Grey</option>
+      <input type="color" id="booking-colour" value="#2D6356" style="width: 60px; height: 30px; border: 1px solid #ccc; border-radius: 4px;">
+      <span id="booking-colour-hex" style="margin-left: 8px; font-family: monospace; color: #666;">#2D6356</span>
+    </label><br/><br/>
+    <label>
+      Billing Code:
+      <select id="billing-code" style="width: 100%;">
+        <option value="">No billing code</option>
       </select>
+      <div class="billing-info" id="billing-info" style="margin-top: 5px; font-size: 0.9em; color: #666; display: none;">
+        <span id="billing-description"></span>
+        <span id="billing-fee" style="margin-left: 10px; color: #2D6356; font-weight: bold;"></span>
+      </div>
     </label><br/><br/>
     <input type="hidden" id="editing-appt-id" />
     <div id="modal-buttons">
@@ -108,6 +111,26 @@
     let bookings = [];
     // Store the last selected day for responsive/mobile view
     let lastSelectedDay = "Mon";
+
+    /**
+     * Format appointment display name with patient surname and appointment type
+     */
+    function formatAppointmentDisplayName(booking) {
+        let displayName = booking.name || `Patient ${booking.patient_id}`;
+        
+        // Add patient surname if available and different from name
+        if (booking.patient_surname && !displayName.includes(booking.patient_surname)) {
+            displayName += ` ${booking.patient_surname}`;
+        }
+        
+        // Add appointment type tag if available
+        let appointmentTypeTag = '';
+        if (booking.appointment_type_name) {
+            appointmentTypeTag = `<span class="appointment-type-tag">${booking.appointment_type_name}</span>`;
+        }
+        
+        return { displayName, appointmentTypeTag };
+    }
 
     // Generate time slots based on settings
     function generateTimeSlots(start, end, intervalMinutes) {
@@ -390,7 +413,8 @@ function openModal(cell, appt = null, dayOverride = null) {
     } else {
       const fallback = document.createElement("option");
       fallback.value = booking.patient_id;
-      fallback.textContent = booking.name || `Patient ${booking.patient_id}`;
+      const { displayName } = formatAppointmentDisplayName(booking);
+      fallback.textContent = displayName;
       patientDropdown.appendChild(fallback);
       patientDropdown.value = booking.patient_id;
     }
@@ -400,7 +424,23 @@ function openModal(cell, appt = null, dayOverride = null) {
     document.getElementById("therapist-name").value = therapistObj?.preferred_name || `${therapistObj?.name} ${therapistObj?.surname}` || "";
     document.getElementById("editing-appt-id").value = booking?.id;
     document.getElementById("booking-notes").value = booking?.notes || "";
-    document.getElementById("booking-colour").value = booking?.colour || "";
+    
+    // Set color picker value and update hex display
+    const colorValue = booking?.colour || "#2D6356";
+    document.getElementById("booking-colour").value = colorValue;
+    const colorHexDisplay = document.getElementById("booking-colour-hex");
+    if (colorHexDisplay) {
+      colorHexDisplay.textContent = colorValue.toUpperCase();
+    }
+    
+    // Set billing code and update info display
+    const billingCode = booking?.billing_code || "";
+    const billingCodeField = document.getElementById("billing-code");
+    if (billingCodeField) {
+      billingCodeField.value = billingCode;
+      updateBookingBillingInfo(billingCode);
+    }
+    
     document.getElementById("start-time").value = booking?.time || cell.dataset.time;
 
     const duration = booking?.duration || 15;
@@ -416,7 +456,20 @@ function openModal(cell, appt = null, dayOverride = null) {
     document.getElementById("therapist-name").value = "Duncan";
     document.getElementById("editing-appt-id").value = "";
     document.getElementById("booking-notes").value = "";
-    document.getElementById("booking-colour").value = "";
+    
+    // Reset color picker to default and update hex display
+    document.getElementById("booking-colour").value = "#2D6356";
+    const colorHexDisplay = document.getElementById("booking-colour-hex");
+    if (colorHexDisplay) {
+      colorHexDisplay.textContent = "#2D6356";
+    }
+    
+    // Reset billing code
+    const billingCodeField = document.getElementById("billing-code");
+    if (billingCodeField) {
+      billingCodeField.value = "";
+      updateBookingBillingInfo("");
+    }
 
     const startTimeValue = cell.dataset.time;
     document.getElementById("start-time").value = startTimeValue;
@@ -509,7 +562,14 @@ function closeModal() {
       const appointmentTypeField = document.getElementById("appointment-type-id");
       const appointmentTypeId = appointmentTypeField ? appointmentTypeField.value : null;
       
+      // Get both dropdown color and hex color (if available from appointment type)
       const selectedColor = document.getElementById("booking-colour").value;
+      const appointmentTypeColorField = document.getElementById("appointment-type-color");
+      const appointmentTypeColor = appointmentTypeColorField ? appointmentTypeColorField.value : null;
+      
+      // Get billing code
+      const billingCodeField = document.getElementById("billing-code");
+      const billingCode = billingCodeField ? billingCodeField.value : null;
       
       const bookingData = {
         id: apptId || `appt-${Date.now()}`,
@@ -523,14 +583,15 @@ function closeModal() {
         patient_id: patientId,
         colour: selectedColor,
         profession,
-        appointment_type_id: appointmentTypeId
+        appointment_type_id: appointmentTypeId,
+        billing_code: billingCode
       };
       
-      // Log color information for debugging
+      // Log submission information for debugging
       if (appointmentTypeId) {
-        console.log(`🎨 Submitting booking with appointment type ${appointmentTypeId} and color '${selectedColor}'`);
+        console.log(`🎨 Submitting booking with appointment type ${appointmentTypeId}, color '${selectedColor}', and billing code '${billingCode || 'none'}'`);
       } else {
-        console.log(`🎨 Submitting booking with manual color '${selectedColor}'`);
+        console.log(`🎨 Submitting booking with manual color '${selectedColor}' and billing code '${billingCode || 'none'}'`);
       }
 
       const method = apptId ? "PUT" : "POST";
@@ -602,11 +663,22 @@ function closeModal() {
           if (booking.hasTreatmentNote) {
             appt.classList.add("greyed-out");
           }
-          if (booking.colour && colourMap[booking.colour]) {
+          // Apply color: first try hex color directly, then fallback to colourMap
+          if (booking.appointment_type_color && booking.appointment_type_color.startsWith('#')) {
+            // Use direct hex color from appointment type
+            appt.style.backgroundColor = booking.appointment_type_color;
+            console.log(`🎨 Applied direct hex color: ${booking.appointment_type_color}`);
+          } else if (booking.colour && colourMap[booking.colour]) {
+            // Fallback to dropdown color mapping
             appt.style.backgroundColor = colourMap[booking.colour];
-            console.log(`🎨 Applied color to appointment: '${booking.colour}' → ${colourMap[booking.colour]}`);
+            console.log(`🎨 Applied mapped color: '${booking.colour}' → ${colourMap[booking.colour]}`);
+          } else if (booking.colour && booking.colour.startsWith('#')) {
+            // Direct hex color stored in colour field
+            appt.style.backgroundColor = booking.colour;
+            console.log(`🎨 Applied direct hex from colour field: ${booking.colour}`);
           } else if (booking.colour) {
-            console.warn(`⚠️  Unknown color '${booking.colour}' for booking ${booking.id}`);
+            console.warn(`⚠️  Unknown color '${booking.colour}' for booking ${booking.id}, using default`);
+            appt.style.backgroundColor = '#2D6356'; // Default green
           }
           appt.id = booking.id;
           appt.draggable = !booking.hasTreatmentNote;
@@ -616,7 +688,8 @@ function closeModal() {
           const endHour = String(Math.floor(endMinutes / 60)).padStart(2, '0');
           const endMin = String(endMinutes % 60).padStart(2, '0');
           const endTime = `${endHour}:${endMin}`;
-          appt.innerHTML = `${booking.name}<br><span style="font-size: 0.85em;">${normalizedTime} - ${endTime}</span>`;
+          const { displayName, appointmentTypeTag } = formatAppointmentDisplayName(booking);
+          appt.innerHTML = `${displayName}<br><span style="font-size: 0.85em;">${normalizedTime} - ${endTime}</span>${appointmentTypeTag ? '<br>' + appointmentTypeTag : ''}`;
           appt.dataset.duration = booking.duration;
           appt.style.height = `${(booking.duration / slotDuration) * 40}px`;
           appt.style.marginTop = `${(offsetMinutes / slotDuration) * 40}px`;
@@ -687,7 +760,10 @@ function closeModal() {
 
                     // Redraw the appointment card with new time and notes and resize handle
                     appt.innerHTML = `
-                      ${booking.name}<br><span style="font-size: 0.85em;">${(booking.time || "").slice(0,5)} - ${endTime}</span>
+                      ${(() => {
+                        const { displayName, appointmentTypeTag } = formatAppointmentDisplayName(booking);
+                        return `${displayName}<br><span style="font-size: 0.85em;">${(booking.time || "").slice(0,5)} - ${endTime}</span>${appointmentTypeTag ? '<br>' + appointmentTypeTag : ''}`;
+                      })()}
                     `;
                     const notesDiv = document.createElement("div");
                     notesDiv.style.fontSize = "0.8em";
@@ -851,7 +927,10 @@ function closeModal() {
               const endTime = `${endHour}:${endMin}`;
               // Clear existing children and update appointment card content
               el.innerHTML = `
-  ${booking.name}<br><span style="font-size: 0.85em;">${booking.time} - ${endTime}</span>
+  ${(() => {
+    const { displayName, appointmentTypeTag } = formatAppointmentDisplayName(booking);
+    return `${displayName}<br><span style="font-size: 0.85em;">${booking.time} - ${endTime}</span>${appointmentTypeTag ? '<br>' + appointmentTypeTag : ''}`;
+  })()}
 `;
               const notesDiv = document.createElement("div");
               notesDiv.style.fontSize = "0.8em";
@@ -1126,11 +1205,105 @@ function updatePatientSearchResults(query) {
   }
 }
 
+// Load billing codes for the booking form
+async function loadBookingBillingCodes() {
+  try {
+    console.log('🔄 Loading billing codes for booking form...');
+    const response = await fetch('/api/billing-codes');
+    if (!response.ok) throw new Error('Failed to load billing codes');
+    
+    const billingCodes = await response.json();
+    console.log('✅ Loaded billing codes:', billingCodes.length);
+    
+    const billingSelect = document.getElementById('billing-code');
+    if (!billingSelect) return;
+    
+    billingSelect.innerHTML = '<option value="">No billing code</option>';
+    
+    // Group billing codes by profession if available
+    const codesByProfession = {};
+    billingCodes.forEach(code => {
+      const profession = code.profession || 'General';
+      if (!codesByProfession[profession]) {
+        codesByProfession[profession] = [];
+      }
+      codesByProfession[profession].push(code);
+    });
+    
+    // Add options grouped by profession
+    Object.keys(codesByProfession).sort().forEach(profession => {
+      const optgroup = document.createElement('optgroup');
+      optgroup.label = profession;
+      
+      codesByProfession[profession].forEach(code => {
+        const option = document.createElement('option');
+        option.value = code.code;
+        option.textContent = `${code.code} - ${code.description}`;
+        option.dataset.description = code.description;
+        option.dataset.baseFee = code.base_fee || '';
+        option.dataset.profession = code.profession || '';
+        optgroup.appendChild(option);
+      });
+      
+      billingSelect.appendChild(optgroup);
+    });
+    
+    console.log('✅ Booking billing codes dropdown populated');
+  } catch (error) {
+    console.error('❌ Error loading booking billing codes:', error);
+  }
+}
+
+// Update billing info display when selection changes in booking form
+function updateBookingBillingInfo(selectedCode) {
+  const infoDiv = document.getElementById('billing-info');
+  const descriptionSpan = document.getElementById('billing-description');
+  const feeSpan = document.getElementById('billing-fee');
+  
+  if (!selectedCode) {
+    infoDiv.style.display = 'none';
+    return;
+  }
+  
+  const selectedOption = document.querySelector(`#billing-code option[value="${selectedCode}"]`);
+  if (selectedOption) {
+    const description = selectedOption.dataset.description;
+    const baseFee = selectedOption.dataset.baseFee;
+    
+    descriptionSpan.textContent = description;
+    feeSpan.textContent = baseFee ? `R${baseFee}` : '';
+    infoDiv.style.display = 'block';
+    
+    console.log(`📋 Selected billing code: ${selectedCode} - ${description}`);
+  } else {
+    infoDiv.style.display = 'none';
+  }
+}
+
 document.addEventListener("DOMContentLoaded", function() {
   const input = document.getElementById("patient-search-input");
   if (input) {
     input.addEventListener("input", (e) => {
       updatePatientSearchResults(e.target.value);
+    });
+  }
+
+  // Handle color picker updates
+  const colorPicker = document.getElementById("booking-colour");
+  const colorHexDisplay = document.getElementById("booking-colour-hex");
+  if (colorPicker && colorHexDisplay) {
+    colorPicker.addEventListener("input", (e) => {
+      colorHexDisplay.textContent = e.target.value.toUpperCase();
+    });
+  }
+
+  // Load billing codes and setup billing code dropdown
+  loadBookingBillingCodes();
+  
+  const billingCodeSelect = document.getElementById("billing-code");
+  if (billingCodeSelect) {
+    billingCodeSelect.addEventListener("change", (e) => {
+      updateBookingBillingInfo(e.target.value);
     });
   }
 });
@@ -1154,66 +1327,346 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   });
 </script>
-<!-- Include Appointment Type Modal -->
-<div id="appointment-type-modal" class="modal appointment-type-modal" style="display: none;">
-    <div class="modal-content">
+<!-- Include Unified Booking Modal -->
+<link rel="stylesheet" href="/static/css/unified-booking-modal.css">
+
+<!-- Include the unified booking modal fragment -->
+<div id="unified-booking-modal" class="modal unified-modal" style="display: none;">
+    <div class="modal-content large-modal">
+        <!-- Modal Header with Progress Indicator -->
         <div class="modal-header">
-            <h3>Select Appointment Type</h3>
-            <span class="close-button" id="close-appointment-type-modal">&times;</span>
+            <h3 id="unified-modal-title">Select Appointment Type</h3>
+            <div class="progress-indicator">
+                <span class="step active" data-step="1">
+                    <span class="step-number">1</span>
+                    <span class="step-label">Type</span>
+                </span>
+                <div class="step-connector"></div>
+                <span class="step" data-step="2">
+                    <span class="step-number">2</span>
+                    <span class="step-label">Details</span>
+                </span>
+            </div>
+            <span class="close-button" id="close-unified-modal">&times;</span>
         </div>
         
+        <!-- Modal Body - Contains both steps -->
         <div class="modal-body">
-            <div class="modal-description">
-                <p>Choose the type of appointment to create. Each type has default settings that can be customized for your practice.</p>
+            
+            <!-- Step 1: Appointment Type Selection -->
+            <div id="appointment-type-step" class="modal-step active">
+                <div class="step-content">
+                    <div class="step-description">
+                        <p>Choose the type of appointment to create. Each type has default settings that will be applied to your booking.</p>
+                    </div>
+                    
+                    <!-- Search/Filter (ready for future enhancement) -->
+                    <div class="appointment-type-search" style="display: none;">
+                        <input type="text" id="unified-appointment-type-search" placeholder="Search appointment types..." />
+                    </div>
+                    
+                    <!-- Appointment Type Tree Container -->
+                    <div id="unified-appointment-type-tree" class="appointment-type-tree">
+                        <!-- Tree will be populated by JavaScript -->
+                        <div class="loading-spinner" id="unified-appointment-type-loading">
+                            <div class="spinner"></div>
+                            <span>Loading appointment types...</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Selected Type Preview -->
+                    <div id="unified-selected-type-preview" class="selected-type-preview" style="display: none;">
+                        <div class="preview-header">
+                            <strong>Selected Appointment Type:</strong>
+                        </div>
+                        <div class="preview-content">
+                            <div class="preview-type">
+                                <span class="preview-color"></span>
+                                <span class="preview-name"></span>
+                                <span class="preview-duration"></span>
+                            </div>
+                            <div class="preview-details">
+                                <small class="preview-description"></small>
+                            </div>
+                            <div class="preview-billing-codes" style="display: none;">
+                                <small><strong>Default Billing Codes:</strong> <span class="preview-billing-list"></span></small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             
-            <!-- Appointment Type Tree Container -->
-            <div id="appointment-type-tree" class="appointment-type-tree">
-                <!-- Tree will be populated by JavaScript -->
-                <div class="loading-spinner" id="appointment-type-loading">
-                    <div class="spinner"></div>
-                    <span>Loading appointment types...</span>
+            <!-- Step 2: Booking Details -->
+            <div id="booking-details-step" class="modal-step">
+                <div class="step-content">
+                    
+                    <!-- Selected Appointment Type Display with Change Option -->
+                    <div class="selected-appointment-type">
+                        <div class="selected-type-info">
+                            <span class="selected-type-color"></span>
+                            <span class="selected-type-name"></span>
+                            <span class="selected-type-duration"></span>
+                        </div>
+                        <button type="button" class="change-type-btn btn-secondary">Change Type</button>
+                    </div>
+                    
+                    <!-- Booking Form in Two-Column Layout -->
+                    <div class="booking-form-layout">
+                        <div class="booking-form-left">
+                            <form id="unified-booking-form">
+                                <!-- Hidden fields -->
+                                <input type="hidden" id="unified-editing-appt-id" />
+                                <input type="hidden" id="unified-selected-appointment-type-id" />
+                                <input type="hidden" id="unified-booking-colour" />
+                                
+                                <!-- Patient Selection -->
+                                <div class="form-group">
+                                    <label for="unified-patient-name">Patient *</label>
+                                    <div class="patient-selection">
+                                        <select id="unified-patient-name" required>
+                                            <option value="">Select a patient...</option>
+                                        </select>
+                                        <button type="button" class="btn-secondary" onclick="openUnifiedPatientSearch()">Search</button>
+                                    </div>
+                                </div>
+                                
+                                <!-- User Context Fields -->
+                                <div class="form-group">
+                                    <label for="unified-therapist-profession">Profession *</label>
+                                    <select id="unified-therapist-profession" onchange="filterUnifiedTherapistByProfession()" required>
+                                        <option value="">Select profession...</option>
+                                    </select>
+                                    <span class="field-indicator auto-populated" title="Auto-populated from your profile">👤</span>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="unified-therapist-name">Therapist *</label>
+                                    <select id="unified-therapist-name" required>
+                                        <option value="">Select therapist...</option>
+                                    </select>
+                                    <span class="field-indicator auto-populated" title="Auto-populated from your profile">👤</span>
+                                    <span class="field-indicator locked" style="display: none;" title="Regular users can only book for themselves">🔒</span>
+                                </div>
+                                
+                                <!-- Appointment Timing -->
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="unified-booking-date">Date *</label>
+                                        <input type="date" id="unified-booking-date" required />
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="unified-start-time">Start Time *</label>
+                                        <input type="time" id="unified-start-time" required />
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="unified-booking-duration">Duration (minutes) *</label>
+                                        <input type="number" id="unified-booking-duration" value="30" step="5" min="5" required />
+                                        <span class="field-indicator auto-populated" title="Auto-populated from appointment type">🎯</span>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="unified-end-time">End Time</label>
+                                        <input type="time" id="unified-end-time" readonly />
+                                    </div>
+                                </div>
+                                
+                                <!-- Notes -->
+                                <div class="form-group">
+                                    <label for="unified-booking-notes">Notes</label>
+                                    <textarea id="unified-booking-notes" rows="3" placeholder="Additional notes for this appointment..."></textarea>
+                                    <span class="field-indicator auto-populated" style="display: none;" title="Template from appointment type">📝</span>
+                                </div>
+                                
+                                <!-- Color Picker -->
+                                <div class="form-group">
+                                    <label for="unified-booking-colour-picker">Appointment Color</label>
+                                    <div class="color-picker-group">
+                                        <input type="color" id="unified-booking-colour-picker" value="#2D6356" />
+                                        <span id="unified-booking-colour-hex">#2D6356</span>
+                                        <span class="field-indicator auto-populated" title="Auto-populated from appointment type">🎨</span>
+                                    </div>
+                                </div>
+
+                                <!-- Billing Codes Table with Modifiers -->
+                                <div class="billing-codes-section">
+                                    <h4>Billing Codes</h4>
+                                    <div class="billing-table-container">
+                                        <table id="unified-booking-billing-table" class="billing-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Code</th>
+                                                    <th>Description</th>
+                                                    <th>Qty</th>
+                                                    <th>Modifier</th>
+                                                    <th>Rate</th>
+                                                    <th>Total</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="unified-booking-billing-table-body">
+                                                <!-- Dynamic rows will be populated here -->
+                                            </tbody>
+                                            <tfoot>
+                                                <tr class="billing-total-row">
+                                                    <td colspan="4" style="text-align: right; padding-right: 20px;"><strong>Total: <span id="unified-billing-grand-total" class="total-amount">R0.00</span></strong></td>
+                                                    <td>
+                                                        <button type="button" class="add-billing-row-btn btn-secondary">+ Add Code</button>
+                                                    </td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                    <div class="billing-summary">
+                                        <span class="field-indicator auto-populated" title="Default codes from appointment type">🎯</span>
+                                        <small>Default billing codes loaded from appointment type. You can add, remove, or modify any codes.</small>
+                                    </div>
+                                </div>
+                                
+                            </form>
+                        </div>
+                        
+                        <div class="booking-form-right">
+                            <!-- Right column content (if any future additions) -->
+                        </div>
+                    </div>
                 </div>
             </div>
             
-            <!-- Selected Type Preview -->
-            <div id="selected-type-preview" class="selected-type-preview" style="display: none;">
-                <div class="preview-header">
-                    <strong>Selected:</strong>
-                </div>
-                <div class="preview-content">
-                    <div class="preview-type">
-                        <span class="preview-color"></span>
-                        <span class="preview-name"></span>
-                        <span class="preview-duration"></span>
-                    </div>
-                    <div class="preview-details">
-                        <small class="preview-description"></small>
-                    </div>
-                </div>
-            </div>
         </div>
         
+        <!-- Modal Footer with Sequential Navigation -->
         <div class="modal-footer">
-            <button id="confirm-appointment-type" class="btn btn-primary" disabled>
-                Create Appointment
+            <button id="unified-back-to-step1-button" class="btn btn-secondary" style="display: none;">
+                ← Back to Appointment Types
             </button>
-            <button id="cancel-appointment-type" class="btn btn-secondary">
-                Cancel
+            <button id="unified-continue-to-step2-button" class="btn btn-primary" disabled>
+                Continue to Booking Details →
             </button>
+            <button id="unified-save-booking-button" class="btn btn-primary" style="display: none;">
+                Save Booking
+            </button>
+            <button id="unified-cancel-button" class="btn btn-secondary">Cancel</button>
         </div>
     </div>
 </div>
 
 <!-- Modal Backdrop -->
-<div id="appointment-type-modal-backdrop" class="modal-backdrop" style="display: none;"></div>
+<div id="unified-booking-modal-backdrop" class="modal-backdrop" style="display: none;"></div>
 
-<!-- Appointment Type Modal Styles -->
-<link rel="stylesheet" href="/static/css/appointment-type-modal.css">
+<!-- Patient Search Modal -->
+<div id="unified-patient-search-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Search Patients</h3>
+            <span class="close-button" onclick="closeUnifiedPatientSearch()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <input type="text" id="unified-patient-search-input" placeholder="Search by name, ID number, or phone..." />
+            <div id="unified-patient-search-results">
+                <div class="search-placeholder">Start typing to search patients...</div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button onclick="closeUnifiedPatientSearch()" class="btn btn-secondary">Close</button>
+        </div>
+    </div>
+</div>
 
-<!-- Appointment Type Modal Scripts -->
-<script src="/static/js/appointment-type-modal.js"></script>
-<script src="/static/js/calendar-appointment-type-integration.js"></script>
+<script>
+// Global functions for patient search integration
+function openUnifiedPatientSearch() {
+    console.log('🔍 Search button clicked');
+    console.log('window.unifiedBookingModal exists:', !!window.unifiedBookingModal);
+    console.log('Current step:', window.unifiedBookingModal?.currentStep);
+    
+    if (window.unifiedBookingModal) {
+        console.log('✅ Calling openPatientSearch on modal');
+        try {
+            window.unifiedBookingModal.openPatientSearch();
+        } catch (error) {
+            console.error('❌ Error calling openPatientSearch:', error);
+            alert('Error opening patient search: ' + error.message);
+        }
+    } else {
+        console.error('❌ unifiedBookingModal not available');
+        // Try to initialize it manually if it doesn't exist
+        console.log('Attempting to initialize modal...');
+        try {
+            if (typeof UnifiedBookingModal !== 'undefined') {
+                window.unifiedBookingModal = new UnifiedBookingModal();
+                console.log('✅ Modal initialized, retrying...');
+                window.unifiedBookingModal.openPatientSearch();
+            } else {
+                alert('Patient search is not ready yet. Please refresh the page and try again.');
+            }
+        } catch (error) {
+            console.error('❌ Error initializing modal:', error);
+            alert('Patient search is not available. Please refresh the page.');
+        }
+    }
+}
+
+function closeUnifiedPatientSearch() {
+    if (window.unifiedBookingModal) {
+        unifiedBookingModal.closePatientSearch();
+    }
+}
+
+/**
+ * Refresh calendar functions for unified booking modal
+ */
+window.loadWeekView = async function() {
+    console.log('📅 Refreshing calendar view...');
+    try {
+        await loadBookings();
+        console.log('✅ Calendar refreshed successfully');
+    } catch (error) {
+        console.error('❌ Error refreshing calendar:', error);
+    }
+};
+
+window.refreshCalendar = function() {
+    console.log('📅 Alternative calendar refresh...');
+    window.loadWeekView();
+};
+
+// Set up patient search input event listener
+document.addEventListener('DOMContentLoaded', function() {
+    const patientSearchInput = document.getElementById('unified-patient-search-input');
+    if (patientSearchInput) {
+        patientSearchInput.addEventListener('input', function(e) {
+            if (window.unifiedBookingModal) {
+                unifiedBookingModal.searchPatients(e.target.value);
+            }
+        });
+    }
+});
+</script>
+
+<!-- Appointment Type Tag Styling -->
+<style>
+.appointment-type-tag {
+    display: inline-block;
+    background-color: rgba(255, 255, 255, 0.8);
+    color: #333;
+    font-size: 0.75em;
+    padding: 1px 4px;
+    border-radius: 3px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    margin-top: 2px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+</style>
+
+<!-- Unified Booking Modal Scripts -->
+<script src="/static/js/unified-booking-modal.js?v=20250827d"></script>
+<script src="/static/js/calendar-appointment-type-integration.js?v=20250827e"></script>
 
 <script src="/static/js/nav-bar.js"></script>
 <div id="bottom-nav"></div>

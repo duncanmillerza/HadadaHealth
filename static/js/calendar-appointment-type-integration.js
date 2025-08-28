@@ -5,16 +5,18 @@
  * before proceeding to booking creation.
  */
 
+console.log('🔄 Calendar Appointment Type Integration Script Loaded - Version 20250827d');
+
 // Store original openModal function
 let originalOpenModal = null;
 
 /**
- * Initialize appointment type modal integration with calendar
+ * Initialize unified booking modal integration with calendar
  */
 function initializeCalendarAppointmentTypeIntegration() {
-    console.log('🔄 Attempting to initialize calendar appointment type integration...');
+    console.log('🔄 Attempting to initialize unified booking modal integration...');
     
-    // Wait for both calendar and appointment type modal to be ready
+    // Wait for both calendar and unified booking modal to be ready
     if (typeof openModal !== 'function') {
         console.log('⏳ Waiting for openModal function...');
         // Retry after a short delay if openModal is not available yet
@@ -22,9 +24,9 @@ function initializeCalendarAppointmentTypeIntegration() {
         return;
     }
 
-    if (!window.appointmentTypeModal) {
-        console.log('⏳ Waiting for appointmentTypeModal...');
-        // Retry if appointment type modal is not ready
+    if (!window.unifiedBookingModal) {
+        console.log('⏳ Waiting for unifiedBookingModal...');
+        // Retry if unified booking modal is not ready
         setTimeout(initializeCalendarAppointmentTypeIntegration, 100);
         return;
     }
@@ -32,65 +34,58 @@ function initializeCalendarAppointmentTypeIntegration() {
     // Store original function
     originalOpenModal = window.openModal;
 
-    // Override openModal function
-    window.openModal = enhancedOpenModal;
+    // Override openModal function to use unified modal
+    window.openModal = enhancedOpenModalWithUnified;
 
-    console.log('✅ Calendar appointment type integration initialized successfully');
+    console.log('✅ Unified booking modal integration initialized successfully');
 }
 
 /**
- * Enhanced openModal that shows appointment type selection first for new appointments
+ * Enhanced openModal that uses the unified booking modal for all appointments
  * 
  * @param {HTMLElement} cell - Calendar cell that was clicked
  * @param {Object} appt - Existing appointment data (null for new appointments)  
  * @param {string} dayOverride - Day override
  */
-function enhancedOpenModal(cell, appt = null, dayOverride = null) {
-    console.log('🎯 Enhanced modal called:', { cell, appt, dayOverride });
+function enhancedOpenModalWithUnified(cell, appt = null, dayOverride = null) {
+    console.log('🎯 Enhanced unified modal called:', { cell, appt, dayOverride });
     
-    // If editing existing appointment, go directly to booking modal
-    if (appt) {
-        console.log('📝 Editing existing appointment, using original modal');
-        originalOpenModal(cell, appt, dayOverride);
-        return;
-    }
-
-    console.log('🆕 New appointment, showing appointment type selection');
-    
-    // For new appointments, try to show appointment type selection modal first
     try {
-        const slotData = {
-            cell: cell,
-            date: getSlotDate(cell, dayOverride),
-            time: cell.dataset.time,
-            day: cell.dataset.day || dayOverride,
-            duration: getDefaultSlotDuration()
-        };
-
-        // Get practice ID (you may need to adjust this based on your implementation)
-        const practiceId = getCurrentPracticeId();
-
-        // Show appointment type modal with fallback
-        window.appointmentTypeModal.open({
-            practiceId: practiceId,
-            slotData: slotData,
-            onSelection: (data) => {
-                // When appointment type is selected, proceed to booking modal with pre-filled data
-                proceedToBookingWithAppointmentType(data);
-            },
-            onCancel: () => {
-                // User cancelled appointment type selection
-                console.log('Appointment type selection cancelled');
-            },
-            onError: () => {
-                // If appointment type modal fails, fall back to original modal
-                console.log('Appointment type modal failed, falling back to original booking modal');
-                originalOpenModal(cell, appt, dayOverride);
-            }
+        // Extract date and time from cell
+        const date = getSlotDate(cell, dayOverride);
+        const time = cell.dataset.time;
+        
+        console.log('📅 Calendar integration - slot data:', {
+            cellDataDay: cell.dataset.day,
+            dayOverride: dayOverride,
+            calculatedDate: date,
+            time: time,
+            cellElement: cell,
+            currentStartDate: window.currentStartDate
         });
+        
+        if (appt) {
+            // Editing existing appointment - go to Step 2 with appointment data
+            console.log('📝 Editing existing appointment with unified modal');
+            window.unifiedBookingModal.openForEditBooking(appt.id, {
+                appointmentType: appt.appointmentType,
+                patientId: appt.patient_id,
+                date: appt.date,
+                time: appt.start_time,
+                duration: appt.duration,
+                notes: appt.notes,
+                color: appt.color,
+                billingCodes: appt.billing_codes || []
+            });
+        } else {
+            // New appointment - start at Step 1 (appointment type selection)
+            console.log('🆕 New appointment with unified modal');
+            window.unifiedBookingModal.openForNewBooking(date, time);
+        }
+        
     } catch (error) {
-        // If anything goes wrong, fall back to original modal
-        console.error('Error in enhanced modal, falling back to original:', error);
+        // If unified modal fails, fall back to original modal
+        console.error('Error with unified modal, falling back to original:', error);
         originalOpenModal(cell, appt, dayOverride);
     }
 }
@@ -121,6 +116,7 @@ function proceedToBookingWithAppointmentType(data) {
  */
 function fillBookingFormWithAppointmentType(appointmentType, slotData) {
     console.log('🔧 Filling booking form with appointment type:', appointmentType.name);
+    console.log('📋 Full appointment type data:', appointmentType);
     
     // Verify booking modal is visible
     const bookingModal = document.getElementById('booking-modal');
@@ -142,6 +138,21 @@ function fillBookingFormWithAppointmentType(appointmentType, slotData) {
     appointmentTypeField.value = appointmentType.id;
     console.log(`✅ Set appointment type ID to ${appointmentType.id}`);
 
+    // Set appointment type hex color (add hidden field if needed)
+    let appointmentTypeColorField = document.getElementById('appointment-type-color');
+    if (!appointmentTypeColorField) {
+        appointmentTypeColorField = document.createElement('input');
+        appointmentTypeColorField.type = 'hidden';
+        appointmentTypeColorField.id = 'appointment-type-color';
+        appointmentTypeColorField.name = 'appointment_type_color';
+        bookingModal.appendChild(appointmentTypeColorField);
+        console.log('✅ Created appointment type color hidden field');
+    }
+    if (appointmentType.color) {
+        appointmentTypeColorField.value = appointmentType.color;
+        console.log(`✅ Set appointment type hex color to ${appointmentType.color}`);
+    }
+
     // Set duration from appointment type
     const durationField = document.getElementById('booking-duration') || document.getElementById('duration');
     if (durationField) {
@@ -161,32 +172,71 @@ function fillBookingFormWithAppointmentType(appointmentType, slotData) {
 
     // Set color based on appointment type
     const colorField = document.getElementById('booking-colour') || document.getElementById('colour');
+    const colorHexDisplay = document.getElementById('booking-colour-hex');
+    console.log('🔍 Color field found:', colorField ? colorField.type : 'NOT FOUND');
+    console.log('🎨 Appointment type color:', appointmentType.color);
+    
     if (colorField && appointmentType.color) {
-        console.log(`🎨 Mapping appointment type color: ${appointmentType.color}`);
+        console.log(`🎨 Setting appointment type color directly: ${appointmentType.color}`);
         
-        // Map hex color to dropdown value if needed
-        const colorValue = mapHexColorToDropdownValue(appointmentType.color);
-        if (colorValue) {
-            colorField.value = colorValue;
-            console.log(`✅ Set booking color dropdown to '${colorValue}' (from ${appointmentType.color})`);
-            
-            // Verify the mapping will work in calendar display
-            console.log(`🔍 Calendar will display this as: ${getCalendarColorForDropdown(colorValue)}`);
-        } else {
-            console.warn(`⚠️  Could not map color ${appointmentType.color} to dropdown value`);
+        // Set hex color directly to color picker
+        colorField.value = appointmentType.color;
+        console.log(`✅ Set color picker to: ${appointmentType.color}`);
+        
+        // Update hex display if available
+        if (colorHexDisplay) {
+            colorHexDisplay.textContent = appointmentType.color.toUpperCase();
+            console.log(`✅ Updated hex display to: ${appointmentType.color.toUpperCase()}`);
         }
+        
+        console.log('🔍 Color field value after setting:', colorField.value);
     } else if (!appointmentType.color) {
         console.warn('⚠️  Appointment type has no color specified');
     } else {
         console.warn('⚠️  Color field not found in booking form');
     }
 
-    // Pre-fill billing code if available
-    if (appointmentType.default_billing_code) {
+    // Pre-fill billing codes if available (handle both old single code and new multiple codes)
+    if (appointmentType.default_billing_codes || appointmentType.default_billing_code) {
         const billingCodeField = document.getElementById('billing-code');
         if (billingCodeField) {
-            billingCodeField.value = appointmentType.default_billing_code;
+            let primaryBillingCode = '';
+            
+            // Handle new multiple billing codes format
+            if (appointmentType.default_billing_codes) {
+                try {
+                    const billingCodes = typeof appointmentType.default_billing_codes === 'string' 
+                        ? JSON.parse(appointmentType.default_billing_codes)
+                        : appointmentType.default_billing_codes;
+                    
+                    if (billingCodes && billingCodes.length > 0) {
+                        // Use the first billing code as primary for the dropdown
+                        primaryBillingCode = billingCodes[0].code;
+                        console.log(`✅ Set primary billing code to: ${primaryBillingCode} (from ${billingCodes.length} codes)`);
+                    }
+                } catch (e) {
+                    console.warn('⚠️  Could not parse default_billing_codes:', e);
+                }
+            } 
+            // Handle legacy single billing code format
+            else if (appointmentType.default_billing_code) {
+                primaryBillingCode = appointmentType.default_billing_code;
+                console.log(`✅ Set billing code to: ${primaryBillingCode} (legacy format)`);
+            }
+            
+            if (primaryBillingCode) {
+                billingCodeField.value = primaryBillingCode;
+                
+                // Update billing info display if the function exists
+                if (typeof updateBookingBillingInfo === 'function') {
+                    updateBookingBillingInfo(primaryBillingCode);
+                } else if (typeof window.updateBookingBillingInfo === 'function') {
+                    window.updateBookingBillingInfo(primaryBillingCode);
+                }
+            }
         }
+    } else {
+        console.log('ℹ️  No default billing codes for appointment type');
     }
 
     // Pre-fill notes if available
@@ -239,7 +289,7 @@ function displayAppointmentTypeInfo(appointmentType) {
                 <strong>${escapeHtml(appointmentType.name)}</strong>
                 <span class="appointment-type-duration">${appointmentType.effective_duration || appointmentType.duration}min</span>
             </div>
-            ${appointmentType.default_billing_code ? `<div class="appointment-type-billing-code">Billing: ${escapeHtml(appointmentType.default_billing_code)}</div>` : ''}
+            ${getBillingCodesDisplay(appointmentType)}
             <button type="button" class="change-appointment-type-btn" onclick="changeAppointmentType()">
                 Change Type
             </button>
@@ -295,10 +345,46 @@ function getSlotDate(cell, dayOverride) {
     const currentDate = window.currentStartDate || new Date();
     const days = window.days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     
+    console.log('🗓️ getSlotDate calculation:', {
+        requestedDay: day,
+        currentStartDate: currentDate,
+        daysArray: days,
+        dayOverride: dayOverride,
+        cellDataDay: cell.dataset.day
+    });
+    
     const dayIndex = days.findIndex(d => d === day);
-    if (dayIndex === -1) return new Date().toISOString().split('T')[0];
+    console.log('📅 Day index calculation:', {
+        dayRequested: day,
+        dayIndex: dayIndex,
+        daysArray: days
+    });
+    
+    if (dayIndex === -1) {
+        console.warn('⚠️ Day not found, returning today:', day);
+        return new Date().toISOString().split('T')[0];
+    }
 
-    const slotDate = new Date(currentDate.getTime() + (dayIndex * 24 * 60 * 60 * 1000));
+    // FIX: Calculate what day of the week currentDate actually is
+    const currentDayOfWeek = currentDate.getDay(); // 0=Sunday, 1=Monday, etc.
+    const currentDayIndex = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1; // Convert to our Mon=0 system
+    
+    // Calculate the difference between requested day and current day
+    const dayOffset = dayIndex - currentDayIndex;
+    
+    const slotDate = new Date(currentDate.getTime() + (dayOffset * 24 * 60 * 60 * 1000));
+    
+    console.log('📅 FIXED date calculation:', {
+        baseDate: currentDate,
+        baseDayOfWeek: currentDate.toLocaleDateString('en-US', { weekday: 'short' }),
+        currentDayIndex: currentDayIndex,
+        requestedDayIndex: dayIndex,
+        dayOffset: dayOffset,
+        calculatedDate: slotDate,
+        finalDateString: slotDate.toISOString().split('T')[0],
+        calculatedDayName: slotDate.toLocaleDateString('en-US', { weekday: 'long' })
+    });
+    
     return slotDate.toISOString().split('T')[0];
 }
 
@@ -366,7 +452,7 @@ function mapHexColorToDropdownValue(hexColor) {
         '#8B5CF6': 'purple',  // Consultation (close to purple)
         '#3B82F6': 'blue',    // Family Meeting (close to blue)
         '#0891B2': 'blue',    // Group Therapy (close to blue)
-        '#0D9488': 'green',   // Neurological (closer to green)
+        '#0D9488': 'green',   // Neurological (teal/cyan, closest to green)
         '#A855F7': 'purple',  // Home Visit (close to purple)
         '#6366F1': 'blue',    // Academic (close to blue)
         '#2563EB': 'blue',    // MDT Meeting (close to blue)
@@ -391,6 +477,44 @@ function mapHexColorToDropdownValue(hexColor) {
         console.warn(`⚠️  No mapping found for color ${hexColor}, defaulting to 'green'`);
         return 'green'; // Default to green if no match
     }
+}
+
+/**
+ * Get billing codes display for appointment type info
+ * 
+ * @param {Object} appointmentType - Appointment type object
+ * @returns {string} - HTML string for billing codes display
+ */
+function getBillingCodesDisplay(appointmentType) {
+    let billingCodesHtml = '';
+    
+    // Handle new multiple billing codes format
+    if (appointmentType.default_billing_codes) {
+        try {
+            const billingCodes = typeof appointmentType.default_billing_codes === 'string' 
+                ? JSON.parse(appointmentType.default_billing_codes)
+                : appointmentType.default_billing_codes;
+            
+            if (billingCodes && billingCodes.length > 0) {
+                const codesText = billingCodes.map(code => {
+                    let display = code.code;
+                    if (code.quantity && code.quantity > 1) display += ` (x${code.quantity})`;
+                    if (code.modifier) display += ` +${code.modifier}`;
+                    return display;
+                }).join(', ');
+                
+                billingCodesHtml = `<div class="appointment-type-billing-code">Billing: ${escapeHtml(codesText)}</div>`;
+            }
+        } catch (e) {
+            console.warn('⚠️  Could not parse billing codes for display:', e);
+        }
+    } 
+    // Handle legacy single billing code format
+    else if (appointmentType.default_billing_code) {
+        billingCodesHtml = `<div class="appointment-type-billing-code">Billing: ${escapeHtml(appointmentType.default_billing_code)}</div>`;
+    }
+    
+    return billingCodesHtml;
 }
 
 /**

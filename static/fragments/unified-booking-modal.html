@@ -1,0 +1,244 @@
+<!-- Unified Booking Modal - Combines Appointment Type Selection + Booking Details -->
+<div id="unified-booking-modal" class="modal unified-modal" style="display: none;">
+    <div class="modal-content large-modal">
+        <!-- Modal Header with Progress Indicator -->
+        <div class="modal-header">
+            <h3 id="unified-modal-title">Select Appointment Type</h3>
+            <div class="progress-indicator">
+                <span class="step active" data-step="1">
+                    <span class="step-number">1</span>
+                    <span class="step-label">Type</span>
+                </span>
+                <div class="step-connector"></div>
+                <span class="step" data-step="2">
+                    <span class="step-number">2</span>
+                    <span class="step-label">Details</span>
+                </span>
+            </div>
+            <span class="close-button" id="close-unified-modal">&times;</span>
+        </div>
+        
+        <!-- Modal Body - Contains both steps -->
+        <div class="modal-body">
+            
+            <!-- Step 1: Appointment Type Selection -->
+            <div id="appointment-type-step" class="modal-step active">
+                <div class="step-content">
+                    <div class="step-description">
+                        <p>Choose the type of appointment to create. Each type has default settings that will be applied to your booking.</p>
+                    </div>
+                    
+                    <!-- Search/Filter (ready for future enhancement) -->
+                    <div class="appointment-type-search" style="display: none;">
+                        <input type="text" id="unified-appointment-type-search" placeholder="Search appointment types..." />
+                    </div>
+                    
+                    <!-- Appointment Type Tree Container -->
+                    <div id="unified-appointment-type-tree" class="appointment-type-tree">
+                        <!-- Tree will be populated by JavaScript -->
+                        <div class="loading-spinner" id="unified-appointment-type-loading">
+                            <div class="spinner"></div>
+                            <span>Loading appointment types...</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Selected Type Preview -->
+                    <div id="unified-selected-type-preview" class="selected-type-preview" style="display: none;">
+                        <div class="preview-header">
+                            <strong>Selected Appointment Type:</strong>
+                        </div>
+                        <div class="preview-content">
+                            <div class="preview-type">
+                                <span class="preview-color"></span>
+                                <span class="preview-name"></span>
+                                <span class="preview-duration"></span>
+                            </div>
+                            <div class="preview-details">
+                                <small class="preview-description"></small>
+                            </div>
+                            <div class="preview-billing-codes" style="display: none;">
+                                <small><strong>Default Billing Codes:</strong> <span class="preview-billing-list"></span></small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 2: Booking Details -->
+            <div id="booking-details-step" class="modal-step">
+                <div class="step-content">
+                    
+                    <!-- Selected Appointment Type Display with Change Option -->
+                    <div class="selected-appointment-type">
+                        <div class="selected-type-info">
+                            <span class="selected-type-color"></span>
+                            <span class="selected-type-name"></span>
+                            <span class="selected-type-duration"></span>
+                        </div>
+                        <button type="button" class="change-type-btn btn-secondary">Change Type</button>
+                    </div>
+                    
+                    <!-- Booking Form in Two-Column Layout -->
+                    <div class="booking-form-layout">
+                        <div class="booking-form-left">
+                            <form id="unified-booking-form">
+                                <!-- Hidden fields -->
+                                <input type="hidden" id="unified-editing-appt-id" />
+                                <input type="hidden" id="unified-selected-appointment-type-id" />
+                                <input type="hidden" id="unified-booking-colour" />
+                                
+                                <!-- Patient Selection -->
+                                <div class="form-group">
+                                    <label for="unified-patient-name">Patient *</label>
+                                    <div class="patient-selection">
+                                        <select id="unified-patient-name" required>
+                                            <option value="">Select a patient...</option>
+                                        </select>
+                                        <button type="button" class="btn-secondary" onclick="openUnifiedPatientSearch()">Search</button>
+                                    </div>
+                                </div>
+                                
+                                <!-- User Context Fields -->
+                                <div class="form-group">
+                                    <label for="unified-therapist-profession">Profession *</label>
+                                    <select id="unified-therapist-profession" onchange="filterUnifiedTherapistByProfession()" required>
+                                        <option value="">Select profession...</option>
+                                    </select>
+                                    <span class="field-indicator auto-populated" title="Auto-populated from your profile">👤</span>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="unified-therapist-name">Therapist *</label>
+                                    <select id="unified-therapist-name" required>
+                                        <option value="">Select therapist...</option>
+                                    </select>
+                                    <span class="field-indicator auto-populated" title="Auto-populated from your profile">👤</span>
+                                    <span class="field-indicator locked" style="display: none;" title="Regular users can only book for themselves">🔒</span>
+                                </div>
+                                
+                                <!-- Appointment Timing -->
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="unified-booking-date">Date *</label>
+                                        <input type="date" id="unified-booking-date" required />
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="unified-start-time">Start Time *</label>
+                                        <input type="time" id="unified-start-time" required />
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="unified-booking-duration">Duration (minutes) *</label>
+                                        <input type="number" id="unified-booking-duration" value="30" step="5" min="5" required />
+                                        <span class="field-indicator auto-populated" title="Auto-populated from appointment type">🎯</span>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="unified-end-time">End Time</label>
+                                        <input type="time" id="unified-end-time" readonly />
+                                    </div>
+                                </div>
+                                
+                                <!-- Notes -->
+                                <div class="form-group">
+                                    <label for="unified-booking-notes">Notes</label>
+                                    <textarea id="unified-booking-notes" rows="3" placeholder="Additional notes for this appointment..."></textarea>
+                                    <span class="field-indicator auto-populated" style="display: none;" title="Template from appointment type">📝</span>
+                                </div>
+                                
+                                <!-- Color Picker -->
+                                <div class="form-group">
+                                    <label for="unified-booking-colour-picker">Appointment Color</label>
+                                    <div class="color-picker-group">
+                                        <input type="color" id="unified-booking-colour-picker" value="#2D6356" />
+                                        <span id="unified-booking-colour-hex">#2D6356</span>
+                                        <span class="field-indicator auto-populated" title="Auto-populated from appointment type">🎨</span>
+                                    </div>
+                                </div>
+                                
+                            </form>
+                        </div>
+                        
+                        <div class="booking-form-right">
+                            <!-- Billing Codes Table with Modifiers -->
+                            <div class="billing-codes-section">
+                                <h4>Billing Codes</h4>
+                                <div class="billing-table-container">
+                                    <table id="unified-booking-billing-table" class="billing-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Code</th>
+                                                <th>Description</th>
+                                                <th>Qty</th>
+                                                <th>Modifier</th>
+                                                <th>Rate</th>
+                                                <th>Total</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="unified-booking-billing-table-body">
+                                            <!-- Dynamic rows will be populated here -->
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="billing-total-row">
+                                                <td colspan="5"><strong>Grand Total:</strong></td>
+                                                <td id="unified-billing-grand-total" class="total-amount">R0.00</td>
+                                                <td>
+                                                    <button type="button" class="add-billing-row-btn btn-secondary">+ Add Code</button>
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                                <div class="billing-summary">
+                                    <span class="field-indicator auto-populated" title="Default codes from appointment type">🎯</span>
+                                    <small>Default billing codes loaded from appointment type. You can add, remove, or modify any codes.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        
+        <!-- Modal Footer with Sequential Navigation -->
+        <div class="modal-footer">
+            <button id="unified-back-to-step1-button" class="btn btn-secondary" style="display: none;">
+                ← Back to Appointment Types
+            </button>
+            <button id="unified-continue-to-step2-button" class="btn btn-primary" disabled>
+                Continue to Booking Details →
+            </button>
+            <button id="unified-save-booking-button" class="btn btn-primary" style="display: none;">
+                Save Booking
+            </button>
+            <button id="unified-cancel-button" class="btn btn-secondary">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Backdrop -->
+<div id="unified-booking-modal-backdrop" class="modal-backdrop" style="display: none;"></div>
+
+<!-- Patient Search Modal (placeholder for integration) -->
+<div id="unified-patient-search-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Search Patients</h3>
+            <span class="close-button" onclick="closeUnifiedPatientSearch()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <input type="text" id="unified-patient-search-input" placeholder="Search by name, ID number, or phone..." />
+            <div id="unified-patient-search-results">
+                <!-- Search results will be populated here -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button onclick="closeUnifiedPatientSearch()" class="btn btn-secondary">Close</button>
+        </div>
+    </div>
+</div>

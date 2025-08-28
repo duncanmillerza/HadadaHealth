@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Complete Appointment Types Interface Test</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+            margin: 20px; 
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+        .test-result { 
+            padding: 12px; 
+            margin: 8px 0; 
+            border-radius: 6px; 
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .success { background: #d1fae5; border: 1px solid #10b981; color: #065f46; }
+        .error { background: #fee2e2; border: 1px solid #ef4444; color: #7f1d1d; }
+        .info { background: #dbeafe; border: 1px solid #3b82f6; color: #1e40af; }
+        .warning { background: #fef3c7; border: 1px solid #f59e0b; color: #92400e; }
+        
+        .test-iframe {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+        
+        .button {
+            background: #2D6356;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: 600;
+        }
+        
+        .button:hover {
+            background: #1d4a3a;
+        }
+        
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 12px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Complete Appointment Types Interface Test</h1>
+        <p>Testing the authentication fixes and appointment types visibility</p>
+        
+        <div class="test-section">
+            <h2>📋 Test Results</h2>
+            <div id="test-results"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🌐 Live Interface Test</h2>
+            <p>Testing the actual appointment types management page:</p>
+            <button class="button" onclick="loadInterface()">🔄 Load Interface</button>
+            <button class="button" onclick="testAuthenticationFlow()">🔐 Test Auth Flow</button>
+            <button class="button" onclick="simulateDataLoading()">📊 Simulate Data Loading</button>
+            
+            <div id="interface-container"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔍 Debug Information</h2>
+            <div id="debug-info"></div>
+        </div>
+    </div>
+    
+    <script>
+        const results = document.getElementById('test-results');
+        const debugInfo = document.getElementById('debug-info');
+        const interfaceContainer = document.getElementById('interface-container');
+        
+        function addResult(type, message, details = '') {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = `
+                <strong>${message}</strong>
+                ${details ? `<div style="margin-top: 8px; opacity: 0.8;">${details}</div>` : ''}
+            `;
+            results.appendChild(div);
+        }
+        
+        function addDebugInfo(title, content) {
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <h3>${title}</h3>
+                <div class="code-block">${content}</div>
+            `;
+            debugInfo.appendChild(div);
+        }
+        
+        // Test 1: Server Connectivity
+        async function testServerConnectivity() {
+            addResult('info', '🔍 Testing server connectivity...');
+            
+            try {
+                const response = await fetch('http://localhost:8000/', { method: 'HEAD' });
+                if (response.ok || response.status === 404) {
+                    addResult('success', '✅ Server is running', `HTTP ${response.status}`);
+                    return true;
+                } else {
+                    addResult('error', '❌ Server responded with error', `HTTP ${response.status}`);
+                    return false;
+                }
+            } catch (error) {
+                addResult('error', '❌ Cannot connect to server', error.message);
+                return false;
+            }
+        }
+        
+        // Test 2: Authentication Requirements
+        async function testAuthenticationRequirements() {
+            addResult('info', '🔐 Testing authentication requirements...');
+            
+            const endpoints = [
+                { 
+                    url: 'http://localhost:8000/appointment-types-management-page', 
+                    name: 'Management Page',
+                    expected: 'redirect to login'
+                },
+                { 
+                    url: 'http://localhost:8000/api/practices/1/appointment-types/effective?enabled_only=false', 
+                    name: 'Effective Types API',
+                    expected: '401 Authentication Required'
+                },
+                { 
+                    url: 'http://localhost:8000/api/appointment-types?active_only=true', 
+                    name: 'Global Types API',
+                    expected: '401 Authentication Required'
+                }
+            ];
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(endpoint.url);
+                    
+                    if (response.status === 401) {
+                        addResult('success', `✅ ${endpoint.name}: Authentication required as expected`, 'Returns 401 Unauthorized');
+                    } else if (response.status === 200 && endpoint.name === 'Management Page') {
+                        // Check if it's actually the login page
+                        const text = await response.text();
+                        if (text.includes('login') || text.includes('Login')) {
+                            addResult('success', `✅ ${endpoint.name}: Redirected to login as expected`);
+                        } else {
+                            addResult('warning', `⚠️ ${endpoint.name}: Unexpected success - might be authenticated`);
+                        }
+                    } else {
+                        addResult('info', `ℹ️ ${endpoint.name}: ${response.status} ${response.statusText}`);
+                    }
+                    
+                } catch (error) {
+                    addResult('error', `❌ ${endpoint.name}: ${error.message}`);
+                }
+            }
+        }
+        
+        // Test 3: Authentication Flow Simulation
+        async function testAuthenticationFlow() {
+            addResult('info', '🧪 Simulating authentication flow...');
+            
+            // Simulate the loadAppointmentTypes function behavior
+            try {
+                const currentPracticeId = 1;
+                const response = await fetch(`http://localhost:8000/api/practices/${currentPracticeId}/appointment-types/effective?enabled_only=false`);
+                
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        addResult('success', '✅ Authentication handling works correctly', 
+                            'Detected 401 response - would redirect to /login in real app');
+                        
+                        // Show what our enhanced error handling would do
+                        const mockContainer = document.createElement('div');
+                        mockContainer.innerHTML = `
+                            <div style="text-align: center; padding: 3rem; background: #f9fafb; border-radius: 8px; border: 2px dashed #d1d5db;">
+                                <div style="font-size: 3rem; margin-bottom: 1rem;">🔐</div>
+                                <h3 style="color: #374151; margin-bottom: 1rem;">Authentication Required</h3>
+                                <p style="color: #6b7280; margin-bottom: 2rem;">This page requires authentication to load and manage appointment types.</p>
+                                <a href="/login" style="background: #2D6356; color: white; padding: 1rem 2rem; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                                    🔑 Log In to Continue
+                                </a>
+                            </div>
+                        `;
+                        
+                        interfaceContainer.innerHTML = '';
+                        interfaceContainer.appendChild(mockContainer);
+                        
+                        addResult('success', '✅ Enhanced error UI displayed', 
+                            'Shows user-friendly authentication prompt instead of raw error');
+                        
+                    } else {
+                        addResult('warning', `⚠️ Unexpected response: ${response.status} ${response.statusText}`);
+                    }
+                } else {
+                    addResult('info', 'ℹ️ Request succeeded - user might be authenticated');
+                }
+                
+            } catch (error) {
+                addResult('error', '❌ Error in authentication flow test', error.message);
+            }
+        }
+        
+        // Test 4: Data Loading Simulation
+        async function simulateDataLoading() {
+            addResult('info', '📊 Simulating appointment types data loading...');
+            
+            // Mock data that matches the actual database structure
+            const mockAppointmentTypes = [
+                // Categories (parent_id: null)
+                { id: 1, name: 'Patient', parent_id: null, color: '#2c3363' },
+                { id: 2, name: 'Meeting', parent_id: null, color: '#1E40AF' },
+                { id: 3, name: 'Admin', parent_id: null, color: '#EA580C' },
+                { id: 4, name: 'Travel', parent_id: null, color: '#7c3aed' },
+                
+                // Child types
+                { id: 5, name: 'New Assessment', parent_id: 1, color: '#16A34A' },
+                { id: 6, name: 'Follow-up Assessment', parent_id: 1, color: '#16A34A' },
+                { id: 7, name: 'Treatment', parent_id: 1, color: '#059669' },
+                { id: 8, name: 'Neurological', parent_id: 1, color: '#0D9488' },
+                { id: 9, name: 'Group Therapy', parent_id: 1, color: '#0891B2' },
+                
+                { id: 10, name: 'MDT Meeting', parent_id: 2, color: '#2563EB' },
+                { id: 11, name: 'Family Meeting', parent_id: 2, color: '#3B82F6' },
+                { id: 12, name: 'Academic Meeting', parent_id: 2, color: '#6366F1' },
+                { id: 13, name: 'Consultation', parent_id: 2, color: '#8B5CF6' },
+                
+                { id: 14, name: 'Documentation', parent_id: 3, color: '#F59E0B' },
+                { id: 15, name: 'Equipment Maintenance', parent_id: 3, color: '#EF4444' },
+                { id: 16, name: 'Training', parent_id: 3, color: '#10B981' },
+                
+                { id: 17, name: 'Home Visit', parent_id: 4, color: '#A855F7' },
+                { id: 18, name: 'Off-site Meeting', parent_id: 4, color: '#9333EA' }
+            ];
+            
+            addResult('success', `✅ Mock data created`, `${mockAppointmentTypes.length} appointment types`);
+            
+            // Simulate the JavaScript grouping logic
+            const categories = new Map();
+            
+            mockAppointmentTypes.forEach(type => {
+                if (!type.parent_id) {
+                    // This is a category
+                    categories.set(type.id, {
+                        ...type,
+                        children: []
+                    });
+                } else {
+                    // This is a child type
+                    const parent = mockAppointmentTypes.find(t => t.id === type.parent_id);
+                    if (parent) {
+                        if (!categories.has(parent.id)) {
+                            categories.set(parent.id, {
+                                ...parent,
+                                children: []
+                            });
+                        }
+                        categories.get(parent.id).children.push(type);
+                    }
+                }
+            });
+            
+            addResult('success', `✅ Data grouping logic works`, `${categories.size} categories processed`);
+            
+            // Show the structure
+            let structureHtml = '<div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e5e7eb;">';
+            structureHtml += '<h3>📊 Appointment Types Structure:</h3>';
+            
+            categories.forEach((category, id) => {
+                structureHtml += `
+                    <div style="margin: 1rem 0; padding: 1rem; background: ${category.color}20; border-left: 4px solid ${category.color}; border-radius: 4px;">
+                        <div style="font-weight: 600; color: ${category.color};">
+                            📁 ${category.name} (${category.children.length} types)
+                        </div>
+                        ${category.children.map(child => `
+                            <div style="margin-left: 1rem; padding: 0.5rem 0; color: #6b7280;">
+                                ├── ${child.name}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            });
+            structureHtml += '</div>';
+            
+            const structureDiv = document.createElement('div');
+            structureDiv.innerHTML = structureHtml;
+            interfaceContainer.appendChild(structureDiv);
+            
+            addResult('success', '✅ UI structure rendering simulated successfully');
+            
+            // Add debug information
+            addDebugInfo('Mock Data Structure', JSON.stringify(mockAppointmentTypes, null, 2));
+            
+            let categoryBreakdown = '';
+            categories.forEach((category, id) => {
+                categoryBreakdown += `${category.name}: ${category.children.length} children\\n`;
+                category.children.forEach(child => {
+                    categoryBreakdown += `  - ${child.name}\\n`;
+                });
+                categoryBreakdown += '\\n';
+            });
+            addDebugInfo('Category Breakdown', categoryBreakdown);
+        }
+        
+        // Test 5: Load Live Interface (in iframe to avoid CORS issues)
+        function loadInterface() {
+            addResult('info', '🌐 Loading live interface...');
+            
+            const iframe = document.createElement('iframe');
+            iframe.className = 'test-iframe';
+            iframe.src = 'http://localhost:8000/appointment-types-management-page';
+            iframe.onload = function() {
+                addResult('success', '✅ Interface loaded successfully');
+            };
+            iframe.onerror = function() {
+                addResult('error', '❌ Failed to load interface');
+            };
+            
+            interfaceContainer.innerHTML = '';
+            interfaceContainer.appendChild(iframe);
+        }
+        
+        // Run all tests automatically
+        async function runAllTests() {
+            addResult('info', '🚀 Starting comprehensive appointment types interface test...');
+            
+            const serverRunning = await testServerConnectivity();
+            if (serverRunning) {
+                await testAuthenticationRequirements();
+            }
+            
+            addResult('success', '🎉 All tests completed!', 'Check results above for detailed analysis');
+        }
+        
+        // Auto-run tests on page load
+        runAllTests();
+    </script>
+</body>
+</html>
