@@ -121,6 +121,9 @@ The `modules/` directory contains domain-specific business logic:
 - **outcome_measures.py** - Assessment tools and measurements
 - **medical_aids.py** - Insurance and medical aid integration
 - **reminders.py** - Automated notifications and alerts
+- **reports.py** - AI-powered report generation and workflow management
+- **ai_content.py** - AI content generation for medical reports
+- **data_aggregation.py** - Patient data aggregation for report generation
 - **reports_analytics.py** - Data analysis and reporting
 - **settings_configuration.py** - System configuration management
 
@@ -167,6 +170,7 @@ Tests are organized into multiple categories:
 - **Run all tests**: `pytest`
 - **Run with verbose output**: `pytest -v`
 - **Run specific test file**: `pytest test_api_simple.py`
+- **Run wizard tests**: `pytest test_report_wizard_ui.py -v`
 - **Run with coverage**: `pytest --tb=short -v`
 
 ### Database Management
@@ -176,6 +180,79 @@ Tests are organized into multiple categories:
 ### Dependencies
 - **Install requirements**: `pip install -r requirements.txt`
 - **Update dependencies**: Update `requirements.txt` and reinstall
+
+## Brand System & UI Standards
+
+### Comprehensive Brand Guidelines
+The complete HadadaHealth brand system is documented in `Branding/` directory with modular files optimized for Claude Code usage:
+
+- **[Brand README](Branding/README.md)** - Complete navigation and quick start guide
+- **[CSS Variables](Branding/implementation/css-variables.md)** - Design token system for consistent theming
+- **[Dark Mode](Branding/dark-mode.md)** - Professional healthcare dark theme implementation
+- **[Clinical Components](Branding/components/clinical-components.md)** - Patient cards, discipline tags, progress indicators
+
+### UI Development Standards
+When creating or modifying UI code, always reference the brand system:
+
+1. **Colors**: Use CSS variables from `css-variables.md` - Never hardcode colors
+2. **Typography**: Follow hierarchy from `typography.md` - System fonts for UI, serif for print
+3. **Spacing**: Use 4px grid system from `layout-spacing.md` - Always use spacing variables
+4. **Components**: Reference component files in `components/` directory for consistent patterns
+5. **Accessibility**: Follow guidelines in `accessibility.md` - WCAG 2.1 AA compliance required
+6. **Mobile**: Use patterns from `responsive-design.md` - Mobile-first approach mandatory
+
+### Healthcare-Specific UI Requirements
+- **Professional appearance**: Maintain clinical credibility in all interfaces
+- **POPIA compliance**: Include privacy messaging where patient data is displayed
+- **Multi-disciplinary support**: Use inclusive language and discipline-neutral patterns
+- **Touch optimization**: 44px minimum touch targets for clinical environments
+- **Clear information hierarchy**: Support efficient clinical workflows
+
+### Implementation Priority
+1. **Foundation**: CSS variables, color system, typography
+2. **Core Components**: Buttons, forms, navigation  
+3. **Clinical Features**: Patient cards, clinical components
+4. **Enhanced Interactions**: Dark mode, animations, touch feedback
+
+**Always reference the brand system files before implementing any UI changes to ensure consistency with healthcare practice management standards.**
+
+## AI Report Creation Wizard
+
+### Overview
+The system includes a sophisticated 5-step report creation wizard that streamlines the clinical report generation process with AI assistance.
+
+### Key Features
+- **Booking-Based Recommendations**: Suggests disciplines and therapists based on patient history
+- **Progressive Workflow**: 5 guided steps from patient selection to report creation
+- **AI Content Generation**: Automatically generates medical history and treatment summaries
+- **Multi-Disciplinary Support**: Handles physiotherapy, occupational therapy, speech therapy, psychology
+- **Notification System**: Alerts assigned therapists of new report requests
+
+### Implementation Files
+- **Frontend**: `static/js/report_wizard.js` - Main wizard class and logic
+- **Templates**: `static/fragments/report_wizard_modal.html` - UI markup
+- **Styling**: `static/css/report_wizard.css` - Wizard-specific styles  
+- **Backend**: `controllers/report_controller.py` - API endpoints and business logic
+- **Tests**: `test_report_wizard_ui.py` - Comprehensive UI and workflow tests
+
+### Usage
+```javascript
+// Open wizard for therapist workflow
+openReportWizard('therapist');
+
+// Open wizard for manager workflow  
+openReportWizard('manager');
+```
+
+### API Endpoints
+- **GET /api/reports/wizard/options** - Get wizard configuration and recommendations
+- **POST /api/reports/create** - Create report from wizard payload
+- **GET /api/patients/recent** - Get recent patients for step 1
+- **GET /api/patients/search** - Search patients by name
+
+### Documentation
+- **User Guide**: `docs/report-wizard-guide.md` - Complete user documentation
+- **Technical Guide**: `docs/report-wizard-technical.md` - Developer documentation
 
 ## Healthcare Data Security
 - **POPIA/GDPR Compliance**: Patient data protection is built into the system

@@ -1,0 +1,400 @@
+<!-- Report Creation Wizard Modal - 5-Step Process -->
+<div id="report-wizard-modal" class="modal unified-modal" style="display: none;">
+    <div class="modal-content large-modal wizard-modal">
+        <!-- Modal Header with Progress Indicator -->
+        <div class="modal-header">
+            <h3 id="wizard-modal-title">Create Report</h3>
+            <div class="wizard-progress">
+                <div class="progress-steps">
+                    <div class="progress-step active" data-step="1">
+                        <div class="step-circle">1</div>
+                        <div class="step-label">Patient</div>
+                    </div>
+                    <div class="progress-connector"></div>
+                    <div class="progress-step" data-step="2">
+                        <div class="step-circle">2</div>
+                        <div class="step-label">Type & Title</div>
+                    </div>
+                    <div class="progress-connector"></div>
+                    <div class="progress-step" data-step="3">
+                        <div class="step-circle">3</div>
+                        <div class="step-label">Disciplines</div>
+                    </div>
+                    <div class="progress-connector"></div>
+                    <div class="progress-step" data-step="4">
+                        <div class="step-circle">4</div>
+                        <div class="step-label">Therapists</div>
+                    </div>
+                    <div class="progress-connector"></div>
+                    <div class="progress-step" data-step="5">
+                        <div class="step-circle">5</div>
+                        <div class="step-label">Priority & Timeline</div>
+                    </div>
+                </div>
+            </div>
+            <span class="close-button" id="close-wizard-modal">&times;</span>
+        </div>
+        
+        <!-- Modal Body with Steps -->
+        <div class="modal-body wizard-body">
+            <div class="wizard-container">
+                <!-- Step Content Area -->
+                <div class="wizard-steps">
+                    
+                    <!-- Step 1: Select Patient -->
+                    <div id="wizard-step-1" class="wizard-step active">
+                        <div class="step-header">
+                            <h4>Select Patient</h4>
+                            <p>Choose the patient for this report</p>
+                        </div>
+                        
+                        <div class="patient-selection-section">
+                            <!-- Patient Search -->
+                            <div class="form-group">
+                                <label for="wizard-patient-search">Search Patient</label>
+                                <div class="search-input-group">
+                                    <input type="text" id="wizard-patient-search" placeholder="Search by name, MRN, or ID..." />
+                                    <div class="search-spinner" style="display: none;">🔍</div>
+                                </div>
+                                <div id="wizard-patient-results" class="search-results">
+                                    <!-- Search results will appear here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Recent Patients -->
+                            <div class="recent-patients-section">
+                                <h5>Recent Patients</h5>
+                                <div id="wizard-recent-patients" class="recent-patients-list">
+                                    <!-- Recent patients will be loaded here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Selected Patient Preview -->
+                            <div id="wizard-selected-patient" class="selected-patient-preview" style="display: none;">
+                                <div class="patient-card">
+                                    <div class="patient-info">
+                                        <h5 id="selected-patient-name"></h5>
+                                        <div class="patient-details">
+                                            <span id="selected-patient-dob"></span>
+                                            <span id="selected-patient-id"></span>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn-link" onclick="clearSelectedPatient()">Change</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 2: Report Type & Title -->
+                    <div id="wizard-step-2" class="wizard-step">
+                        <div class="step-header">
+                            <h4>Report Type & Title</h4>
+                            <p>Select the type of report and provide a title</p>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="wizard-report-type">Report Type *</label>
+                                <select id="wizard-report-type" required>
+                                    <option value="">Select report type...</option>
+                                    <!-- Options will be populated by JavaScript -->
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="wizard-template">Template *</label>
+                                <select id="wizard-template" required>
+                                    <option value="">Select template...</option>
+                                    <!-- Templates will be populated based on report type -->
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="wizard-title">Report Title *</label>
+                            <input type="text" id="wizard-title" placeholder="Report title will be auto-generated..." required />
+                            <button type="button" class="btn-secondary" onclick="generateWizardTitle()">
+                                <i class="fas fa-magic"></i> Auto-Generate
+                            </button>
+                        </div>
+                        
+                        <!-- Template Preview -->
+                        <div id="wizard-template-preview" class="template-preview" style="display: none;">
+                            <h5>Template Preview</h5>
+                            <div class="template-sections">
+                                <!-- Template sections will be shown here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 3: Disciplines -->
+                    <div id="wizard-step-3" class="wizard-step">
+                        <div class="step-header">
+                            <h4>Select Disciplines</h4>
+                            <p>Choose which disciplines should be included in this report</p>
+                        </div>
+                        
+                        <!-- Recommended Disciplines -->
+                        <div id="wizard-recommended-disciplines" class="recommendations-section" style="display: none;">
+                            <h5>Recommended <span class="info-icon" title="Based on patient's booking history">ℹ️</span></h5>
+                            <div class="discipline-recommendations">
+                                <!-- Recommended disciplines will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <!-- All Available Disciplines -->
+                        <div class="all-disciplines-section">
+                            <h5>All Disciplines</h5>
+                            <div class="discipline-grid">
+                                <div class="discipline-option">
+                                    <input type="checkbox" id="discipline-physiotherapy" value="physiotherapy" />
+                                    <label for="discipline-physiotherapy">
+                                        <div class="discipline-card">
+                                            <div class="discipline-icon">🏃‍♂️</div>
+                                            <div class="discipline-name">Physiotherapy</div>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div class="discipline-option">
+                                    <input type="checkbox" id="discipline-occupational-therapy" value="occupational_therapy" />
+                                    <label for="discipline-occupational-therapy">
+                                        <div class="discipline-card">
+                                            <div class="discipline-icon">🖐️</div>
+                                            <div class="discipline-name">Occupational Therapy</div>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div class="discipline-option">
+                                    <input type="checkbox" id="discipline-speech-therapy" value="speech_therapy" />
+                                    <label for="discipline-speech-therapy">
+                                        <div class="discipline-card">
+                                            <div class="discipline-icon">💬</div>
+                                            <div class="discipline-name">Speech Therapy</div>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div class="discipline-option">
+                                    <input type="checkbox" id="discipline-psychology" value="psychology" />
+                                    <label for="discipline-psychology">
+                                        <div class="discipline-card">
+                                            <div class="discipline-icon">🧠</div>
+                                            <div class="discipline-name">Psychology</div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="discipline-validation-message" style="display: none;">
+                            <span class="error-text">Please select at least one discipline.</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 4: Therapists -->
+                    <div id="wizard-step-4" class="wizard-step">
+                        <div class="step-header">
+                            <h4>Assign Therapists</h4>
+                            <p>Select therapists to work on this report</p>
+                        </div>
+                        
+                        <!-- Role-specific Information -->
+                        <div id="therapist-role-info" class="role-info-section" style="display: none;">
+                            <div class="info-card">
+                                <span class="info-icon">👩‍⚕️</span>
+                                <span>You will be automatically assigned to this report</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Suggested Therapists -->
+                        <div id="wizard-suggested-therapists" class="suggestions-section" style="display: none;">
+                            <h5>Suggested <span class="info-icon" title="Based on previous treatments with this patient">ℹ️</span></h5>
+                            <div class="therapist-suggestions">
+                                <!-- Suggested therapists will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <!-- Other Available Therapists -->
+                        <div id="wizard-other-therapists" class="other-therapists-section" style="display: none;">
+                            <h5>Other Available Therapists</h5>
+                            <div class="therapist-list">
+                                <!-- Other therapists will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <div class="therapist-validation-message" style="display: none;">
+                            <span class="error-text">Please select at least one therapist.</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 5: Priority & Timeline -->
+                    <div id="wizard-step-5" class="wizard-step">
+                        <div class="step-header">
+                            <h4>Priority & Timeline</h4>
+                            <p>Set priority level and deadline for this report</p>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="wizard-priority">Priority Level *</label>
+                                <div class="priority-options">
+                                    <div class="priority-option">
+                                        <input type="radio" id="priority-low" name="wizard-priority" value="1" />
+                                        <label for="priority-low" class="priority-card low">
+                                            <div class="priority-indicator"></div>
+                                            <div class="priority-details">
+                                                <div class="priority-name">Low</div>
+                                                <div class="priority-description">Standard timeline</div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    <div class="priority-option">
+                                        <input type="radio" id="priority-medium" name="wizard-priority" value="2" checked />
+                                        <label for="priority-medium" class="priority-card medium">
+                                            <div class="priority-indicator"></div>
+                                            <div class="priority-details">
+                                                <div class="priority-name">Medium</div>
+                                                <div class="priority-description">Normal priority</div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    <div class="priority-option">
+                                        <input type="radio" id="priority-high" name="wizard-priority" value="3" />
+                                        <label for="priority-high" class="priority-card high">
+                                            <div class="priority-indicator"></div>
+                                            <div class="priority-details">
+                                                <div class="priority-name">High</div>
+                                                <div class="priority-description">Urgent - 2 days</div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="wizard-deadline">Deadline (Optional)</label>
+                                <input type="date" id="wizard-deadline" />
+                                <div class="deadline-shortcuts">
+                                    <button type="button" class="deadline-shortcut" onclick="setWizardDeadline(7)">1 week</button>
+                                    <button type="button" class="deadline-shortcut" onclick="setWizardDeadline(14)">2 weeks</button>
+                                    <button type="button" class="deadline-shortcut" onclick="setWizardDeadline(30)">1 month</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Summary Review -->
+                        <div class="wizard-summary">
+                            <h5>Review Summary</h5>
+                            <div class="summary-grid">
+                                <div class="summary-item">
+                                    <label>Patient:</label>
+                                    <span id="summary-patient">-</span>
+                                </div>
+                                <div class="summary-item">
+                                    <label>Report Type:</label>
+                                    <span id="summary-report-type">-</span>
+                                </div>
+                                <div class="summary-item">
+                                    <label>Template:</label>
+                                    <span id="summary-template">-</span>
+                                </div>
+                                <div class="summary-item">
+                                    <label>Title:</label>
+                                    <span id="summary-title">-</span>
+                                </div>
+                                <div class="summary-item">
+                                    <label>Disciplines:</label>
+                                    <span id="summary-disciplines">-</span>
+                                </div>
+                                <div class="summary-item">
+                                    <label>Assigned to:</label>
+                                    <span id="summary-therapists">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                </div>
+                
+                <!-- Desktop Summary Sidebar -->
+                <div class="wizard-sidebar">
+                    <h5>Summary</h5>
+                    <div class="sidebar-summary">
+                        <div class="summary-section">
+                            <h6>Patient</h6>
+                            <div id="sidebar-patient" class="summary-value">Not selected</div>
+                        </div>
+                        <div class="summary-section">
+                            <h6>Report</h6>
+                            <div id="sidebar-report-type" class="summary-value">Not selected</div>
+                            <div id="sidebar-title" class="summary-value small">-</div>
+                        </div>
+                        <div class="summary-section">
+                            <h6>Disciplines</h6>
+                            <div id="sidebar-disciplines" class="summary-value">Not selected</div>
+                        </div>
+                        <div class="summary-section">
+                            <h6>Therapists</h6>
+                            <div id="sidebar-therapists" class="summary-value">Not selected</div>
+                        </div>
+                        <div class="summary-section">
+                            <h6>Priority & Deadline</h6>
+                            <div id="sidebar-priority" class="summary-value">Medium</div>
+                            <div id="sidebar-deadline" class="summary-value small">No deadline</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal Footer with Navigation -->
+        <div class="modal-footer wizard-footer">
+            <div class="footer-left">
+                <button id="wizard-back-btn" class="btn btn-secondary" style="display: none;">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+            </div>
+            <div class="footer-right">
+                <button id="wizard-cancel-btn" class="btn btn-secondary">Cancel</button>
+                <button id="wizard-next-btn" class="btn btn-primary" disabled>
+                    Next <i class="fas fa-arrow-right"></i>
+                </button>
+                <button id="wizard-finish-btn" class="btn btn-success" style="display: none;">
+                    <i class="fas fa-check"></i> Create Report
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Backdrop -->
+<div id="report-wizard-backdrop" class="modal-backdrop" style="display: none;"></div>
+
+<!-- Discipline Recommendation Tooltip -->
+<div id="discipline-tooltip" class="recommendation-tooltip" style="display: none;">
+    <div class="tooltip-content">
+        <div class="tooltip-header">
+            <strong>Recommended</strong>
+        </div>
+        <div class="tooltip-body">
+            <div class="booking-stats">
+                <span class="booking-count"></span>
+                <span class="last-seen"></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Therapist Suggestion Tooltip -->
+<div id="therapist-tooltip" class="recommendation-tooltip" style="display: none;">
+    <div class="tooltip-content">
+        <div class="tooltip-header">
+            <strong>Previous Treatment History</strong>
+        </div>
+        <div class="tooltip-body">
+            <div class="treatment-stats">
+                <span class="treatment-count"></span>
+                <span class="last-treatment"></span>
+            </div>
+        </div>
+    </div>
+</div>

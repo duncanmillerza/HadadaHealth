@@ -70,6 +70,18 @@
       </ul>
     </div>
     <div class="section">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="margin: 0;">AI Reports</h2>
+        <div style="display: flex; gap: 0.5em;">
+          <button onclick="openReportWizard('therapist')" style="font-size: 0.9em; background: #2D6356; color: white; border: none; border-radius: 4px; padding: 0.3em 0.8em; cursor: pointer;">Request Report</button>
+          <button onclick="openReportWizard('manager')" style="font-size: 0.9em; background: #4CAF50; color: white; border: none; border-radius: 4px; padding: 0.3em 0.8em; cursor: pointer;">Assign Report</button>
+        </div>
+      </div>
+      <ul id="ai-reports-list">
+        <li>Loading reports...</li>
+      </ul>
+    </div>
+    <div class="section">
       <h2>Stats (Lifetime)</h2>
       <div class="stat-block">
         <strong id="lifetime-appointments-count">0</strong>
@@ -375,6 +387,77 @@
       list.innerHTML = "<li>Error loading reminders</li>";
     }
   }
+
+  // Populate AI reports dynamically
+  async function populateAIReports() {
+    try {
+      const res = await fetch("/api/reports/user/reports?limit=5");
+      const reports = await res.json();
+      const list = document.getElementById("ai-reports-list");
+      list.innerHTML = "";
+
+      if (!reports.length) {
+        list.innerHTML = "<li>No reports assigned</li>";
+        return;
+      }
+
+      reports.forEach(report => {
+        const li = document.createElement("li");
+        li.style.borderLeft = `6px solid ${getPriorityColor(report.priority)}`;
+        li.style.paddingLeft = "0.5em";
+        li.style.marginBottom = "0.5em";
+        li.style.cursor = "pointer";
+        
+        const title = document.createElement("span");
+        title.textContent = report.title;
+        title.style.fontWeight = "bold";
+        
+        const status = document.createElement("small");
+        status.textContent = ` (${report.status.charAt(0).toUpperCase() + report.status.slice(1)})`;
+        status.style.color = getStatusColor(report.status);
+        
+        const deadline = document.createElement("small");
+        if (report.deadline_date) {
+          deadline.textContent = ` - Due: ${new Date(report.deadline_date).toLocaleDateString()}`;
+          deadline.style.color = "#666";
+        }
+        
+        li.appendChild(title);
+        li.appendChild(status);
+        li.appendChild(deadline);
+        
+        // Make it clickable to edit the report
+        li.addEventListener("click", () => {
+          openReportWizard('therapist', report.id);
+        });
+        
+        list.appendChild(li);
+      });
+    } catch (err) {
+      console.error("Failed to load AI reports:", err);
+      const list = document.getElementById("ai-reports-list");
+      list.innerHTML = "<li>Error loading reports</li>";
+    }
+  }
+
+  function getPriorityColor(priority) {
+    switch(priority) {
+      case 3: return "#f44336"; // Red for high priority
+      case 2: return "#ff9800"; // Orange for normal priority
+      case 1: return "#4caf50"; // Green for low priority
+      default: return "#2D6356";
+    }
+  }
+
+  function getStatusColor(status) {
+    switch(status) {
+      case 'pending': return "#ff9800";
+      case 'in_progress': return "#2196f3";
+      case 'completed': return "#4caf50";
+      case 'overdue': return "#f44336";
+      default: return "#666";
+    }
+  }
   </script>
   <script src="/static/js/reminder-modal.js"></script>
   <div id="reminder-modal-container"></div>
@@ -461,6 +544,108 @@
     .then(res => res.text())
     .then(html => {
       document.getElementById("reminder-view-modal-container").innerHTML = html;
+    });
+
+  // Load the report wizard modal fragment
+  fetch("/static/fragments/report_wizard_modal.html")
+    .then(res => res.text())
+    .then(html => {
+      document.body.insertAdjacentHTML('beforeend', html);
+      console.log('✅ Report wizard modal HTML loaded successfully');
+      // Small delay to ensure DOM is updated
+      return new Promise(resolve => setTimeout(resolve, 50));
+    })
+    .then(() => {
+      // Load the CSS for report wizard and dashboard widgets
+      const wizardCssLink = document.createElement("link");
+      wizardCssLink.rel = "stylesheet";
+      wizardCssLink.href = "/static/css/report_wizard.css";
+      document.head.appendChild(wizardCssLink);
+      
+      // Keep old report modal CSS for compatibility
+      const reportCssLink = document.createElement("link");
+      reportCssLink.rel = "stylesheet";
+      reportCssLink.href = "/static/css/report-request-modal.css";
+      document.head.appendChild(reportCssLink);
+      
+      const widgetsCssLink = document.createElement("link");
+      widgetsCssLink.rel = "stylesheet";
+      widgetsCssLink.href = "/static/css/dashboard-widgets.css";
+      document.head.appendChild(widgetsCssLink);
+      
+      const notificationCssLink = document.createElement("link");
+      notificationCssLink.rel = "stylesheet";
+      notificationCssLink.href = "/static/css/notification-system.css";
+      document.head.appendChild(notificationCssLink);
+      
+      const editorCssLink = document.createElement("link");
+      editorCssLink.rel = "stylesheet";
+      editorCssLink.href = "/static/css/report-editor.css";
+      document.head.appendChild(editorCssLink);
+      
+      const disciplineCssLink = document.createElement("link");
+      disciplineCssLink.rel = "stylesheet";
+      disciplineCssLink.href = "/static/css/discipline-selector.css";
+      document.head.appendChild(disciplineCssLink);
+      
+      // Load the JavaScript
+      const wizardScript = document.createElement("script");
+      wizardScript.src = "/static/js/report_wizard.js";
+      document.body.appendChild(wizardScript);
+      
+      // Keep old report modal JS for compatibility
+      const reportScript = document.createElement("script");
+      reportScript.src = "/static/js/report-request-modal.js";
+      document.body.appendChild(reportScript);
+      
+      const widgetsScript = document.createElement("script");
+      widgetsScript.src = "/static/js/dashboard-widgets.js";
+      document.body.appendChild(widgetsScript);
+      
+      const notificationScript = document.createElement("script");
+      notificationScript.src = "/static/js/notification-system.js";
+      document.body.appendChild(notificationScript);
+      
+      const editorScript = document.createElement("script");
+      editorScript.src = "/static/js/report-editor.js";
+      document.body.appendChild(editorScript);
+      
+      const disciplineScript = document.createElement("script");
+      disciplineScript.src = "/static/js/discipline-selector.js";
+      document.body.appendChild(disciplineScript);
+      
+      // Initialize all systems after scripts load
+      let scriptsLoaded = 0;
+      function checkAllLoaded() {
+        scriptsLoaded++;
+        if (scriptsLoaded === 4) { // Now waiting for 4 scripts
+          // Initialize all systems
+          console.log('🚀 Initializing all dashboard systems...');
+          
+          initializeDashboardWidgets();
+          
+          setTimeout(() => {
+            if (typeof initializeNotificationSystem === 'function') {
+              initializeNotificationSystem();
+            }
+            
+            if (typeof initializeDisciplineSelector === 'function') {
+              console.log('🏥 Initializing discipline selector...');
+              initializeDisciplineSelector();
+            }
+            
+            if (typeof initializeReportEditor === 'function') {
+              console.log('📝 Initializing report editor...');
+              initializeReportEditor();
+            }
+          }, 500);
+        }
+      }
+      
+      widgetsScript.onload = checkAllLoaded;
+      notificationScript.onload = checkAllLoaded;
+      editorScript.onload = checkAllLoaded;
+      disciplineScript.onload = checkAllLoaded;
     });
 </script>
   </body>
