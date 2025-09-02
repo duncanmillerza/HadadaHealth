@@ -70,18 +70,6 @@
       </ul>
     </div>
     <div class="section">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h2 style="margin: 0;">AI Reports</h2>
-        <div style="display: flex; gap: 0.5em;">
-          <button onclick="openReportWizard('therapist')" style="font-size: 0.9em; background: #2D6356; color: white; border: none; border-radius: 4px; padding: 0.3em 0.8em; cursor: pointer;">Request Report</button>
-          <button onclick="openReportWizard('manager')" style="font-size: 0.9em; background: #4CAF50; color: white; border: none; border-radius: 4px; padding: 0.3em 0.8em; cursor: pointer;">Assign Report</button>
-        </div>
-      </div>
-      <ul id="ai-reports-list">
-        <li>Loading reports...</li>
-      </ul>
-    </div>
-    <div class="section">
       <h2>Stats (Lifetime)</h2>
       <div class="stat-block">
         <strong id="lifetime-appointments-count">0</strong>
@@ -120,7 +108,8 @@
       </div>
     </div>
   </div>
-      <script src="/static/js/nav-bar.js"></script>
+  
+  
       <div id="bottom-nav"></div>
   <script src="/static/js/summary-modal.js"></script>
 <script>
@@ -599,7 +588,7 @@
       document.body.appendChild(reportScript);
       
       const widgetsScript = document.createElement("script");
-      widgetsScript.src = "/static/js/dashboard-widgets.js";
+      widgetsScript.src = "/static/js/dashboard-widgets.js?v=" + Date.now();
       document.body.appendChild(widgetsScript);
       
       const notificationScript = document.createElement("script");
@@ -614,11 +603,12 @@
       disciplineScript.src = "/static/js/discipline-selector.js";
       document.body.appendChild(disciplineScript);
       
+      
       // Initialize all systems after scripts load
       let scriptsLoaded = 0;
       function checkAllLoaded() {
         scriptsLoaded++;
-        if (scriptsLoaded === 4) { // Now waiting for 4 scripts
+        if (scriptsLoaded === 5) { // Now waiting for 5 scripts
           // Initialize all systems
           console.log('🚀 Initializing all dashboard systems...');
           
@@ -638,6 +628,7 @@
               console.log('📝 Initializing report editor...');
               initializeReportEditor();
             }
+            
           }, 500);
         }
       }
@@ -647,6 +638,9 @@
       editorScript.onload = checkAllLoaded;
       disciplineScript.onload = checkAllLoaded;
     });
+
 </script>
+
+
   </body>
   </html>

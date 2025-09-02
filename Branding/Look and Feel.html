@@ -34,11 +34,11 @@
     --color-primary-dark:#3B7F71;       /* Slightly brighter version of original green */
     --color-secondary-dark:#4F6FBF;     /* Brighter blue for dark mode */
     --color-destructive-dark:#B8556B;   /* Muted version of destructive color */
-    --color-text-dark:#F3F4F6;          /* Light text on dark */
-    --color-muted-dark:#9CA3AF;         /* Muted text for dark */
-    --color-border-dark:#374151;        /* Dark borders */
-    --color-surface-dark:#0F1419;       /* Very dark background */
-    --color-white-dark:#1F2937;         /* Dark card background */
+    --color-text-dark:#E6EDF3;          /* Less harsh white text for extended clinical use */
+    --color-muted-dark:#8B949E;         /* Better contrast muted text */
+    --color-border-dark:#30363D;        /* Subtle borders */
+    --color-surface-dark:#0A0E13;       /* Deeper, less blue background */
+    --color-white-dark:#161B22;         /* Softer card background */
 
     /* Status colors for light mode */
     --color-success-light:#059669;
@@ -85,6 +85,18 @@
     /* Spacing - 4px grid system */
     --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; 
     --space-5:20px; --space-6:24px; --space-8:32px; --space-10:40px; --space-12:48px;
+  }
+
+  /* =============================
+     Reduced Motion for Clinical Settings
+     Healthcare professionals need fast, distraction-free interfaces
+     ============================= */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 
   /* Dark mode activation */
@@ -859,6 +871,56 @@
       transform: translateY(-10px);
     }
   }
+
+  /* =============================
+     Clinical Loading Spinner
+     Simple spinner for instant feedback in healthcare workflows
+     ============================= */
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .clinical-loading {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--color-border);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  /* =============================
+     Accessibility Improvements
+     ARIA live regions and skip navigation for healthcare compliance
+     ============================= */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .skip-link {
+    position: absolute;
+    top: -40px;
+    left: 6px;
+    background: var(--color-primary);
+    color: white;
+    padding: 8px;
+    text-decoration: none;
+    transition: top 0.3s;
+    border-radius: var(--radius-md);
+    z-index: 1000;
+  }
+
+  .skip-link:focus {
+    top: 6px;
+  }
   
   /* Animation classes */
   .animate-fade-up {
@@ -1241,6 +1303,12 @@
 </style>
 </head>
 <body>
+  <!-- Skip link for keyboard navigation accessibility -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  
+  <!-- ARIA live region for screen reader announcements -->
+  <div aria-live="polite" aria-atomic="true" class="sr-only" id="status-announcer"></div>
+  
   <nav class="nav">
     <div class="brand">
       <!-- HadadaHealth Wordmark Logo -->
@@ -1301,7 +1369,7 @@
     </div>
   </nav>
 
-  <main class="container">
+  <main class="container" id="main-content">
     <h1 class="animate-fade-up">HadadaHealth Brand Style Guide</h1>
     <p class="muted animate-fade-up animate-delay-200">Complete implementation of the HadadaHealth brand system for healthcare practice management. This demo shows all components, interactions, and design patterns as specified in the brand style guide.</p>
 

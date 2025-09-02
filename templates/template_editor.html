@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{INSTANCE_TITLE}} - Template Editor | HadadaHealth</title>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Material Icons -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/nav.css">
+    <link rel="stylesheet" href="/static/css/template-editor.css">
+    
+    <!-- Print-optimized styles -->
+    <style>
+        @media print {
+            @page {
+                size: A4;
+                margin: 2cm;
+            }
+            
+            body {
+                font-family: 'Times New Roman', serif;
+                font-size: 12pt;
+                line-height: 1.4;
+                color: #000;
+            }
+            
+            .template-section {
+                page-break-inside: avoid;
+                margin-bottom: 1.5rem;
+            }
+            
+            .section-title {
+                font-size: 14pt;
+                font-weight: bold;
+                text-transform: uppercase;
+                margin-bottom: 0.5rem;
+                border-bottom: 2px solid #000;
+                padding-bottom: 0.25rem;
+            }
+            
+            .form-field {
+                margin-bottom: 1rem;
+            }
+            
+            .form-field label {
+                font-weight: bold;
+                margin-bottom: 0.25rem;
+                display: block;
+            }
+            
+            .form-field input,
+            .form-field textarea {
+                border: none;
+                border-bottom: 1px solid #333;
+                background: transparent;
+                width: 100%;
+                padding: 0.1rem 0;
+                font-family: inherit;
+                font-size: inherit;
+            }
+            
+            .assessment-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 1rem;
+                font-size: 10pt;
+            }
+            
+            .assessment-table th,
+            .assessment-table td {
+                border: 1px solid #000;
+                padding: 0.3rem;
+                text-align: left;
+            }
+            
+            .assessment-table th {
+                background: #f0f0f0;
+                font-weight: bold;
+            }
+        }
+        
+        /* AI Buttons Styling */
+        .ai-buttons-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        
+        .ai-buttons-group .btn {
+            flex: 0 0 auto;
+            font-size: 0.875rem;
+        }
+        
+        .ai-regenerate-btn {
+            border: 1px solid #6c757d;
+            color: #6c757d;
+        }
+        
+        .ai-regenerate-btn:hover {
+            background-color: #6c757d;
+            color: white;
+        }
+    </style>
+</head>
+
+<body class="template-editor-wrapper">
+    <div id="top-nav"></div>
+
+    <!-- Template Header -->
+    <div class="template-header">
+        <div class="template-header-content">
+            <div class="template-info">
+                <h1 id="template-header-title">{{INSTANCE_TITLE}}</h1>
+                <div class="template-meta">
+                    <span><i class="fas fa-user"></i> {{PATIENT_NAME}}</span>
+                    <span><i class="fas fa-calendar"></i> <span id="template-creation-date"></span></span>
+                    <span id="template-header-status" class="status-badge status-draft">Draft</span>
+                </div>
+            </div>
+            
+            <div class="template-toolbar">
+                <div id="save-status" class="save-status">Ready</div>
+                <button id="save-template-btn" class="primary">
+                    <i class="fas fa-save"></i> Save Draft
+                </button>
+                <button id="complete-template-btn" class="success">
+                    <i class="fas fa-check-circle"></i> Complete
+                </button>
+                <button id="export-template-btn">
+                    <i class="fas fa-print"></i> Print
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template Editor Container -->
+    <div id="template-editor-container" class="template-editor-container">
+        <!-- Sections will be dynamically generated here -->
+        <div class="loading-state">
+            <div class="loading-spinner">
+                <i class="fas fa-spinner fa-spin fa-2x"></i>
+            </div>
+            <p>Loading template...</p>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation for Mobile -->
+    <div id="bottom-nav"></div>
+    
+    <!-- JavaScript -->
+    <script src="/static/js/nav-bar.js"></script>
+    <script src="/static/js/template-editor.js"></script>
+    
+    <script>
+        // Initialize the template editor with the instance ID
+        document.addEventListener('DOMContentLoaded', function() {
+            const instanceId = {{INSTANCE_ID}};
+            initializeTemplateEditor(instanceId);
+            
+            // Set creation date if available
+            const creationDateElement = document.getElementById('template-creation-date');
+            if (creationDateElement) {
+                creationDateElement.textContent = new Date().toLocaleDateString();
+            }
+        });
+    </script>
+
+    <!-- Loading styles -->
+    <style>
+        .loading-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 300px;
+            color: #64748b;
+        }
+        
+        .loading-spinner {
+            margin-bottom: 1rem;
+            color: #3b82f6;
+        }
+        
+        .template-editor-container.loaded .loading-state {
+            display: none;
+        }
+    </style>
+</body>
+</html>

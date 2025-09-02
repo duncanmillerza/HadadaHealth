@@ -474,3 +474,45 @@ def get_patient_disciplines(patient_id: str) -> List[Dict[str, Any]]:
             'treatment_count': 3
         }
     ]
+
+
+def delete_report(report_id: int) -> bool:
+    """
+    Delete a report and all associated data
+    
+    Args:
+        report_id: ID of report to delete
+    
+    Returns:
+        True if successful, False otherwise
+    """
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        
+        # Delete in correct order due to foreign key constraints
+        # 1. Delete report notifications
+        cursor.execute("DELETE FROM report_notifications WHERE report_id = ?", (report_id,))
+        
+        # 2. Delete report content versions
+        cursor.execute("DELETE FROM report_content_versions WHERE report_id = ?", (report_id,))
+        
+        # 3. Skip AI content cache - it's not tied to specific reports
+        # (AI content cache is organized by patient_id and content_type, not report_id)
+        
+        # 4. Finally delete the report itself
+        cursor.execute("DELETE FROM reports WHERE id = ?", (report_id,))
+        
+        # Check if any rows were affected
+        if cursor.rowcount == 0:
+            return False
+            
+        conn.commit()
+        return True
+        
+    except Exception as e:
+        print(f"Error deleting report {report_id}: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()

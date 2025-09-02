@@ -26,6 +26,13 @@ function initializeDashboardWidgets() {
 
 // Create the HTML structure for dashboard widgets
 function createWidgetStructure() {
+    // Disabled: AI Reports now has a dedicated page
+    // Dashboard widgets are no longer needed since we have separate pages for:
+    // - AI Reports Dashboard: /ai-reports
+    // - Template Management: /template-management
+    return;
+    
+    /*
     const dashboardContainer = document.querySelector('.dashboard');
     
     // Find and replace the existing AI Reports section
@@ -45,10 +52,7 @@ function createWidgetStructure() {
                         </h3>
                         <div class="widget-actions">
                             <button class="widget-action-btn primary" onclick="openReportWizard('therapist')">
-                                Request Report
-                            </button>
-                            <button class="widget-action-btn" onclick="openReportWizard('manager')">
-                                Assign Report
+                                Add Report
                             </button>
                         </div>
                     </div>
@@ -205,6 +209,7 @@ function createWidgetStructure() {
         // Replace the existing section with the new widgets
         existingSection.outerHTML = widgetsHTML;
     }
+    */
 }
 
 // Load all dashboard data

@@ -2,13 +2,15 @@
 
 > Spec: AI Report Writing System
 > Created: 2025-08-28
-> Status: Planning
+> Status: Core System Implemented (Updated 2025-09-01)
 
 ## Overview
 
 Implement an AI-powered clinical report writing system that enables both manager-initiated and therapist-initiated workflows for automated report generation. The system will leverage existing AI infrastructure to auto-populate reports with patient data, medical history, and treatment summaries while providing full customization capabilities and multi-disciplinary integration.
 
 The user experience adopts a guided, multi-step wizard for report creation (patient → type & title → disciplines → clinicians → priority & timeline), mirroring the proven appointment booking flow for clarity and reduced cognitive load.
+
+**Implementation Update (2025-09-01)**: The system has been enhanced with a unified "Add Report" workflow that combines both manager-initiated and therapist-initiated flows into a single, streamlined user experience. This approach reduces complexity while maintaining all required functionality.
 
 ## User Stories
 
@@ -58,3 +60,4 @@ The system automatically detects if recent medical history exists (within 1 week
 - Database Schema: @.agent-os/specs/2025-08-28-ai-report-writing-system/sub-specs/database-schema.md
 - API Specification: @.agent-os/specs/2025-08-28-ai-report-writing-system/sub-specs/api-spec.md
 - Report Creation Wizard: @.agent-os/specs/2025-08-28-ai-report-writing-system/sub-specs/report-creation-wizard.md
+- **Implementation Status Update**: @.agent-os/specs/2025-08-28-ai-report-writing-system/implementation-status-update-2025-09-01.md

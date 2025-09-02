@@ -36,7 +36,17 @@ from models.validation import (
 )
 from controllers.report_controller import (
     ReportCreateRequest, ReportUpdateRequest, AIContentGenerationRequest,
-    ReportResponse, ReportDashboardResponse, WizardOptionsResponse
+    ReportResponse, ReportDashboardResponse, WizardOptionsResponse,
+    TherapistCompletionRequest, TherapistCompletionResponse, ReportCompletionStatusResponse
+)
+from controllers.template_controller import (
+    StructuredTemplateResponse, TemplateInstanceResponse, 
+    TemplateInstanceCreateRequest, TemplateInstanceUpdateRequest,
+    get_structured_templates, get_structured_template_by_id,
+    create_template_instance, get_template_instance_by_id,
+    update_template_instance, get_template_instances_for_patient,
+    delete_template_instance, generate_ai_content_for_section,
+    regenerate_ai_content_for_section
 )
 from reportlab.pdfgen import canvas
 from starlette.middleware.sessions import SessionMiddleware
@@ -468,7 +478,7 @@ def create_billing_session(data: dict = Body(...), request: Request = None, user
                 total_amount = sum(entry.get("final_fee", 0) for entry in entries_data)
             
             cursor.execute("""
-                INSERT INTO billing_sessions (id, patient_id, therapist_id, session_date, notes, total_amount)
+                INSERT OR REPLACE INTO billing_sessions (id, patient_id, therapist_id, session_date, notes, total_amount)
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (
                 session_id,
@@ -478,6 +488,10 @@ def create_billing_session(data: dict = Body(...), request: Request = None, user
                 session_data.get("notes", ""),
                 total_amount
             ))
+            
+            # Clear existing billing entries for this session to avoid duplicates
+            cursor.execute("DELETE FROM billing_entries WHERE appointment_id = ?", (session_id,))
+            
             for entry in entries_data:
                 print(f"DEBUG: Processing entry: {entry}")
                 # Convert code_id to integer if it's a string
@@ -667,7 +681,10 @@ def get_billing_sessions(patient_id: str, user: dict = Depends(require_auth)):
 
         for session in sessions:
             entry_cursor = conn.execute("""
-                SELECT * FROM billing_entries WHERE appointment_id = ?
+                SELECT be.*, bc.code as code_id 
+                FROM billing_entries be
+                LEFT JOIN billing_codes bc ON be.code_id = bc.id
+                WHERE be.appointment_id = ?
             """, (session["id"],))
             session["entries"] = [dict(zip([col[0] for col in entry_cursor.description], row)) for row in entry_cursor.fetchall()]
     return sessions
@@ -1843,10 +1860,15 @@ async def save_patient(request: Request, user: dict = Depends(require_therapist_
     if hasattr(patient, "therapist_id") and getattr(patient, "therapist_id", None):
         therapist_id = getattr(patient, "therapist_id")
 
+    # Generate unique patient ID
+    import time
+    import random
+    patient_id = f"PAT_{int(time.time())}_{random.randint(1000, 9999)}"
+    
     with sqlite3.connect("data/bookings.db") as conn:
         conn.execute("""
             INSERT INTO patients (
-                first_name, surname, preferred_name, date_of_birth, gender,
+                id, first_name, surname, preferred_name, date_of_birth, gender,
                 address_line1, address_line2, town, postal_code, country,
                 email, contact_number, clinic,
                 account_name, account_id_number, account_address, account_phone, account_email,
@@ -1856,8 +1878,9 @@ async def save_patient(request: Request, user: dict = Depends(require_therapist_
                 consent_treatment, consent_photography, consent_data, consent_communication,
                 consent_billing, consent_terms,
                 signature_identity, signature_name, signature_relationship, signature_data
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
+            patient_id,
             patient.first_name,
             patient.surname,
             patient.preferred_name,
@@ -1899,7 +1922,7 @@ async def save_patient(request: Request, user: dict = Depends(require_therapist_
             patient.signature_relationship,
             patient.signature_data
         ))
-    return {"detail": "Patient saved"}
+    return {"detail": "Patient saved", "patient_id": patient_id}
 
 from typing import Dict
 
@@ -2044,9 +2067,16 @@ def import_medical_aids_endpoint(file: UploadFile = File(...)):
 def import_patients(file: UploadFile = File(...), user: dict = Depends(require_admin)):
     try:
         df = pd.read_excel(file.file)
+        import time
+        import random
+        
         with sqlite3.connect("data/bookings.db") as conn:
             for _, row in df.iterrows():
+                # Generate unique patient ID for each import
+                patient_id = f"PAT_{int(time.time())}_{random.randint(1000, 9999)}"
+                
                 values = (
+                    patient_id,  # Add the generated ID as first value
                     row.get('first_name', ''),
                     row.get('surname', ''),
                     row.get('preferred_name', ''),
@@ -2091,7 +2121,7 @@ def import_patients(file: UploadFile = File(...), user: dict = Depends(require_a
                 )
                 conn.execute("""
                     INSERT INTO patients (
-                        first_name, surname, preferred_name, date_of_birth, gender, id_number,
+                        id, first_name, surname, preferred_name, date_of_birth, gender, id_number,
                         address_line1, address_line2, town, postal_code, country,
                         email, contact_number, clinic,
                         account_name, account_id_number, account_address, account_phone, account_email,
@@ -2101,7 +2131,7 @@ def import_patients(file: UploadFile = File(...), user: dict = Depends(require_a
                         consent_treatment, consent_photography, consent_data, consent_communication,
                         consent_billing, consent_terms,
                         signature_identity, signature_name, signature_relationship, signature_data
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, values)
         return {"detail": "Patients imported successfully"}
     except Exception as e:
@@ -2186,6 +2216,34 @@ def serve_index(request: Request):
 @app.get("/offline.html")
 def serve_offline():
     return FileResponse(os.path.join("templates", "offline.html"))
+
+@app.get("/template-management")
+def serve_template_management(request: Request):
+    if not request.session.get("user_id"):
+        response = FileResponse(os.path.join("templates", "login.html"))
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
+    response = FileResponse(os.path.join("templates", "template_management.html"))
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
+@app.get("/ai-reports")
+def serve_ai_reports_dashboard(request: Request):
+    if not request.session.get("user_id"):
+        response = FileResponse(os.path.join("templates", "login.html"))
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
+    response = FileResponse(os.path.join("templates", "ai_reports.html"))
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 @app.get("/add-patient-page")
 def serve_add_patient_page(request: Request):
@@ -3351,12 +3409,97 @@ def update_report_endpoint(report_id: int, request: ReportUpdateRequest, current
     return ReportController.update_report(report_id, request, current_user)
 
 
+@app.delete("/api/reports/{report_id}")
+def delete_report_endpoint(report_id: int, current_user: dict = Depends(require_auth)):
+    """Delete a report"""
+    from controllers.report_controller import ReportController
+    return ReportController.delete_report(report_id, current_user)
+
+
+@app.put("/api/reports/{report_id}/reassign")
+def reassign_report_endpoint(report_id: int, request: dict, current_user: dict = Depends(require_auth)):
+    """Reassign a report to different therapists"""
+    from controllers.report_controller import ReportController
+    return ReportController.reassign_report(report_id, request, current_user)
+
+
+@app.get("/api/therapists")
+def get_therapists_endpoint(current_user: dict = Depends(require_auth)):
+    """Get list of therapists for assignment"""
+    from modules.database import execute_query
+    
+    # Get therapists from the therapists table with correct professions
+    therapists = execute_query(
+        """
+        SELECT id, 
+               COALESCE(preferred_name, name) || ' ' || surname as full_name,
+               profession
+        FROM therapists 
+        ORDER BY surname, name
+        """,
+        fetch='all'
+    )
+    
+    if not therapists:
+        # Fallback to basic list if no therapists found
+        return [
+            {"id": "1", "name": "Duncan Miller", "profession": "Physiotherapy"},
+            {"id": "3", "name": "Kim Jones", "profession": "Occupational Therapy"}
+        ]
+    
+    return [
+        {
+            "id": str(therapist['id']), 
+            "name": therapist['full_name'], 
+            "profession": therapist['profession']
+        }
+        for therapist in therapists
+    ]
+
+
+@app.get("/report/{report_id}")
+async def serve_report_editor(report_id: int):
+    """Serve report editor page - redirects to template editor if available"""
+    from fastapi.responses import RedirectResponse
+    from modules.database import execute_query
+    
+    try:
+        # Check if report has a linked template instance
+        query = """
+            SELECT template_instance_id FROM reports 
+            WHERE id = ? AND template_instance_id IS NOT NULL
+        """
+        result = execute_query(query, (report_id,), fetch='one')
+        
+        if result and result['template_instance_id']:
+            # Redirect to template editor
+            return RedirectResponse(url=f"/template-instance/{result['template_instance_id']}/edit")
+        else:
+            # For reports without template instances, show a basic report view
+            # This could be enhanced later with a dedicated report viewer
+            return RedirectResponse(url=f"/ai-reports?report_id={report_id}")
+            
+    except Exception as e:
+        print(f"Error serving report editor: {e}")
+        return RedirectResponse(url="/ai-reports")
+
+
 @app.get("/api/reports/user/dashboard")
 def get_user_dashboard_endpoint(current_user: dict = Depends(require_auth)):
     """Get dashboard data for current user"""
     from controllers.report_controller import ReportController
     return ReportController.get_dashboard_data(current_user)
 
+
+@app.get("/api/reports")
+def get_all_reports_endpoint(
+    status: Optional[str] = Query(None, description="Filter by status"),
+    limit: int = Query(50, description="Maximum number of reports to return"),
+    current_user: dict = Depends(require_auth)
+):
+    """Get all reports accessible to current user"""
+    from controllers.report_controller import ReportController
+    return ReportController.get_user_reports(status, limit, current_user)
 
 @app.get("/api/reports/user/reports")
 def get_user_reports_endpoint(status: Optional[str] = None, limit: int = 50, current_user: dict = Depends(require_auth)):
@@ -3370,6 +3513,33 @@ async def generate_ai_content_endpoint(report_id: int, request: AIContentGenerat
     """Generate AI content for a report"""
     from controllers.report_controller import ReportController
     return await ReportController.generate_ai_content(report_id, request, current_user)
+
+
+# Individual Therapist Completion Endpoints
+
+@app.post("/api/reports/{report_id}/complete-therapist")
+async def complete_therapist_portion_endpoint(
+    report_id: int, 
+    request: Optional[TherapistCompletionRequest] = None, 
+    current_user: dict = Depends(require_auth)
+):
+    """Mark the current therapist's portion of the report as complete"""
+    from controllers.report_controller import ReportController
+    return await ReportController.complete_therapist_portion(report_id, request, current_user)
+
+
+@app.get("/api/reports/{report_id}/completion-status")
+async def get_report_completion_status_endpoint(report_id: int, current_user: dict = Depends(require_auth)):
+    """Get detailed completion status for a report including individual therapist completions"""
+    from controllers.report_controller import ReportController
+    return await ReportController.get_report_completion_status(report_id)
+
+
+@app.delete("/api/reports/{report_id}/complete-therapist")
+async def remove_therapist_completion_endpoint(report_id: int, current_user: dict = Depends(require_auth)):
+    """Remove the current therapist's completion (undo completion)"""
+    from controllers.report_controller import ReportController
+    return await ReportController.remove_therapist_completion(report_id, current_user)
 
 
 @app.get("/api/report-templates")
@@ -3676,6 +3846,77 @@ def get_reports_analytics_endpoint(request: Request):
         }
 
 
+# ===== STRUCTURED TEMPLATE ENDPOINTS =====
+
+@app.get("/api/templates", response_model=List[StructuredTemplateResponse])
+def get_structured_templates_endpoint(active_only: bool = Query(True, description="Only return active templates")):
+    """Get all structured templates"""
+    return get_structured_templates(active_only=active_only)
+
+
+@app.get("/api/templates/{template_id}", response_model=StructuredTemplateResponse)
+def get_structured_template_endpoint(template_id: int = Path(..., gt=0, description="Template ID")):
+    """Get a structured template by ID"""
+    return get_structured_template_by_id(template_id)
+
+
+@app.post("/api/templates/instances", response_model=TemplateInstanceResponse)
+def create_template_instance_endpoint(request: TemplateInstanceCreateRequest):
+    """Create a new template instance with auto-populated data"""
+    print(f"🔍 Creating template instance: {request}")
+    return create_template_instance(request)
+
+
+@app.get("/api/templates/instances/{instance_id}", response_model=TemplateInstanceResponse)
+def get_template_instance_endpoint(instance_id: int = Path(..., gt=0, description="Template instance ID")):
+    """Get a template instance by ID"""
+    return get_template_instance_by_id(instance_id)
+
+
+@app.put("/api/templates/instances/{instance_id}", response_model=TemplateInstanceResponse)
+def update_template_instance_endpoint(
+    instance_id: int = Path(..., gt=0, description="Template instance ID"),
+    request: TemplateInstanceUpdateRequest = Body(...)
+):
+    """Update a template instance (save draft, complete, etc.)"""
+    return update_template_instance(instance_id, request)
+
+
+@app.get("/api/templates/instances/patient/{patient_id}", response_model=List[TemplateInstanceResponse])
+def get_patient_template_instances_endpoint(
+    patient_id: int = Path(..., gt=0, description="Patient ID"),
+    status: Optional[str] = Query(None, description="Filter by status")
+):
+    """Get all template instances for a patient"""
+    return get_template_instances_for_patient(patient_id, status)
+
+
+@app.delete("/api/templates/instances/{instance_id}")
+def delete_template_instance_endpoint(instance_id: int = Path(..., gt=0, description="Template instance ID")):
+    """Delete a template instance"""
+    return delete_template_instance(instance_id)
+
+
+@app.post("/api/templates/instances/{instance_id}/ai-generate/{section_id}/{field_id}")
+def generate_ai_content_endpoint(
+    instance_id: int = Path(..., gt=0, description="Template instance ID"),
+    section_id: str = Path(..., description="Section identifier"),
+    field_id: str = Path(..., description="Field identifier")
+):
+    """Generate AI content for a specific template section field"""
+    return generate_ai_content_for_section(instance_id, section_id, field_id)
+
+
+@app.post("/api/templates/instances/{instance_id}/ai-regenerate/{section_id}/{field_id}")
+def regenerate_ai_content_endpoint(
+    instance_id: int = Path(..., gt=0, description="Template instance ID"),
+    section_id: str = Path(..., description="Section identifier"),
+    field_id: str = Path(..., description="Field identifier")
+):
+    """Regenerate AI content from treatment notes for a specific template section field"""
+    return regenerate_ai_content_for_section(instance_id, section_id, field_id)
+
+
 # ===== SETTINGS & CONFIGURATION ENDPOINTS =====
 
 @app.get("/api/user/{user_id}/preferences")
@@ -3689,6 +3930,11 @@ def update_user_preferences_endpoint(user_id: int, preferences: UserPreferencesU
     """Update user preferences"""
     return update_user_preferences(user_id, preferences.dict(exclude_none=True))
 
+
+@app.get("/api/auth/me")
+def get_current_user_endpoint(current_user: dict = Depends(require_auth)):
+    """Get current authenticated user information"""
+    return current_user
 
 
 @app.post("/api/system/restore")
@@ -4309,3 +4555,190 @@ async def get_effective_appointment_types(
         enabled_only=enabled_only
     )
 
+
+# Template Management API Endpoints for Task 5
+
+@app.get("/api/templates")
+async def get_report_templates(
+    template_type: Optional[str] = Query(None, description="Filter by template type"),
+    practice_id: Optional[str] = Query(None, description="Filter by practice ID"),
+    user: dict = Depends(require_auth)
+):
+    """Get available report templates"""
+    from controllers.report_controller import get_practice_templates
+    
+    if practice_id:
+        return get_practice_templates(practice_id, user.get('user_id'))
+    else:
+        from modules.database import get_report_templates as get_templates
+        return get_templates(template_type)
+
+
+@app.post("/api/templates/create")
+async def create_template(
+    request: dict,
+    user: dict = Depends(require_auth)
+):
+    """Create a new custom template"""
+    from controllers.report_controller import create_custom_template
+    
+    return create_custom_template(
+        name=request['name'],
+        description=request.get('description'),
+        template_type=request['template_type'],
+        practice_id=request.get('practice_id'),
+        fields_schema=request['fields_schema'],
+        section_order=request['section_order'],
+        created_by_user_id=user['user_id']
+    )
+
+
+@app.put("/api/templates/{template_id}")
+async def update_template_endpoint(
+    template_id: int = Path(..., description="Template ID"),
+    request: dict = None,
+    user: dict = Depends(require_auth)
+):
+    """Update an existing template"""
+    from controllers.report_controller import update_template
+    
+    return update_template(
+        template_id=template_id,
+        updates=request,
+        updated_by_user_id=user['user_id']
+    )
+
+
+@app.get("/api/templates/{template_id}")
+async def get_template(
+    template_id: int = Path(..., description="Template ID"),
+    user: dict = Depends(require_auth)
+):
+    """Get a specific template by ID"""
+    from controllers.report_controller import get_template_by_id
+    
+    template = get_template_by_id(template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    return template
+
+
+@app.post("/api/templates/validate")
+async def validate_template_schema_endpoint(
+    request: dict,
+    user: dict = Depends(require_auth)
+):
+    """Validate template field schema"""
+    from controllers.report_controller import validate_template_schema
+    
+    return validate_template_schema(request.get('fields_schema', {}))
+
+
+@app.post("/api/templates/preview")
+async def preview_template_endpoint(
+    request: dict,
+    user: dict = Depends(require_auth)
+):
+    """Generate template preview HTML"""
+    from controllers.report_controller import preview_template
+    
+    return preview_template(
+        template_data=request,
+        sample_data=request.get('sample_data')
+    )
+
+
+@app.post("/api/templates/{template_id}/approve")
+async def approve_template_endpoint(
+    template_id: int = Path(..., description="Template ID"),
+    request: dict = None,
+    user: dict = Depends(require_auth)
+):
+    """Approve a template for production use"""
+    from controllers.report_controller import approve_template
+    
+    return approve_template(
+        template_id=template_id,
+        version_number=request.get('version_number', 1),
+        approved_by_user_id=user['user_id'],
+        approval_notes=request.get('approval_notes', '')
+    )
+
+
+@app.get("/api/templates/{template_id}/history")
+async def get_template_history_endpoint(
+    template_id: int = Path(..., description="Template ID"),
+    user: dict = Depends(require_auth)
+):
+    """Get template version history"""
+    from controllers.report_controller import get_template_history
+    
+    return get_template_history(template_id)
+
+
+@app.post("/api/templates/{template_id}/revert")
+async def revert_template_version_endpoint(
+    template_id: int = Path(..., description="Template ID"),
+    request: dict = None,
+    user: dict = Depends(require_auth)
+):
+    """Revert template to a previous version"""
+    from controllers.report_controller import revert_template_version
+    
+    return revert_template_version(
+        template_id=template_id,
+        target_version=request.get('target_version'),
+        reverted_by_user_id=user['user_id'],
+        revert_reason=request.get('revert_reason', '')
+    )
+
+
+# Serve template customization modal HTML
+@app.get("/static/fragments/template_customization_modal.html")
+async def get_template_modal():
+    """Serve template customization modal HTML"""
+    import os
+    from fastapi.responses import FileResponse
+    
+    file_path = "/Users/duncanmiller/Documents/HadadaHealth/static/fragments/template_customization_modal.html"
+    if os.path.exists(file_path):
+        return FileResponse(file_path, media_type="text/html")
+    else:
+        raise HTTPException(status_code=404, detail="Template modal not found")
+
+
+# ===== TEMPLATE EDITOR ROUTES =====
+
+@app.get("/template-instance/{instance_id}/edit")
+async def serve_template_editor(instance_id: int):
+    """Serve template editor page for a specific instance"""
+    import os
+    from fastapi.responses import HTMLResponse
+    
+    # Check if instance exists
+    try:
+        instance = get_template_instance_by_id(instance_id)
+    except:
+        raise HTTPException(status_code=404, detail="Template instance not found")
+    
+    # Read the template editor HTML file
+    file_path = "/Users/duncanmiller/Documents/HadadaHealth/templates/template_editor.html"
+    if os.path.exists(file_path):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Replace placeholder with instance ID
+        content = content.replace('{{INSTANCE_ID}}', str(instance_id))
+        content = content.replace('{{INSTANCE_TITLE}}', instance.title)
+        content = content.replace('{{PATIENT_NAME}}', instance.patient_name)
+        
+        return HTMLResponse(content=content)
+    else:
+        raise HTTPException(status_code=404, detail="Template editor page not found")
+
+
+# Start the server
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

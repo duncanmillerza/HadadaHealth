@@ -108,6 +108,8 @@
     let selectedCell = null;
     let selectedDayOverride = null;
     let currentStartDate = getMonday(new Date());
+    // Make currentStartDate available globally for calendar integration
+    window.currentStartDate = currentStartDate;
     let bookings = [];
     // Store the last selected day for responsive/mobile view
     let lastSelectedDay = "Mon";
@@ -162,6 +164,8 @@
         }
         hours = generateTimeSlots(data.start_time, data.end_time, slotDuration);
         days = data.weekdays.map(d => d.trim().slice(0, 3));  // Ensures Mon, Tue, Wed...
+        // Make days available globally for calendar integration
+        window.days = days;
         renderCalendarGrid();
         updateCalendarHeader();
         updateResponsiveView(); // <-- Ensure this happens after rendering
@@ -264,12 +268,16 @@
 
     async function changeWeek(offset) {
       currentStartDate.setDate(currentStartDate.getDate() + (7 * offset));
+      // Update the global reference for calendar integration
+      window.currentStartDate = currentStartDate;
       updateCalendarHeader();
       await fetchBookings();
     }
 
     async function goToToday() {
       currentStartDate = getMonday(new Date());
+      // Update the global reference for calendar integration
+      window.currentStartDate = currentStartDate;
       updateCalendarHeader();
       await fetchBookings();
     }
@@ -1668,7 +1676,6 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="/static/js/unified-booking-modal.js?v=20250827d"></script>
 <script src="/static/js/calendar-appointment-type-integration.js?v=20250827e"></script>
 
-<script src="/static/js/nav-bar.js"></script>
 <div id="bottom-nav"></div>
 <script src="/static/js/summary-modal.js"></script>
 </body>

@@ -131,18 +131,25 @@ class DataAggregationService:
                            date_range: Optional[tuple] = None) -> List[Dict[str, Any]]:
         """Get treatment notes data"""
         try:
+            self.logger.info(f"Getting treatment notes for patient {patient_id}")
+            print(f"DEBUG: _get_treatment_notes called for patient {patient_id}")
             base_query = """
             SELECT appointment_date, start_time, profession, therapist_name,
                    subjective_findings, objective_findings, treatment, plan, 
-                   duration, notes, session_type
+                   duration, supplementary_note as notes
             FROM treatment_notes
             WHERE patient_id = ?
             """
             params = [patient_id]
             
-            # Add date range filter
+            # Add date range filter - convert DD/MM/YYYY to YYYY-MM-DD for comparison
             if date_range:
-                base_query += " AND appointment_date >= ? AND appointment_date <= ?"
+                base_query += """ AND date(substr(appointment_date, 7, 4) || '-' || 
+                                 substr(appointment_date, 4, 2) || '-' || 
+                                 substr(appointment_date, 1, 2)) >= ? 
+                                 AND date(substr(appointment_date, 7, 4) || '-' || 
+                                 substr(appointment_date, 4, 2) || '-' || 
+                                 substr(appointment_date, 1, 2)) <= ?"""
                 params.extend(date_range)
             
             # Add discipline filter
@@ -153,8 +160,14 @@ class DataAggregationService:
             
             base_query += " ORDER BY appointment_date DESC, start_time DESC"
             
+            print(f"DEBUG: Treatment notes query: {base_query}")
+            print(f"DEBUG: Treatment notes params: {tuple(params)}")
+            
             results = execute_query(base_query, tuple(params), fetch='all')
+            print(f"DEBUG: Treatment notes query returned {len(results) if results else 0} rows")
+            
             if not results:
+                print(f"DEBUG: No treatment notes found for patient {patient_id}")
                 return []
             
             notes = []
@@ -174,10 +187,12 @@ class DataAggregationService:
                 }
                 notes.append(note)
             
-            self.logger.info(f"Retrieved {len(notes)} treatment notes for {patient_id}")
+            print(f"DEBUG: Successfully processed {len(notes)} treatment notes for patient {patient_id}")
+            self.logger.info(f"Retrieved {len(notes)} treatment notes for patient {patient_id}")
             return notes
             
         except Exception as e:
+            print(f"DEBUG: Error retrieving treatment notes for {patient_id}: {e}")
             self.logger.warning(f"Could not retrieve treatment notes for {patient_id}: {e}")
             return []
     
@@ -185,6 +200,12 @@ class DataAggregationService:
                             date_range: Optional[tuple] = None) -> List[Dict[str, Any]]:
         """Get outcome measures data"""
         try:
+            # Check if outcome_measures table exists
+            table_check = execute_query("SELECT name FROM sqlite_master WHERE type='table' AND name='outcome_measures'")
+            if not table_check:
+                self.logger.warning(f"Outcome measures table does not exist")
+                return []
+                
             base_query = """
             SELECT measure_name, score, date_recorded, notes, profession, 
                    baseline_score, interpretation, assessor_name
@@ -245,7 +266,12 @@ class DataAggregationService:
                         date_range: Optional[tuple] = None) -> List[Dict[str, Any]]:
         """Get assessment data"""
         try:
-            # This would depend on the assessment table structure
+            # Check if assessments table exists
+            table_check = execute_query("SELECT name FROM sqlite_master WHERE type='table' AND name='assessments'")
+            if not table_check:
+                self.logger.warning(f"Assessments table does not exist")
+                return []
+                
             base_query = """
             SELECT assessment_type, assessment_date, findings, recommendations, 
                    profession, assessor_name, assessment_status
@@ -296,8 +322,8 @@ class DataAggregationService:
         """Get appointment history"""
         try:
             base_query = """
-            SELECT appointment_date, start_time, end_time, therapist_name, 
-                   profession, appointment_status, appointment_type, notes
+            SELECT date as appointment_date, time as start_time, therapist, 
+                   profession, name as appointment_type, notes
             FROM bookings
             WHERE patient_id = ?
             """

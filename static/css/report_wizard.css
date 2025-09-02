@@ -1,5 +1,124 @@
 /* Report Creation Wizard Styles */
 
+/* ========== STRUCTURED TEMPLATE PREVIEW ========== */
+
+.template-preview-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.template-header h4 {
+    margin: 0 0 0.5rem 0;
+    color: #1e293b;
+    font-size: 1.1rem;
+}
+
+.template-description {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.template-stats {
+    display: flex;
+    gap: 1rem;
+    margin: 1rem 0;
+    padding: 0.75rem;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+}
+
+.stat-item {
+    font-size: 0.85rem;
+    color: #475569;
+}
+
+.stat-item strong {
+    color: #0f172a;
+    font-weight: 600;
+}
+
+.template-features {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+}
+
+.feature-badge {
+    display: inline-block;
+    background: #dbeafe;
+    color: #1e40af;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    line-height: 1;
+}
+
+.badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    line-height: 1;
+}
+
+.badge-structured {
+    background: #dcfce7;
+    color: #166534;
+}
+
+/* ========== TEMPLATE SELECT ENHANCEMENTS ========== */
+
+.wizard-template select optgroup {
+    font-weight: 600;
+    color: #374151;
+    background: #f9fafb;
+}
+
+.wizard-template select option {
+    padding: 0.5rem;
+    color: #111827;
+}
+
+.wizard-template select option:hover {
+    background: #f3f4f6;
+}
+
+/* Structured template option styling */
+.wizard-template select option[data-template-type="structured"] {
+    background: linear-gradient(90deg, #f0f9ff 0%, #ffffff 100%);
+}
+
+.wizard-template select option[data-template-type="regular"] {
+    background: #ffffff;
+}
+
+/* ========== RESPONSIVE TEMPLATE PREVIEW ========== */
+
+@media (max-width: 768px) {
+    .template-stats {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .template-features {
+        gap: 0.25rem;
+    }
+    
+    .feature-badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.4rem;
+    }
+}
+
 .wizard-modal {
     max-width: 1200px !important;
     width: 95% !important;

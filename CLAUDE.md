@@ -260,3 +260,4 @@ openReportWizard('manager');
 - **Database Security**: Use `./secure_database.sh` to set proper file permissions
 - **South African ID Validation**: Built-in validation for SA ID numbers
 - **Audit Trails**: System maintains logs for healthcare data access
+- Username: admin, Password: admin123 (to be used when logging into the website using puppeteer

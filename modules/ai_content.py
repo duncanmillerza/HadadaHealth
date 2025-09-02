@@ -459,6 +459,59 @@ class AIContentGenerator:
             logging.error(f"AI CACHE CLEAR ERROR: {str(e)}")
             return 0
 
+    def generate_clinical_content(self, prompt: str, patient_data: Any, context_type: str = 'template_field') -> str:
+        """
+        Generate clinical content using a custom prompt and patient data
+        
+        Args:
+            prompt: Custom prompt for content generation
+            patient_data: Patient data summary or aggregated data
+            context_type: Type of context (template_field, etc.)
+            
+        Returns:
+            Generated clinical content as string
+        """
+        try:
+            # Extract treatment notes from patient data if available
+            treatment_notes = []
+            print(f"DEBUG: Patient data type: {type(patient_data)}")
+            print(f"DEBUG: Patient data attributes: {dir(patient_data) if hasattr(patient_data, '__dict__') else 'Not an object with attributes'}")
+            
+            if hasattr(patient_data, 'treatment_notes'):
+                treatment_notes = patient_data.treatment_notes
+                print(f"DEBUG: Found treatment_notes attribute with {len(treatment_notes)} notes")
+            elif isinstance(patient_data, dict) and 'treatment_notes' in patient_data:
+                treatment_notes = patient_data['treatment_notes']
+                print(f"DEBUG: Found treatment_notes dict key with {len(treatment_notes)} notes")
+            else:
+                print(f"DEBUG: No treatment_notes found in patient_data")
+            
+            if not treatment_notes:
+                print(f"DEBUG: treatment_notes is empty or None")
+                return "No clinical data available to generate content."
+            
+            # Build the full prompt with patient data
+            combined_notes = "\n\n".join([
+                f"Session on {note.get('appointment_date', 'Unknown')} at {note.get('start_time', 'Unknown')} with {note.get('therapist_name', 'Unknown')} ({note.get('profession', 'Unknown')}) — Duration: {note.get('duration', 'Unknown')} minutes\n"
+                f"Subjective: {note.get('subjective_findings', 'N/A')}\n"
+                f"Objective: {note.get('objective_findings', 'N/A')}\n"
+                f"Treatment: {note.get('treatment', 'N/A')}\n"
+                f"Plan: {note.get('plan', 'N/A')}"
+                for note in treatment_notes if note
+            ])
+            
+            full_prompt = f"{prompt}\n\nBased on the following clinical notes:\n\n{combined_notes}"
+            
+            # Use the existing API call method
+            import asyncio
+            response = asyncio.run(self._call_openrouter_api(full_prompt, context_type))
+            
+            return response
+            
+        except Exception as e:
+            self.logger.error(f"Error generating clinical content: {e}")
+            return f"Error generating content: {str(e)}"
+
 
 # Global instance
 ai_generator = AIContentGenerator()

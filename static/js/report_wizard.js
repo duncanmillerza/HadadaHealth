@@ -3,6 +3,8 @@
  * Handles multi-step report creation with booking-based recommendations
  */
 
+console.log('📋 Report Wizard script loading...');
+
 class ReportWizard {
     constructor() {
         this.currentStep = 1;
@@ -19,12 +21,61 @@ class ReportWizard {
         };
         this.recommendationData = null;
         this.isManager = false;
+        this.initialized = false;
         
-        this.initializeElements();
-        this.bindEvents();
+        // Initialize asynchronously
+        this.initialize();
     }
     
-    initializeElements() {
+    async initialize() {
+        try {
+            await this.initializeElements();
+            this.bindEvents();
+            this.initialized = true;
+            console.log('🎉 Report Wizard fully initialized');
+        } catch (error) {
+            console.error('❌ Failed to initialize wizard:', error);
+        }
+    }
+    
+    async waitForElements() {
+        // Wait up to 10 seconds for the modal HTML to be loaded
+        let attempts = 0;
+        const maxAttempts = 100; // 10 seconds at 100ms intervals
+        
+        while (attempts < maxAttempts) {
+            const modal = document.getElementById('report-wizard-modal');
+            if (modal) {
+                console.log('✅ Wizard HTML elements are ready');
+                return;
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+        }
+        
+        console.warn('⚠️ Wizard HTML elements not found after waiting');
+    }
+    
+    async waitForInitialization() {
+        // Wait up to 10 seconds for initialization to complete
+        let attempts = 0;
+        const maxAttempts = 100;
+        
+        while (attempts < maxAttempts && !this.initialized) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+        }
+        
+        if (!this.initialized) {
+            console.warn('⚠️ Wizard initialization timed out');
+        }
+    }
+    
+    async initializeElements() {
+        // Wait for HTML elements to be available (they're loaded asynchronously)
+        await this.waitForElements();
+        
         this.modal = document.getElementById('report-wizard-modal');
         this.backdrop = document.getElementById('report-wizard-backdrop');
         this.steps = document.querySelectorAll('.wizard-step');
@@ -123,22 +174,29 @@ class ReportWizard {
         });
     }
     
-    open(workflowType = 'therapist', reportId = null) {
+    async open(workflowType = 'therapist', reportId = null) {
+        // Wait for initialization if not ready
+        if (!this.initialized) {
+            console.log('⏳ Waiting for wizard initialization...');
+            await this.waitForInitialization();
+        }
+        
         this.isManager = workflowType === 'manager';
         this.reset();
         
-        // Set modal title based on workflow
-        document.getElementById('wizard-modal-title').textContent = 
-            this.isManager ? 'Assign Report to Therapist' : 'Create New Report';
+        // Set modal title - unified for all users
+        document.getElementById('wizard-modal-title').textContent = 'Add Report';
         
         // Show role info in step 4
-        if (!this.isManager) {
+        if (!this.isManager && this.therapistRoleInfo) {
             this.therapistRoleInfo.style.display = 'block';
         }
         
-        this.modal.style.display = 'block';
-        this.backdrop.style.display = 'block';
-        document.body.style.overflow = 'hidden';
+        if (this.modal && this.backdrop) {
+            this.modal.style.display = 'block';
+            this.backdrop.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
         
         // Load initial data
         this.loadRecentPatients();
@@ -207,17 +265,27 @@ class ReportWizard {
     
     updateNavigation() {
         // Back button
-        this.backBtn.style.display = this.currentStep > 1 ? 'block' : 'none';
+        if (this.backBtn) {
+            this.backBtn.style.display = this.currentStep > 1 ? 'block' : 'none';
+        }
         
         // Next/Finish button
         if (this.currentStep < this.totalSteps) {
-            this.nextBtn.style.display = 'block';
-            this.finishBtn.style.display = 'none';
-            this.nextBtn.disabled = !this.isStepValid(this.currentStep);
+            if (this.nextBtn) {
+                this.nextBtn.style.display = 'block';
+                this.nextBtn.disabled = !this.isStepValid(this.currentStep);
+            }
+            if (this.finishBtn) {
+                this.finishBtn.style.display = 'none';
+            }
         } else {
-            this.nextBtn.style.display = 'none';
-            this.finishBtn.style.display = 'block';
-            this.finishBtn.disabled = !this.isStepValid(this.currentStep);
+            if (this.nextBtn) {
+                this.nextBtn.style.display = 'none';
+            }
+            if (this.finishBtn) {
+                this.finishBtn.style.display = 'block';
+                this.finishBtn.disabled = !this.isStepValid(this.currentStep);
+            }
         }
     }
     
@@ -261,15 +329,21 @@ class ReportWizard {
             
             if (params.toString()) url += '?' + params.toString();
             
+            console.log('🔍 Loading wizard options from:', url);
             const response = await fetch(url, { credentials: 'include' });
+            console.log('🔍 Response status:', response.status);
+            console.log('🔍 Response ok:', response.ok);
+            
             if (!response.ok) throw new Error('Failed to load wizard options');
             
             this.recommendationData = await response.json();
+            console.log('🔍 Received wizard options data:', this.recommendationData);
+            
             this.populateReportTypes();
             
             return this.recommendationData;
         } catch (error) {
-            console.error('Error loading wizard options:', error);
+            console.error('❌ Error loading wizard options:', error);
             this.showError('Failed to load wizard options');
             return null;
         }
@@ -310,11 +384,28 @@ class ReportWizard {
     
     async loadTemplates(reportType) {
         try {
-            const response = await fetch(`/api/report-templates?template_type=${reportType}&is_active=true`, { credentials: 'include' });
-            if (!response.ok) throw new Error('Failed to load templates');
+            // Load both regular templates and structured templates
+            const [regularResponse, structuredResponse] = await Promise.all([
+                fetch(`/api/report-templates?template_type=${reportType}&is_active=true`, { credentials: 'include' }),
+                fetch(`/api/templates?active_only=true`, { credentials: 'include' })
+            ]);
             
-            const templates = await response.json();
-            this.populateTemplates(templates);
+            const regularTemplates = regularResponse.ok ? await regularResponse.json() : [];
+            const structuredTemplates = structuredResponse.ok ? await structuredResponse.json() : [];
+            
+            // Show all structured templates for now (debug)
+            const filteredStructuredTemplates = structuredTemplates;
+            
+            console.log('🔍 Template loading debug:', {
+                reportType,
+                regularTemplatesCount: regularTemplates.length,
+                structuredTemplatesCount: structuredTemplates.length,
+                filteredStructuredTemplatesCount: filteredStructuredTemplates.length,
+                structuredTemplates: structuredTemplates.map(t => ({name: t.name, category: t.category, fullTemplate: t})),
+                filteredStructuredTemplates: filteredStructuredTemplates
+            });
+            
+            this.populateTemplates(regularTemplates, filteredStructuredTemplates);
         } catch (error) {
             console.error('Error loading templates:', error);
             this.showError('Failed to load templates');
@@ -324,7 +415,17 @@ class ReportWizard {
     // ========== UI POPULATION METHODS ==========
     
     populateReportTypes() {
+        console.log('🔍 populateReportTypes called');
+        console.log('🔍 recommendationData:', this.recommendationData);
         const options = this.recommendationData?.allowed_report_types || [];
+        console.log('🔍 allowed_report_types:', options);
+        console.log('🔍 reportTypeSelect element:', this.reportTypeSelect);
+        
+        if (!this.reportTypeSelect) {
+            console.error('❌ reportTypeSelect element not found!');
+            return;
+        }
+        
         this.reportTypeSelect.innerHTML = '<option value="">Select report type...</option>';
         
         const typeLabels = {
@@ -336,22 +437,57 @@ class ReportWizard {
         };
         
         options.forEach(type => {
+            console.log('🔍 Adding option:', type);
             const option = document.createElement('option');
             option.value = type;
             option.textContent = typeLabels[type] || type;
             this.reportTypeSelect.appendChild(option);
         });
+        
+        console.log('🔍 Final dropdown HTML:', this.reportTypeSelect.outerHTML);
     }
     
-    populateTemplates(templates) {
+    populateTemplates(regularTemplates = [], structuredTemplates = []) {
+        console.log('📋 Populating templates:', {
+            regularCount: regularTemplates.length,
+            structuredCount: structuredTemplates.length,
+            structured: structuredTemplates
+        });
+        
         this.templateSelect.innerHTML = '<option value="">Select template...</option>';
         
-        templates.forEach(template => {
-            const option = document.createElement('option');
-            option.value = template.id;
-            option.textContent = template.name;
-            this.templateSelect.appendChild(option);
-        });
+        // Add structured templates first (these are our new template system)
+        if (structuredTemplates.length > 0) {
+            const structuredGroup = document.createElement('optgroup');
+            structuredGroup.label = 'Structured Templates (Recommended)';
+            
+            structuredTemplates.forEach(template => {
+                const option = document.createElement('option');
+                option.value = `structured_${template.id}`;
+                option.textContent = template.display_name;
+                option.dataset.templateType = 'structured';
+                option.dataset.description = template.description;
+                structuredGroup.appendChild(option);
+            });
+            
+            this.templateSelect.appendChild(structuredGroup);
+        }
+        
+        // Add regular templates if any exist
+        if (regularTemplates.length > 0) {
+            const regularGroup = document.createElement('optgroup');
+            regularGroup.label = 'Standard Templates';
+            
+            regularTemplates.forEach(template => {
+                const option = document.createElement('option');
+                option.value = `regular_${template.id}`;
+                option.textContent = template.name;
+                option.dataset.templateType = 'regular';
+                regularGroup.appendChild(option);
+            });
+            
+            this.templateSelect.appendChild(regularGroup);
+        }
     }
     
     displayRecentPatients(patients) {
@@ -552,14 +688,88 @@ class ReportWizard {
     }
     
     onTemplateChange() {
-        this.state.template = {
-            id: this.templateSelect.value,
-            name: this.templateSelect.options[this.templateSelect.selectedIndex]?.text
-        };
+        const selectedOption = this.templateSelect.options[this.templateSelect.selectedIndex];
+        const templateValue = this.templateSelect.value;
+        
+        if (!templateValue) {
+            this.state.template = null;
+            this.hideTemplatePreview();
+        } else {
+            // Parse template type and ID
+            const isStructured = templateValue.startsWith('structured_');
+            const templateId = templateValue.replace(/^(structured_|regular_)/, '');
+            
+            this.state.template = {
+                id: templateId,
+                full_id: templateValue, // Keep full ID for API calls
+                name: selectedOption?.text,
+                type: isStructured ? 'structured' : 'regular',
+                description: selectedOption?.dataset.description
+            };
+            
+            if (isStructured) {
+                this.showStructuredTemplatePreview(templateId);
+            }
+        }
         
         this.generateAutoTitle();
         this.updateSummary();
         this.updateNavigation();
+    }
+    
+    async showStructuredTemplatePreview(templateId) {
+        try {
+            const response = await fetch(`/api/templates/${templateId}`, { credentials: 'include' });
+            if (!response.ok) return;
+            
+            const template = await response.json();
+            this.displayTemplatePreview(template);
+        } catch (error) {
+            console.error('Error loading template preview:', error);
+        }
+    }
+    
+    displayTemplatePreview(template) {
+        if (!this.templatePreview) return;
+        
+        const sections = template.template_structure?.sections || [];
+        const sectionCount = sections.length;
+        const fieldCount = sections.reduce((count, section) => 
+            count + (section.fields?.length || 0), 0);
+        
+        this.templatePreview.innerHTML = `
+            <div class="template-preview-card">
+                <div class="template-header">
+                    <h4>${template.display_name}</h4>
+                    ${template.description ? `<p class="template-description">${template.description}</p>` : ''}
+                </div>
+                <div class="template-stats">
+                    <span class="stat-item">
+                        <strong>${sectionCount}</strong> sections
+                    </span>
+                    <span class="stat-item">
+                        <strong>${fieldCount}</strong> fields
+                    </span>
+                    <span class="stat-item template-type">
+                        <span class="badge badge-structured">Structured Template</span>
+                    </span>
+                </div>
+                <div class="template-features">
+                    <span class="feature-badge">Auto-population</span>
+                    <span class="feature-badge">AI Content</span>
+                    <span class="feature-badge">Draft Saving</span>
+                    <span class="feature-badge">Section Deletion</span>
+                </div>
+            </div>
+        `;
+        this.templatePreview.style.display = 'block';
+    }
+    
+    hideTemplatePreview() {
+        if (this.templatePreview) {
+            this.templatePreview.style.display = 'none';
+            this.templatePreview.innerHTML = '';
+        }
     }
     
     onDisciplineChange() {
@@ -605,25 +815,48 @@ class ReportWizard {
     }
     
     updateSummary() {
+        // Safety check - only update if elements are available
+        if (!this.summaryElements || !this.initialized) {
+            return;
+        }
+        
         // Update sidebar summary
-        this.summaryElements.patient.textContent = this.state.patient?.name || 'Not selected';
-        this.summaryElements.reportType.textContent = this.state.reportType ? 
-            this.reportTypeSelect.options[this.reportTypeSelect.selectedIndex]?.text : 'Not selected';
-        this.summaryElements.title.textContent = this.state.title || '-';
-        this.summaryElements.disciplines.textContent = this.state.disciplines.length > 0 ? 
-            this.state.disciplines.map(d => this.formatDisciplineName(d)).join(', ') : 'Not selected';
-        this.summaryElements.therapists.textContent = this.state.therapists.length > 0 ?
-            this.state.therapists.map(t => t.name).join(', ') : 'Not selected';
+        if (this.summaryElements.patient) {
+            this.summaryElements.patient.textContent = this.state.patient?.name || 'Not selected';
+        }
+        
+        if (this.summaryElements.reportType) {
+            this.summaryElements.reportType.textContent = this.state.reportType ? 
+                this.reportTypeSelect.options[this.reportTypeSelect.selectedIndex]?.text : 'Not selected';
+        }
+        
+        if (this.summaryElements.title) {
+            this.summaryElements.title.textContent = this.state.title || '-';
+        }
+        
+        if (this.summaryElements.disciplines) {
+            this.summaryElements.disciplines.textContent = this.state.disciplines.length > 0 ? 
+                this.state.disciplines.map(d => this.formatDisciplineName(d)).join(', ') : 'Not selected';
+        }
+        
+        if (this.summaryElements.therapists) {
+            this.summaryElements.therapists.textContent = this.state.therapists.length > 0 ?
+                this.state.therapists.map(t => t.name).join(', ') : 'Not selected';
+        }
         
         // Priority
-        const priorityValue = document.querySelector('input[name="wizard-priority"]:checked')?.value || 2;
-        const priorityLabels = {1: 'Low', 2: 'Medium', 3: 'High'};
-        this.summaryElements.priority.textContent = priorityLabels[priorityValue];
-        this.state.priority = parseInt(priorityValue);
+        if (this.summaryElements.priority) {
+            const priorityValue = document.querySelector('input[name="wizard-priority"]:checked')?.value || 2;
+            const priorityLabels = {1: 'Low', 2: 'Medium', 3: 'High'};
+            this.summaryElements.priority.textContent = priorityLabels[priorityValue];
+            this.state.priority = parseInt(priorityValue);
+        }
         
         // Deadline
-        this.state.deadline = this.deadlineInput?.value || null;
-        this.summaryElements.deadline.textContent = this.state.deadline || 'No deadline';
+        if (this.summaryElements.deadline) {
+            this.state.deadline = this.deadlineInput?.value || null;
+            this.summaryElements.deadline.textContent = this.state.deadline || 'No deadline';
+        }
     }
     
     updateFinalSummary() {
@@ -678,53 +911,108 @@ class ReportWizard {
             this.finishBtn.disabled = true;
             this.finishBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
             
-            const payload = {
-                patient_id: this.state.patient.id,
-                report_type: this.state.reportType,
-                template_id: parseInt(this.state.template.id),
-                title: this.state.title,
-                disciplines: this.state.disciplines,
-                assigned_therapist_ids: this.state.therapists.map(t => t.id),
-                priority: this.state.priority,
-                deadline_date: this.state.deadline,
-                generate_ai_content: true  // Default to generating AI content
-            };
-            
-            const response = await fetch('/api/reports/create', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include',
-                body: JSON.stringify(payload)
-            });
-            
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || 'Failed to create report');
+            // Handle structured templates differently
+            if (this.state.template.type === 'structured') {
+                await this.createStructuredTemplateInstance();
+            } else {
+                await this.createRegularReport();
             }
-            
-            const result = await response.json();
-            
-            // Success - close modal and refresh dashboard
-            this.close();
-            this.showSuccess('Report created successfully!');
-            
-            // Refresh dashboard if available
-            if (window.refreshDashboard) {
-                window.refreshDashboard();
-            }
-            
         } catch (error) {
             console.error('Error creating report:', error);
-            this.showError(error.message);
+            this.showError(error.message || 'Failed to create report');
+        } finally {
             this.finishBtn.disabled = false;
             this.finishBtn.innerHTML = '<i class="fas fa-check"></i> Create Report';
         }
     }
     
+    async createStructuredTemplateInstance() {
+        const therapist_ids = this.state.therapists.map(t => t.id).filter(Boolean);
+        const payload = {
+            template_id: parseInt(this.state.template.id),
+            patient_id: parseInt(this.state.patient.id),
+            therapist_ids: therapist_ids, // All selected therapists
+            therapist_id: therapist_ids[0] || null, // Primary therapist (backward compatibility)
+            title: this.state.title
+        };
+        
+        const response = await fetch('/api/templates/instances', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to create template instance');
+        }
+        
+        const result = await response.json();
+        
+        // Success - close modal and redirect to template editor
+        this.close();
+        this.showSuccess('Template instance created successfully!');
+        
+        // Redirect to template editor
+        setTimeout(() => {
+            window.location.href = `/template-instance/${result.id}/edit`;
+        }, 1500);
+    }
+    
+    async createRegularReport() {
+        const payload = {
+            patient_id: this.state.patient.id,
+            report_type: this.state.reportType,
+            template_id: parseInt(this.state.template.id),
+            title: this.state.title,
+            disciplines: this.state.disciplines,
+            assigned_therapist_ids: this.state.therapists.map(t => t.id),
+            priority: this.state.priority,
+            deadline_date: this.state.deadline,
+            generate_ai_content: true
+        };
+        
+        const response = await fetch('/api/reports/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to create report');
+        }
+        
+        const result = await response.json();
+        
+        // Success - close modal and refresh dashboard
+        this.close();
+        this.showSuccess('Report created successfully!');
+        
+        // Refresh dashboard if available
+        if (window.refreshDashboard) {
+            window.refreshDashboard();
+        }
+    } catch (error) {
+        console.error('Error creating report:', error);
+        this.showError(error.message);
+        this.finishBtn.disabled = false;
+        this.finishBtn.innerHTML = '<i class="fas fa-check"></i> Create Report';
+    }
+    
     showSuccess(message) {
         // Simple success implementation
+        alert(message);
+    }
+    
+    showError(message) {
+        // Simple error implementation
         alert(message);
     }
     
@@ -746,11 +1034,11 @@ class ReportWizard {
 // ========== GLOBAL FUNCTIONS ==========
 
 // Initialize wizard when page loads or script loads
-let wizard;
+window.wizard = null;
 
 function initializeWizard() {
     console.log('🧙‍♂️ Initializing Report Wizard...');
-    wizard = new ReportWizard();
+    window.wizard = new ReportWizard();
     console.log('✅ Report Wizard initialized successfully');
 }
 
@@ -762,67 +1050,79 @@ if (document.readyState === 'loading') {
     setTimeout(initializeWizard, 100); // Small delay to ensure HTML is inserted
 }
 
-// Global functions for external access
-function openReportWizard(workflowType = 'therapist', reportId = null) {
+// Global functions for external access - available immediately
+window.openReportWizard = async function(workflowType = 'therapist', reportId = null) {
     console.log(`🚀 Opening Report Wizard - workflowType: ${workflowType}, reportId: ${reportId}`);
-    if (wizard) {
-        wizard.open(workflowType, reportId);
-        console.log('✅ Wizard opened successfully');
-    } else {
-        console.log('⏳ Wizard not ready yet, waiting...');
-        // Wait a bit and try again
-        setTimeout(() => {
-            if (wizard) {
+    
+    try {
+        if (window.wizard) {
+            await window.wizard.open(workflowType, reportId);
+            console.log('✅ Wizard opened successfully');
+        } else {
+            console.log('⏳ Wizard not ready yet, initializing and waiting...');
+            // Force initialization if not done yet
+            if (!window.wizard) {
+                initializeWizard();
+            }
+            
+            // Wait for wizard to be ready
+            let attempts = 0;
+            const maxAttempts = 50; // 5 seconds
+            
+            while (attempts < maxAttempts && !window.wizard) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            
+            if (window.wizard) {
                 console.log('✅ Wizard ready after delay');
-                wizard.open(workflowType, reportId);
+                await window.wizard.open(workflowType, reportId);
             } else {
                 console.error('❌ Wizard still not initialized after delay');
                 alert('Report wizard is loading, please try again in a moment.');
             }
-        }, 500);
+        }
+    } catch (error) {
+        console.error('❌ Error opening wizard:', error);
+        alert('There was an error opening the report wizard. Please try again.');
     }
 }
 
-function closeReportWizard() {
-    if (wizard) {
-        wizard.close();
+window.closeReportWizard = function() {
+    if (window.wizard) {
+        window.wizard.close();
     }
 }
 
 // Compatibility function for legacy calls
-function openReportRequestModal(workflowType = 'therapist', reportId = null) {
+window.openReportRequestModal = function(workflowType = 'therapist', reportId = null) {
     console.log('⚠️ openReportRequestModal is deprecated, redirecting to wizard...');
-    openReportWizard(workflowType, reportId);
+    window.openReportWizard(workflowType, reportId);
 }
 
-// Set global window functions to ensure they take priority
-window.openReportWizard = openReportWizard;
-window.closeReportWizard = closeReportWizard; 
-window.openReportRequestModal = openReportRequestModal;
-
 // Patient selection function (called from onclick in HTML)
-function selectPatient(patientId, patientName, dob, identifiers) {
-    if (wizard) {
-        wizard.selectPatient(patientId, patientName, dob, identifiers);
+window.selectPatient = function(patientId, patientName, dob, identifiers) {
+    if (window.wizard) {
+        window.wizard.selectPatient(patientId, patientName, dob, identifiers);
     }
 }
 
 // Clear patient selection
-function clearSelectedPatient() {
-    if (wizard) {
-        wizard.clearSelectedPatient();
+window.clearSelectedPatient = function() {
+    if (window.wizard) {
+        window.wizard.clearSelectedPatient();
     }
 }
 
 // Auto-generate title
-function generateWizardTitle() {
-    if (wizard) {
-        wizard.generateAutoTitle();
+window.generateWizardTitle = function() {
+    if (window.wizard) {
+        window.wizard.generateAutoTitle();
     }
 }
 
 // Deadline shortcuts
-function setWizardDeadline(days) {
+window.setWizardDeadline = function(days) {
     const deadline = new Date();
     deadline.setDate(deadline.getDate() + days);
     
