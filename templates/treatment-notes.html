@@ -37,11 +37,6 @@
             </div>
           </div>
 
-          <!-- Existing Billing Codes Display -->
-          <div id="existing-billing-codes" style="margin-top:1rem; display:none;">
-            <h3>Existing Billing Codes</h3>
-            <ul id="billing-codes-list"></ul>
-          </div>
 
           <button type="button" id="show-billing-button" onclick="showBillingSection()">Add Billing</button>
           <div id="billing-section" style="display:none; margin-top: 2rem; width: 100%; grid-column: 1 / -1;">
@@ -535,15 +530,11 @@ function updateOverallTotal(skipRule008 = false) {
             const billingSessions = await billingRes.json();
             const session = billingSessions.find(s => String(s.id) === String(bookingId));
             if (session && session.entries && session.entries.length) {
-              const container = document.getElementById("existing-billing-codes");
-              const list = document.getElementById("billing-codes-list");
-              list.innerHTML = "";
-              session.entries.forEach(e => {
-                const li = document.createElement("li");
-                li.textContent = `${e.code_id} - ${e.billing_modifier || "No Modifier"} - R${e.final_fee}`;
-                list.appendChild(li);
-              });
-              container.style.display = "block";
+              // Populate the billing form with existing entries
+              await populateBillingFormWithExistingEntries(session.entries);
+              
+              // Show the billing section since there are existing entries
+              showBillingSection();
             }
           } catch (err) {
             // Fail silently, do not block page
@@ -1759,6 +1750,59 @@ function updateOverallTotal(skipRule008 = false) {
       function showBillingSection() {
         document.getElementById("billing-section").style.display = "block";
         document.getElementById("show-billing-button").style.display = "none";
+      }
+
+      async function populateBillingFormWithExistingEntries(entries) {
+        const billingTableBody = document.getElementById("billing-table-body");
+        
+        // Clear existing rows
+        billingTableBody.innerHTML = "";
+        
+        // Add a row for each existing entry
+        for (let i = 0; i < entries.length; i++) {
+          const entry = entries[i];
+          
+          // Create a new billing row
+          const row = document.createElement("tr");
+          row.className = "billing-entry";
+          row.innerHTML = `
+            <td>
+              <input name="code_id[]" list="billing-codes-datalist" placeholder="Start typing code" oninput="populateBillingRow(this)" value="${entry.code_id}">
+            </td>
+            <td class="description-cell">Loading...</td>
+            <td>
+              <input type="number" name="number[]" value="1" min="1" onchange="recalculateTotal(this)">
+            </td>
+            <td>
+              <select name="billing_modifier[]" onchange="applyModifier(this)">
+                <option value="">None</option>
+              </select>
+            </td>
+            <td class="rate-cell">—</td>
+            <td class="total-cell">${entry.final_fee}</td>
+            <td>
+              <button type="button" onclick="removeBillingRow(this)">✕</button>
+            </td>
+          `;
+          
+          billingTableBody.appendChild(row);
+          
+          // Load modifiers for this row
+          const modifierSelect = row.querySelector("select[name='billing_modifier[]']");
+          await loadModifiers(modifierSelect);
+          
+          // Set the modifier if one exists
+          if (entry.billing_modifier) {
+            modifierSelect.value = entry.billing_modifier;
+          }
+          
+          // Populate the billing row details (description, rate)
+          const codeInput = row.querySelector("input[name='code_id[]']");
+          await populateBillingRow(codeInput);
+        }
+        
+        // Update the overall total
+        updateOverallTotal();
       }
 
 // Treatment Note Elements Functions

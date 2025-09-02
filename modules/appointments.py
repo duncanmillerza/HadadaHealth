@@ -24,6 +24,8 @@ class Booking(BaseModel):
     patient_id: Optional[int] = None
     has_note: bool = False
     billing_completed: bool = False
+    appointment_type_id: Optional[int] = None  # New field for appointment type
+    billing_code: Optional[str] = None  # Billing code field
 
 
 def get_bookings(request: Request, therapist_id: Optional[int] = None, 
@@ -67,14 +69,22 @@ def get_bookings(request: Request, therapist_id: Optional[int] = None,
       b.colour,
       b.profession,
       b.patient_id,
+      b.appointment_type_id,
       CASE WHEN tn.appointment_id IS NOT NULL THEN 1 ELSE 0 END AS has_note,
       CASE WHEN be.appointment_id IS NOT NULL THEN 1 ELSE 0 END AS has_billing,
-      b.billing_completed
+      b.billing_completed,
+      p.first_name as patient_first_name,
+      p.surname as patient_surname,
+      at.name as appointment_type_name
     FROM bookings b
     LEFT JOIN treatment_notes tn
       ON b.id = tn.appointment_id
     LEFT JOIN billing_entries be
       ON b.id = be.appointment_id
+    LEFT JOIN patients p
+      ON b.patient_id = p.id
+    LEFT JOIN appointment_types at
+      ON b.appointment_type_id = at.id
     WHERE b.therapist = ?
     """
     params = [target_id]
@@ -148,8 +158,8 @@ def create_booking(booking: Booking) -> int:
         query = """
             INSERT INTO bookings (
                 name, therapist, date, day, time, duration, 
-                notes, colour, profession, patient_id, billing_completed
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                notes, colour, profession, patient_id, billing_completed, appointment_type_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         
         cursor.execute(query, (
@@ -163,7 +173,8 @@ def create_booking(booking: Booking) -> int:
             booking.colour,
             booking.profession,
             patient_id,
-            booking.billing_completed
+            booking.billing_completed,
+            booking.appointment_type_id
         ))
         
         booking_id = cursor.lastrowid
@@ -207,7 +218,7 @@ def update_booking(booking_id: int, booking: Booking) -> bool:
             UPDATE bookings SET
                 name = ?, therapist = ?, date = ?, day = ?, time = ?,
                 duration = ?, notes = ?, colour = ?, profession = ?,
-                patient_id = ?, billing_completed = ?
+                patient_id = ?, billing_completed = ?, appointment_type_id = ?
             WHERE id = ?
         """
         
@@ -223,6 +234,7 @@ def update_booking(booking_id: int, booking: Booking) -> bool:
             booking.profession,
             patient_id,
             booking.billing_completed,
+            booking.appointment_type_id,
             booking_id
         ))
         

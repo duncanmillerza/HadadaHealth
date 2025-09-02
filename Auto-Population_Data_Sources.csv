@@ -1,0 +1,57 @@
+Category,Field Name,Template Field ID,Type,Status,Current Source,Data Source Location (Please fill in),Priority,Notes
+Patient Demographics,Report Date,report_date,date,IMPORTED,System date,✅ System date,High,Already working
+Patient Demographics,Patient Name,patient_name,text,IMPORTED,patients.first_name + surname,✅ patients table,High,Already working
+Patient Demographics,Funder Name,funder_name,text,IMPORTED,patients.medical_aid_name,✅ patients table,High,Already working
+Patient Demographics,Membership Number,membership_number,text,IMPORTED,patients.medical_aid_number,✅ patients table,High,Already working
+Patient Demographics,Authorization Number,authorization_number,text,IMPORTED,Not implemented,,High,Where do you store pre-auth numbers?
+Patient Demographics,Diagnosis,diagnosis,text,IMPORTED,patients.icd10_codes,✅ patients table,High,Already working
+Patient Demographics,ICD 10 Code(s),icd_10_codes,text,IMPORTED,patients.icd10_codes,✅ patients table,High,Already working
+Patient Demographics,Date of Admission,date_of_admission,date,IMPORTED,MIN(bookings.date),✅ bookings table,High,Already working
+Patient Demographics,Date of Incident,date_of_incident,date,IMPORTED,Same as admission,,Medium,Is this different from admission date?
+Patient Demographics,Patient Contact,patient_contact,tel,IMPORTED,patients.contact_number,✅ patients table,High,Already working
+Patient Demographics,Patient File Number,patient_file_number,text,IMPORTED,patients.id,✅ patients table,High,Already working
+Patient Demographics,Plan Name,plan_name,text,IMPORTED,patients.plan_name,✅ patients table,High,Already working
+Patient Demographics,Case Manager,case_manager,text,IMPORTED,patients.case_manager,✅ patients table,High,Already working
+Patient Demographics,Claim Number,claim_number,text,IMPORTED,patients.claim_number,✅ patients table,High,Already working
+Patient Demographics,Therapy Practice,therapy_practice,text,IMPORTED,patients.clinic,✅ patients table,High,Already working
+,,,,,,,,
+Professional Info,Rehabilitation Programme Manager,rehab_manager,text,IMPORTED,Not implemented,,High,Which table/field stores rehab managers?
+Professional Info,Physiotherapist,physiotherapist,text,IMPORTED,therapists table via bookings,✅ therapists + bookings,High,Already working
+Professional Info,Occupational Therapist,occupational_therapist,text,IMPORTED,therapists table via bookings,✅ therapists + bookings,High,Already working
+Professional Info,Speech Therapist,speech_therapist,text,IMPORTED,therapists table via bookings,✅ therapists + bookings,High,Already working
+Professional Info,Social Worker,social_worker,text,IMPORTED,Not implemented,,High,Which table/field stores social workers?
+Professional Info,Psychologist,psychologist,text,IMPORTED,therapists table via bookings,✅ therapists + bookings,High,Already working
+Professional Info,Dietician,dietician,text,IMPORTED,Not implemented,,Medium,Which table/field stores dieticians?
+,,,,,,,,
+Assessment Data,Mobility Status,mobility_status,text,IMPORTED,Not implemented,,Medium,Which table stores mobility assessments?
+Assessment Data,Strength Measurements,strength_measurements,text,IMPORTED,Not implemented,,Medium,Which table stores strength tests?
+Assessment Data,Upper Extremity Function,upper_extremity,text,IMPORTED,Not implemented,,Medium,Which table stores UE assessments?
+Assessment Data,Coordination/Speed,coordination_speed,text,IMPORTED,Not implemented,,Medium,Which table stores coordination tests?
+Assessment Data,Sensation,sensation,text,IMPORTED,Not implemented,,Medium,Which table stores sensory assessments?
+Assessment Data,Passive Joint Motion,passive_joint_motion,text,IMPORTED,Not implemented,,Medium,Which table stores ROM measurements?
+Assessment Data,Joint Pain Scores,joint_pain,text,IMPORTED,Not implemented,,Medium,Which table stores pain assessments?
+Assessment Data,Cognition,cognition,text,IMPORTED,Not implemented,,Medium,Which table stores cognitive assessments?
+Assessment Data,Self-Care,self_care,text,IMPORTED,Not implemented,,Medium,Which table stores ADL assessments?
+Assessment Data,Communication,communication,text,IMPORTED,Not implemented,,Medium,Which table stores speech assessments?
+Assessment Data,Swallowing,swallowing,text,IMPORTED,Not implemented,,Medium,Which table stores swallowing assessments?
+,,,,,,,,
+AI Generated,Background History,background_content,rich_textarea,AI-GENERATED,treatment_notes + patients.medical_history_ai,✅ treatment_notes table,High,Already working
+AI Generated,Medical Status,medical_status_content,rich_textarea,AI-GENERATED,Recent treatment_notes,✅ treatment_notes table,High,Already working
+AI Generated,Medical History,medical_history_content,rich_textarea,AI-GENERATED,patients.medical_history_ai,✅ patients table,High,Already working
+AI Generated,Environmental Context,environmental_content,rich_textarea,AI-GENERATED,treatment_notes (OT assessments),,Medium,Which treatment_notes contain OT environmental data?
+AI Generated,Environmental Factors,environmental_factors,textarea,AI-GENERATED,treatment_notes (OT discharge planning),,Medium,Which treatment_notes contain discharge planning?
+AI Generated,Assistive Devices,assistive_devices,textarea,AI-GENERATED,treatment_notes (equipment recommendations),,Medium,Which treatment_notes contain equipment recommendations?
+AI Generated,Education & Training,education_training,textarea,AI-GENERATED,treatment_notes (patient education records),,Medium,Which treatment_notes contain education records?
+AI Generated,Psychosocial Summary,psychosocial_summary,textarea,AI-GENERATED,treatment_notes (psychology/social work),,Medium,Which treatment_notes contain psychology/social work notes?
+,,,,,,,,
+OPR Specific,Date of Onset/Incident,date_of_onset,date,IMPORTED,Same as admission date,,Medium,Is this different from admission date?
+OPR Specific,Date of Assessment,date_of_assessment,date,IMPORTED,Not implemented,,Medium,Which table stores assessment dates?
+OPR Specific,Place of Assessment,place_of_assessment,text,IMPORTED,patients.clinic,✅ patients table,Medium,Already working
+OPR Specific,Treating/Referring Doctor,treating_doctor,text,IMPORTED,Not implemented,,High,Which table/field stores referring doctors?
+OPR Specific,Pre-incident Function,pre_incident_function,textarea,IMPORTED,Not implemented,,Low,Which table stores pre-incident function data?
+OPR Specific,Current Function,current_function,textarea,IMPORTED,Not implemented,,Low,Which table stores current function data?
+OPR Specific,Predicted Function,predicted_function,textarea,IMPORTED,Not implemented,,Low,Which table stores predicted function data?
+OPR Specific,Practice Numbers,practice_numbers,text,IMPORTED,Not implemented,,Medium,Which table stores practice registration numbers?
+,,,,,,,,
+FIM/FAM Tables,FIM Score Table,fim_table,table,IMPORTED,Not implemented,,High,Which table stores FIM scores?
+FIM/FAM Tables,FAM Scale Table,fam_table,table,IMPORTED,Not implemented,,High,Which table stores FAM scores?

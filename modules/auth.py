@@ -99,7 +99,7 @@ def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:
 
 def login_user(request: Request, credentials: HTTPBasicCredentials) -> Dict[str, Any]:
     """
-    Login endpoint handler
+    Login endpoint handler with rate limiting
     
     Args:
         request: FastAPI request object
@@ -109,11 +109,19 @@ def login_user(request: Request, credentials: HTTPBasicCredentials) -> Dict[str,
         Login success response
         
     Raises:
-        HTTPException: If authentication fails
+        HTTPException: If authentication fails or rate limited
     """
+    # Import here to avoid circular imports
+    from .rate_limiter import rate_limiter
+    
+    # Check rate limits before attempting authentication
+    rate_limiter.check_rate_limit(request, "login")
+    
     user = authenticate_user(credentials.username, credentials.password)
     
     if not user:
+        # Record failed attempt
+        rate_limiter.record_failed_attempt(request, "login")
         raise HTTPException(status_code=401, detail="Incorrect username or password")
     
     # Parse permissions if they exist
@@ -123,6 +131,9 @@ def login_user(request: Request, credentials: HTTPBasicCredentials) -> Dict[str,
             permissions = json.loads(permissions)
         except (json.JSONDecodeError, TypeError):
             permissions = []
+    
+    # Record successful login to reset rate limit
+    rate_limiter.record_successful_attempt(request, "login")
     
     # Set session data
     request.session["user_id"] = user["id"]
@@ -137,7 +148,8 @@ def login_user(request: Request, credentials: HTTPBasicCredentials) -> Dict[str,
         "username": user["username"],
         "role": user["role"],
         "permissions": permissions,
-        "linked_therapist_id": user["linked_therapist_id"]
+        "linked_therapist_id": user["linked_therapist_id"],
+        "redirect_url": "/"
     }
 
 

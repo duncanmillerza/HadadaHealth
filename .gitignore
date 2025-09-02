@@ -6,6 +6,10 @@
 *.pem
 *.cert
 
+# Virtual Environment
+venv/
+env/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -61,3 +65,8 @@ data/*.backup
 data/*.bak
 *.backup
 *.bak
+*_backup.py
+*_refactored.py
+*_original_backup.py
+main_clean.py
+list_professions.py

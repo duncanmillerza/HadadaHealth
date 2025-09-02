@@ -54,6 +54,74 @@
       </div>
     </div>
     <div class="section">
+      <h2>System Configuration</h2>
+      <div style="margin-bottom: 1rem;">
+        <label style="display: block; margin-bottom: 0.5rem;">Application Name:</label>
+        <input type="text" id="app-name" placeholder="HadadaHealth" style="width: 100%; padding: 0.5rem; margin-bottom: 0.75rem;">
+        
+        <label style="display: block; margin-bottom: 0.5rem;">Timezone:</label>
+        <select id="timezone" style="width: 100%; padding: 0.5rem; margin-bottom: 0.75rem;">
+          <option value="Africa/Johannesburg">Africa/Johannesburg (GMT+2)</option>
+          <option value="UTC">UTC</option>
+          <option value="America/New_York">America/New_York (EST)</option>
+          <option value="Europe/London">Europe/London (GMT)</option>
+        </select>
+        
+        <label style="display: block; margin-bottom: 0.5rem;">Currency:</label>
+        <select id="currency" style="width: 100%; padding: 0.5rem; margin-bottom: 0.75rem;">
+          <option value="ZAR">ZAR (South African Rand)</option>
+          <option value="USD">USD (US Dollar)</option>
+          <option value="EUR">EUR (Euro)</option>
+          <option value="GBP">GBP (British Pound)</option>
+        </select>
+        
+        <label style="display: block; margin-bottom: 0.5rem;">Date Format:</label>
+        <select id="date-format" style="width: 100%; padding: 0.5rem; margin-bottom: 0.75rem;">
+          <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+          <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+          <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+        </select>
+        
+        <label style="display: block; margin-bottom: 0.5rem;">Language:</label>
+        <select id="language" style="width: 100%; padding: 0.5rem; margin-bottom: 1rem;">
+          <option value="en">English</option>
+          <option value="af">Afrikaans</option>
+        </select>
+      </div>
+      
+      <div style="text-align: center; margin-top: 1rem;">
+        <button onclick="saveSystemConfiguration()" style="padding: 0.6rem 1.2rem; background-color: #32517A; color: white; border: none; border-radius: 6px; font-size: 1rem;">Save System Configuration</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Appointment Types</h2>
+      <div style="text-align: center; margin: 1rem 0;">
+        <p>Configure appointment types with custom defaults for duration, billing codes, and notes</p>
+        <button onclick="window.location.href='/appointment-types-management-page'" style="padding: 0.6rem 1.2rem; background-color: #2D6356; color: white; border: none; border-radius: 6px; font-size: 1rem; margin: 0.5rem;">Manage Appointment Types</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>User Management</h2>
+      <div style="text-align: center; margin: 1rem 0;">
+        <p>Manage system users, roles, and permissions</p>
+        <button onclick="window.location.href='/manage-users-page'" style="padding: 0.6rem 1.2rem; background-color: #32517A; color: white; border: none; border-radius: 6px; font-size: 1rem; margin: 0.5rem;">Manage Users</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Application Information</h2>
+      <div id="app-info" style="background: #f5f5f5; padding: 1rem; border-radius: 6px; margin: 1rem 0;">
+        <p><strong>Loading application information...</strong></p>
+      </div>
+      <div style="text-align: center; margin-top: 1rem;">
+        <button onclick="refreshAppInfo()" style="padding: 0.6rem 1.2rem; background-color: #6A3E74; color: white; border: none; border-radius: 6px; font-size: 1rem;">Refresh Info</button>
+        <button onclick="exportSystemBackup()" style="padding: 0.6rem 1.2rem; background-color: #2D6356; color: white; border: none; border-radius: 6px; font-size: 1rem; margin-left: 0.5rem;">Export Backup</button>
+      </div>
+    </div>
+
+    <div class="section">
       <h2>Bulk Import</h2>
       <div style="text-align:center; margin-top:1rem;">
         <input type="file" id="patient-upload" accept=".xlsx, .xls" style="display:none" onchange="submitPatientUpload()" />
@@ -161,7 +229,111 @@ window.onload = function() {
   loadSettings();
   loadProfessions();
   loadClinics();
+  loadSystemConfiguration();
+  loadAppInfo();
 };
+
+// System Configuration Functions
+async function loadSystemConfiguration() {
+  try {
+    const res = await fetch('/system-configuration');
+    const config = await res.json();
+    
+    document.getElementById('app-name').value = config.app_name || 'HadadaHealth';
+    document.getElementById('timezone').value = config.timezone || 'Africa/Johannesburg';
+    document.getElementById('currency').value = config.currency || 'ZAR';
+    document.getElementById('date-format').value = config.date_format || 'YYYY-MM-DD';
+    document.getElementById('language').value = config.language || 'en';
+  } catch (error) {
+    console.error('Failed to load system configuration:', error);
+  }
+}
+
+async function saveSystemConfiguration() {
+  const config = {
+    app_name: document.getElementById('app-name').value.trim(),
+    timezone: document.getElementById('timezone').value,
+    currency: document.getElementById('currency').value,
+    date_format: document.getElementById('date-format').value,
+    language: document.getElementById('language').value
+  };
+
+  try {
+    const response = await fetch('/system-configuration', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config)
+    });
+
+    if (!response.ok) throw new Error('Failed to save system configuration');
+    showToast('System configuration saved successfully!');
+  } catch (error) {
+    showToast('Error: ' + error.message, true);
+  }
+}
+
+// Application Information Functions
+async function loadAppInfo() {
+  try {
+    const res = await fetch('/application-info');
+    const info = await res.json();
+    
+    const appInfoDiv = document.getElementById('app-info');
+    appInfoDiv.innerHTML = `
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div>
+          <p><strong>Application:</strong> ${info.app_name || 'HadadaHealth'}</p>
+          <p><strong>Version:</strong> ${info.app_version || '1.0.0'}</p>
+          <p><strong>Timezone:</strong> ${info.timezone || 'Africa/Johannesburg'}</p>
+          <p><strong>Currency:</strong> ${info.currency || 'ZAR'}</p>
+        </div>
+        <div>
+          <p><strong>Database Status:</strong> <span style="color: ${info.database_status === 'connected' ? 'green' : 'red'};">${info.database_status || 'unknown'}</span></p>
+          <p><strong>Total Users:</strong> ${info.table_counts?.users || 0}</p>
+          <p><strong>Total Patients:</strong> ${info.table_counts?.patients || 0}</p>
+          <p><strong>Total Therapists:</strong> ${info.table_counts?.therapists || 0}</p>
+        </div>
+      </div>
+      <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #ddd;">
+        <p><strong>Last Updated:</strong> ${new Date(info.system_time || Date.now()).toLocaleString()}</p>
+      </div>
+    `;
+  } catch (error) {
+    document.getElementById('app-info').innerHTML = `
+      <p style="color: red;"><strong>Error loading application information:</strong> ${error.message}</p>
+    `;
+  }
+}
+
+async function refreshAppInfo() {
+  await loadAppInfo();
+  showToast('Application information refreshed!');
+}
+
+async function exportSystemBackup() {
+  try {
+    const response = await fetch('/system-backup', {
+      method: 'GET'
+    });
+
+    if (!response.ok) throw new Error('Failed to create system backup');
+    
+    const backup = await response.json();
+    const dataStr = JSON.stringify(backup, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    
+    const exportFileDefaultName = `hadadahealth-backup-${new Date().toISOString().slice(0,10)}.json`;
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+    
+    showToast('System backup exported successfully!');
+  } catch (error) {
+    showToast('Error: ' + error.message, true);
+  }
+}
 </script>
 <html>
 <div id="add-clinic-modal" style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%); background:white; padding:2rem; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.2); z-index:2000; max-width:500px; width:95%; max-height:90vh; overflow-y:auto;">
