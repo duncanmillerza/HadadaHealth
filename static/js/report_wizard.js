@@ -107,13 +107,10 @@ class ReportWizard {
         this.templatePreview = document.getElementById('wizard-template-preview');
         
         // Step 3 elements
-        this.recommendedDisciplines = document.getElementById('wizard-recommended-disciplines');
         this.disciplineCheckboxes = document.querySelectorAll('input[type="checkbox"][value*="therapy"], input[type="checkbox"][value="psychology"]');
         
         // Step 4 elements
-        this.therapistRoleInfo = document.getElementById('therapist-role-info');
-        this.suggestedTherapists = document.getElementById('wizard-suggested-therapists');
-        this.otherTherapists = document.getElementById('wizard-other-therapists');
+        this.therapistsContainer = document.getElementById('wizard-therapists-list');
         
         // Step 5 elements
         this.priorityRadios = document.querySelectorAll('input[name="wizard-priority"]');
@@ -538,7 +535,6 @@ class ReportWizard {
             const data = await this.loadWizardOptions(this.state.patient.id);
             if (data?.recommended_disciplines && data.recommended_disciplines.length > 0) {
                 this.displayDisciplineRecommendations(data.recommended_disciplines);
-                this.preselectRecommendedDisciplines(data.recommended_disciplines);
             }
         } catch (error) {
             console.error('Error loading discipline recommendations:', error);
@@ -546,28 +542,49 @@ class ReportWizard {
     }
     
     displayDisciplineRecommendations(recommendations) {
-        this.recommendedDisciplines.style.display = 'block';
+        console.log('🔍 displayDisciplineRecommendations called with:', recommendations);
         
-        const container = this.recommendedDisciplines.querySelector('.discipline-recommendations');
-        container.innerHTML = recommendations.map(rec => `
-            <div class="recommendation-chip" data-discipline="${rec.discipline}">
-                <div class="recommendation-content">
-                    <div class="recommendation-name">${this.formatDisciplineName(rec.discipline)}</div>
-                    <div class="recommendation-stats">
-                        ${rec.bookings_count} booking${rec.bookings_count !== 1 ? 's' : ''} | Last: ${this.formatDate(rec.last_seen)}
-                    </div>
-                </div>
-                <div class="recommendation-badge">Recommended</div>
-            </div>
-        `).join('');
+        // Update the compact discipline cards with booking information
+        recommendations.forEach(rec => {
+            console.log('🔍 Processing recommendation:', rec);
+            const disciplineId = `discipline-${rec.discipline.toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-')}`;
+            console.log('🔍 Looking for disciplineId:', disciplineId);
+            const card = document.querySelector(`label[for="${disciplineId}"]`);
+            console.log('🔍 Found card:', card);
+            
+            if (card) {
+                // Update booking count
+                const bookingCount = card.querySelector('.booking-count');
+                console.log('🔍 Found bookingCount element:', bookingCount);
+                if (bookingCount) {
+                    const countText = `${rec.bookings_count} booking${rec.bookings_count !== 1 ? 's' : ''}`;
+                    bookingCount.textContent = countText;
+                    console.log('🔍 Updated booking count to:', countText);
+                }
+                
+                // Update last seen date
+                const lastSeen = card.querySelector('.last-seen');
+                console.log('🔍 Found lastSeen element:', lastSeen);
+                if (lastSeen) {
+                    const dateText = `Last: ${this.formatDate(rec.last_seen)}`;
+                    lastSeen.textContent = dateText;
+                    console.log('🔍 Updated last seen to:', dateText);
+                }
+                
+                console.log('✅ Updated discipline card with booking information');
+            } else {
+                console.warn('🚨 Could not find card for discipline:', disciplineId);
+            }
+        });
     }
     
     preselectRecommendedDisciplines(recommendations) {
         recommendations.forEach(rec => {
-            const checkbox = document.getElementById(`discipline-${rec.discipline.replace(/_/g, '-')}`);
+            const disciplineId = `discipline-${rec.discipline.toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-')}`;
+            const checkbox = document.getElementById(disciplineId);
             if (checkbox) {
                 checkbox.checked = true;
-                this.state.disciplines.push(rec.discipline);
+                this.state.disciplines.push(rec.discipline.toLowerCase().replace(/\s+/g, '_'));
             }
         });
         this.updateSummary();
@@ -580,12 +597,19 @@ class ReportWizard {
         try {
             const data = await this.loadWizardOptions(this.state.patient.id, this.state.disciplines);
             
+            // Combine all therapists into one array
+            const allTherapists = [];
+            
             if (data?.suggested_therapists && data.suggested_therapists.length > 0) {
-                this.displayTherapistSuggestions(data.suggested_therapists);
+                allTherapists.push(...data.suggested_therapists.map(t => ({ ...t, isSuggested: true })));
             }
             
             if (data?.other_therapists && data.other_therapists.length > 0) {
-                this.displayOtherTherapists(data.other_therapists);
+                allTherapists.push(...data.other_therapists.map(t => ({ ...t, isSuggested: false })));
+            }
+            
+            if (allTherapists.length > 0) {
+                this.displayTherapistsCompact(allTherapists);
             }
             
             // Auto-select current user if therapist
@@ -599,27 +623,30 @@ class ReportWizard {
         }
     }
     
-    displayTherapistSuggestions(suggestions) {
-        this.suggestedTherapists.style.display = 'block';
+    displayTherapistsCompact(therapists) {
+        console.log('🔍 displayTherapistsCompact called with:', therapists);
         
-        const container = this.suggestedTherapists.querySelector('.therapist-suggestions');
-        container.innerHTML = suggestions.map(therapist => `
-            <div class="therapist-card suggested" data-user-id="${therapist.user_id}">
-                <div class="therapist-checkbox">
-                    <input type="checkbox" id="therapist-${therapist.user_id}" value="${therapist.user_id}" 
-                           onchange="wizard.toggleTherapist('${therapist.user_id}', '${therapist.name}')" />
-                </div>
-                <div class="therapist-info">
+        if (!this.therapistsContainer) {
+            console.warn('🚨 Therapists container not found');
+            return;
+        }
+        
+        this.therapistsContainer.innerHTML = therapists.map(therapist => `
+            <div class="therapist-compact-option">
+                <input type="checkbox" id="therapist-${therapist.user_id}" value="${therapist.user_id}" 
+                       onchange="wizard.toggleTherapist('${therapist.user_id}', '${therapist.name}')" />
+                <label for="therapist-${therapist.user_id}" class="therapist-compact-card">
                     <div class="therapist-name">${therapist.name}</div>
-                    <div class="therapist-disciplines">${therapist.disciplines.join(', ')}</div>
+                    <div class="therapist-discipline">${therapist.disciplines ? therapist.disciplines.join(', ') : 'Multi-discipline'}</div>
                     <div class="therapist-stats">
-                        ${therapist.bookings_count_with_patient} session${therapist.bookings_count_with_patient !== 1 ? 's' : ''} | 
-                        Last: ${this.formatDate(therapist.last_seen)}
+                        <span class="treatment-count">${therapist.bookings_count_with_patient || 0} session${(therapist.bookings_count_with_patient || 0) !== 1 ? 's' : ''}</span>
+                        <span class="last-treatment">${therapist.last_seen ? `Last: ${this.formatDate(therapist.last_seen)}` : 'Never'}</span>
                     </div>
-                </div>
-                <div class="suggestion-badge">Suggested</div>
+                </label>
             </div>
         `).join('');
+        
+        console.log('✅ Therapists populated in compact grid');
     }
     
     displayOtherTherapists(others) {
