@@ -1365,6 +1365,34 @@ def init_billing_tables():
             );
         """)
 
+# Reminders table setup
+def init_reminders_table():
+    with sqlite3.connect(get_database_path()) as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS reminders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                description TEXT,
+                created_by_user_id INTEGER NOT NULL,
+                patient_id INTEGER,
+                therapist_id INTEGER,
+                appointment_id TEXT,
+                due_date TEXT,
+                recurrence TEXT DEFAULT 'None',
+                completed BOOLEAN DEFAULT 0,
+                completed_at TEXT,
+                visibility TEXT DEFAULT 'private',
+                priority TEXT DEFAULT 'normal',
+                colour TEXT DEFAULT '#2D6356',
+                notify BOOLEAN DEFAULT 0,
+                notify_at TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (created_by_user_id) REFERENCES users(id),
+                FOREIGN KEY (patient_id) REFERENCES patients(id),
+                FOREIGN KEY (therapist_id) REFERENCES therapists(id)
+            );
+        """)
+
 init_db()
 init_patients_table()
 init_medical_aids_table()
@@ -1375,6 +1403,7 @@ init_professions_table()
 init_clinics_table()
 init_users_table()
 init_billing_tables()
+init_reminders_table()
 
 # Booking model is now imported from modules.appointments
 
