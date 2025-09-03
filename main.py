@@ -1365,16 +1365,59 @@ def init_billing_tables():
             );
         """)
 
-init_db()
-init_patients_table()
-init_medical_aids_table()
-populate_medical_aids()
-init_therapists_table()
-init_settings_table()
-init_professions_table()
-init_clinics_table()
-init_users_table()
-init_billing_tables()
+# Initialize database and run migrations
+def initialize_database():
+    """Initialize database with proper error handling and migration support"""
+    try:
+        # First, ensure basic database connection works
+        print("🔗 Testing database connection...")
+        db_path = get_database_path()
+        print(f"📁 Using database path: {db_path}")
+        
+        # Test connection
+        test_conn = sqlite3.connect(db_path)
+        test_conn.close()
+        print("✅ Database connection successful")
+        
+        # Run initialization functions first to create core tables
+        print("🏗️  Creating core database tables...")
+        init_db()
+        init_patients_table()
+        init_medical_aids_table()
+        init_therapists_table()
+        init_settings_table()
+        init_professions_table()
+        init_clinics_table()
+        init_users_table()
+        init_billing_tables()
+        
+        # Run migrations after core tables exist
+        try:
+            print("🚀 Running database migrations...")
+            from migrations.migration_runner import run_migrations
+            if run_migrations():
+                print("✅ Database migrations completed successfully")
+            else:
+                print("⚠️  Some migrations may have failed, but continuing startup")
+        except ImportError:
+            print("ℹ️  No migration system found, skipping migrations")
+        except Exception as e:
+            print(f"⚠️  Migration error (continuing startup): {e}")
+        
+        # Populate data after migrations
+        print("📊 Populating initial data...")
+        populate_medical_aids()
+            
+        print("✅ Database initialization completed")
+        
+    except Exception as e:
+        print(f"❌ Database initialization failed: {e}")
+        print(f"📍 Database path attempted: {get_database_path()}")
+        print("🔄 This may be due to filesystem permissions or missing directories")
+        raise
+
+# Initialize database with proper error handling
+initialize_database()
 
 # Booking model is now imported from modules.appointments
 
