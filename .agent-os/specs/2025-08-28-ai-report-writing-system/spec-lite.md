@@ -1,3 +1,0 @@
-# AI Report Writing System - Lite Summary
-
-Implement an AI-powered clinical report writing system that enables both manager-initiated and therapist-initiated workflows for automated report generation. The system leverages existing AI infrastructure to auto-populate reports with patient data, medical history, and treatment summaries while providing full customization capabilities and multi-disciplinary integration with deadline tracking and dashboard notifications.

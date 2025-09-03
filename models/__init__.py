@@ -1,1 +1,0 @@
-# Validation models for HadadaHealth

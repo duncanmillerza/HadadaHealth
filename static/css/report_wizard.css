@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /* Report Creation Wizard Styles - HadadaHealth Brand System */
 
 /* CSS Variables Integration - Using HadadaHealth Design Tokens */
@@ -50,10 +51,14 @@
   --height-input: 48px;
   --height-button: 44px;
 }
+=======
+/* Report Creation Wizard Styles */
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 
 /* ========== STRUCTURED TEMPLATE PREVIEW ========== */
 
 .template-preview-card {
+<<<<<<< HEAD
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
@@ -67,18 +72,38 @@
     font-size: var(--text-lg);
     font-weight: var(--weight-semibold);
     font-family: var(--font-ui);
+=======
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.template-header h4 {
+    margin: 0 0 0.5rem 0;
+    color: #1e293b;
+    font-size: 1.1rem;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .template-description {
     margin: 0;
+<<<<<<< HEAD
     color: var(--color-muted);
     font-size: var(--text-sm);
     line-height: 1.5;
     font-family: var(--font-ui);
+=======
+    color: #64748b;
+    font-size: 0.9rem;
+    line-height: 1.4;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .template-stats {
     display: flex;
+<<<<<<< HEAD
     gap: var(--space-4);
     margin: var(--space-4) 0;
     padding: var(--space-3);
@@ -96,6 +121,24 @@
 .stat-item strong {
     color: var(--color-text);
     font-weight: var(--weight-semibold);
+=======
+    gap: 1rem;
+    margin: 1rem 0;
+    padding: 0.75rem;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+}
+
+.stat-item {
+    font-size: 0.85rem;
+    color: #475569;
+}
+
+.stat-item strong {
+    color: #0f172a;
+    font-weight: 600;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .template-features {
@@ -177,12 +220,18 @@
 .wizard-modal {
     max-width: 1200px !important;
     width: 95% !important;
+<<<<<<< HEAD
     height: 88vh;
     max-height: 900px;
     margin: 1vh auto !important;
     box-shadow: var(--shadow-modal);
     border-radius: var(--radius-lg);
     border: 1px solid var(--color-border);
+=======
+    height: 80vh;
+    max-height: 800px;
+    margin: 2.5vh auto !important;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .wizard-modal .modal-content {
@@ -194,7 +243,11 @@
 /* ========== HEADER & PROGRESS ========== */
 
 .wizard-progress {
+<<<<<<< HEAD
     margin: 0.5rem 0;
+=======
+    margin: 1rem 0;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
     width: 100%;
 }
 
@@ -202,9 +255,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
+<<<<<<< HEAD
     gap: var(--space-3);
     padding: var(--space-2) var(--space-8);
     margin-top: var(--space-2);
+=======
+    gap: 0.5rem;
+    padding: 0 2rem;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .progress-step {
@@ -222,6 +280,7 @@
 }
 
 .step-circle {
+<<<<<<< HEAD
     width: 28px;
     height: 28px;
     border-radius: 50%;
@@ -234,10 +293,24 @@
     font-size: var(--text-sm);
     font-family: var(--font-ui);
     border: 2px solid var(--color-border);
+=======
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.9rem;
+    border: 2px solid #e5e7eb;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
     transition: all 0.3s ease;
 }
 
 .progress-step.active .step-circle {
+<<<<<<< HEAD
     background: var(--color-primary);
     color: var(--color-white);
     border-color: var(--color-primary);
@@ -258,16 +331,40 @@
     min-width: 80px;
     font-family: var(--font-ui);
     margin-top: var(--space-1);
+=======
+    background: #2563eb;
+    color: white;
+    border-color: #2563eb;
+}
+
+.progress-step.completed .step-circle {
+    background: #059669;
+    color: white;
+    border-color: #059669;
+}
+
+.step-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-align: center;
+    color: #6b7280;
+    min-width: 80px;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .progress-step.active .step-label,
 .progress-step.completed .step-label {
+<<<<<<< HEAD
     color: var(--color-text);
     font-weight: var(--weight-semibold);
+=======
+    color: #1f2937;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .progress-connector {
     flex: 1;
+<<<<<<< HEAD
     height: 3px;
     background: var(--color-border);
     margin: 0 var(--space-3);
@@ -277,6 +374,16 @@
 
 .progress-step.completed + .progress-connector {
     background: var(--color-success);
+=======
+    height: 2px;
+    background: #e5e7eb;
+    margin: 0 0.5rem;
+    min-width: 40px;
+}
+
+.progress-step.completed + .progress-connector {
+    background: #059669;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 /* ========== WIZARD BODY ========== */
@@ -290,14 +397,22 @@
 .wizard-container {
     display: flex;
     height: 100%;
+<<<<<<< HEAD
     width: 100%;
+=======
+    gap: 2rem;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .wizard-steps {
     flex: 1;
     overflow-y: auto;
+<<<<<<< HEAD
     padding: var(--space-4) var(--space-6);
     max-width: none;
+=======
+    padding: 0 1rem;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .wizard-step {
@@ -310,6 +425,7 @@
     flex-direction: column;
 }
 
+<<<<<<< HEAD
 /* Step headers removed to save vertical space */
 
 /* ========== PATIENT SELECTION ========== */
@@ -503,13 +619,75 @@
     .therapist-name {
         font-size: var(--text-sm);
     }
+=======
+.step-header {
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.step-header h4 {
+    margin: 0 0 0.5rem 0;
+    color: #1f2937;
+    font-size: 1.5rem;
+}
+
+.step-header p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 1rem;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 /* ========== WIZARD SIDEBAR ========== */
 
+<<<<<<< HEAD
 /* Wizard sidebar removed - using full-width layout */
 
 /* Summary styles removed */
+=======
+.wizard-sidebar {
+    width: 300px;
+    background: #f9fafb;
+    border-left: 1px solid #e5e7eb;
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+.wizard-sidebar h5 {
+    margin: 0 0 1rem 0;
+    color: #1f2937;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.sidebar-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.summary-section h6 {
+    margin: 0 0 0.5rem 0;
+    color: #374151;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.summary-value {
+    color: #1f2937;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.summary-value.small {
+    font-size: 0.8rem;
+    color: #6b7280;
+    font-style: italic;
+}
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 
 /* ========== STEP 1: PATIENT SELECTION ========== */
 
@@ -526,6 +704,7 @@
 
 .search-input-group input {
     width: 100%;
+<<<<<<< HEAD
     height: var(--height-input);
     padding: 0 var(--space-4);
     border: 1.5px solid var(--color-border);
@@ -535,16 +714,27 @@
     color: var(--color-text);
     background: var(--color-white);
     transition: all 0.2s ease;
+=======
+    padding: 0.75rem 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 1rem;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .search-input-group input:focus {
     outline: none;
+<<<<<<< HEAD
     border-color: var(--color-primary);
     box-shadow: var(--shadow-focus);
 }
 
 .search-input-group input::placeholder {
     color: var(--color-muted);
+=======
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .search-spinner {
@@ -558,6 +748,7 @@
 .recent-patients-list {
     max-height: 200px;
     overflow-y: auto;
+<<<<<<< HEAD
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     background: var(--color-white);
@@ -577,14 +768,37 @@
     border-bottom: 1px solid var(--color-surface);
     cursor: pointer;
     transition: all 0.2s ease;
+=======
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: white;
+}
+
+.recent-patients-section h5 {
+    margin: 0 0 1rem 0;
+    color: #374151;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.patient-card {
+    padding: 1rem;
+    border-bottom: 1px solid #f3f4f6;
+    cursor: pointer;
+    transition: background 0.2s ease;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
 .patient-card:hover {
+<<<<<<< HEAD
     background: var(--color-surface);
     transform: translateX(4px);
+=======
+    background: #f9fafb;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .patient-card:last-child {
@@ -596,18 +810,30 @@
 }
 
 .patient-name {
+<<<<<<< HEAD
     font-weight: var(--weight-semibold);
     color: var(--color-text);
     font-family: var(--font-ui);
     margin-bottom: var(--space-1);
+=======
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 0.25rem;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .patient-details {
     display: flex;
+<<<<<<< HEAD
     gap: var(--space-4);
     font-size: var(--text-sm);
     color: var(--color-muted);
     font-family: var(--font-ui);
+=======
+    gap: 1rem;
+    font-size: 0.85rem;
+    color: #6b7280;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .patient-meta {
@@ -627,10 +853,17 @@
 }
 
 .selected-patient-preview {
+<<<<<<< HEAD
     background: rgba(5, 150, 105, 0.05);
     border: 2px solid var(--color-success);
     border-radius: var(--radius-md);
     padding: var(--space-4);
+=======
+    background: #f0fdf4;
+    border: 2px solid #16a34a;
+    border-radius: 8px;
+    padding: 1rem;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .selected-patient-preview .patient-card {
@@ -675,17 +908,24 @@
 
 .form-group label {
     display: block;
+<<<<<<< HEAD
     margin-bottom: var(--space-2);
     font-weight: var(--weight-medium);
     color: var(--color-text);
     font-family: var(--font-ui);
     font-size: var(--text-sm);
+=======
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #374151;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .form-group select,
 .form-group input[type="text"],
 .form-group input[type="date"] {
     width: 100%;
+<<<<<<< HEAD
     height: var(--height-input);
     padding: 0 var(--space-4);
     border: 1.5px solid var(--color-border);
@@ -695,11 +935,19 @@
     color: var(--color-text);
     background: var(--color-white);
     transition: all 0.2s ease;
+=======
+    padding: 0.75rem 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: white;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .form-group select:focus,
 .form-group input:focus {
     outline: none;
+<<<<<<< HEAD
     border-color: var(--color-primary);
     box-shadow: var(--shadow-focus);
 }
@@ -731,6 +979,34 @@
     border-radius: var(--radius-md);
     padding: var(--space-4);
     margin-top: var(--space-4);
+=======
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.btn-secondary {
+    background: #6b7280;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    margin-left: 0.5rem;
+    transition: background 0.2s ease;
+}
+
+.btn-secondary:hover {
+    background: #4b5563;
+}
+
+.template-preview {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .template-preview h5 {
@@ -829,6 +1105,7 @@
 }
 
 .discipline-card {
+<<<<<<< HEAD
     border: 2px solid var(--color-border);
     border-radius: var(--radius-lg);
     padding: var(--space-6) var(--space-4);
@@ -850,6 +1127,27 @@
     border-color: var(--color-primary);
     transform: translateY(-2px);
     box-shadow: var(--shadow-button);
+=======
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+}
+
+.discipline-option input:checked + label .discipline-card {
+    border-color: #2563eb;
+    background: #eff6ff;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+}
+
+.discipline-card:hover {
+    border-color: #93c5fd;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .discipline-icon {
@@ -858,6 +1156,7 @@
 }
 
 .discipline-name {
+<<<<<<< HEAD
     font-weight: var(--weight-semibold);
     color: var(--color-text);
     font-family: var(--font-ui);
@@ -866,6 +1165,14 @@
 .discipline-option input:checked + label .discipline-name {
     color: var(--color-primary);
     font-weight: var(--weight-semibold);
+=======
+    font-weight: 600;
+    color: #374151;
+}
+
+.discipline-option input:checked + label .discipline-name {
+    color: #1d4ed8;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 /* ========== STEP 4: THERAPISTS ========== */
@@ -993,13 +1300,20 @@
 }
 
 .priority-card {
+<<<<<<< HEAD
     border: 2px solid var(--color-border);
     border-radius: var(--radius-md);
     padding: var(--space-4);
+=======
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1rem;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
+<<<<<<< HEAD
     gap: var(--space-3);
     background: var(--color-white);
     box-shadow: var(--shadow-card);
@@ -1015,6 +1329,20 @@
     border-color: var(--color-primary);
     background: rgba(45, 99, 86, 0.05);
     box-shadow: var(--shadow-focus);
+=======
+    gap: 0.75rem;
+    background: white;
+}
+
+.priority-card:hover {
+    border-color: #93c5fd;
+}
+
+.priority-option input:checked + .priority-card {
+    border-color: #2563eb;
+    background: #eff6ff;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .priority-indicator {
@@ -1025,6 +1353,7 @@
 }
 
 .priority-card.low .priority-indicator {
+<<<<<<< HEAD
     background: var(--color-muted);
 }
 
@@ -1034,6 +1363,17 @@
 
 .priority-card.high .priority-indicator {
     background: var(--color-error);
+=======
+    background: #6b7280;
+}
+
+.priority-card.medium .priority-indicator {
+    background: #f59e0b;
+}
+
+.priority-card.high .priority-indicator {
+    background: #ef4444;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .priority-details {
@@ -1041,6 +1381,7 @@
 }
 
 .priority-name {
+<<<<<<< HEAD
     font-weight: var(--weight-semibold);
     color: var(--color-text);
     font-family: var(--font-ui);
@@ -1051,6 +1392,16 @@
     font-size: var(--text-sm);
     color: var(--color-muted);
     font-family: var(--font-ui);
+=======
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 0.25rem;
+}
+
+.priority-description {
+    font-size: 0.85rem;
+    color: #6b7280;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .deadline-shortcuts {
@@ -1074,7 +1425,49 @@
     background: #e5e7eb;
 }
 
+<<<<<<< HEAD
 /* Wizard summary removed - all summary styles cleaned up */
+=======
+.wizard-summary {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-top: 2rem;
+}
+
+.wizard-summary h5 {
+    margin: 0 0 1rem 0;
+    color: #374151;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.summary-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.summary-item label {
+    font-weight: 600;
+    color: #6b7280;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.summary-item span {
+    color: #1f2937;
+    font-weight: 500;
+}
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 
 /* ========== FOOTER ========== */
 
@@ -1082,10 +1475,16 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+<<<<<<< HEAD
     padding: var(--space-4) var(--space-8);
     border-top: 1px solid var(--color-border);
     background: var(--color-surface);
     border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+=======
+    padding: 1rem 2rem;
+    border-top: 1px solid #e5e7eb;
+    background: #f9fafb;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .footer-left,
@@ -1096,14 +1495,21 @@
 }
 
 .btn {
+<<<<<<< HEAD
     padding: 14px 24px;
     border-radius: var(--radius-md);
     font-weight: var(--weight-medium);
     font-family: var(--font-ui);
+=======
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    font-weight: 600;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
+<<<<<<< HEAD
     gap: var(--space-2);
     font-size: 15px;
     border: none;
@@ -1135,10 +1541,35 @@
     background: var(--color-success);
     color: var(--color-white);
     box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);
+=======
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    border: none;
+}
+
+.btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: #1d4ed8;
+}
+
+.btn-primary:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+}
+
+.btn-success {
+    background: #059669;
+    color: white;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .btn-success:hover:not(:disabled) {
     background: #047857;
+<<<<<<< HEAD
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
 }
@@ -1154,6 +1585,17 @@
     background: var(--color-primary);
     color: var(--color-white);
     transform: translateY(-1px);
+=======
+}
+
+.btn-secondary {
+    background: #6b7280;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #4b5563;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 /* ========== VALIDATION MESSAGES ========== */
@@ -1163,14 +1605,21 @@
 }
 
 .error-text {
+<<<<<<< HEAD
     color: var(--color-error);
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);
     font-family: var(--font-ui);
+=======
+    color: #dc2626;
+    font-size: 0.85rem;
+    font-weight: 500;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 /* ========== TOOLTIPS ========== */
 
+<<<<<<< HEAD
 /* Enhanced tooltip styling is now at the bottom of the file */
 
 /* Tooltip arrow styling is now at the bottom of the file */
@@ -1179,12 +1628,42 @@
     font-weight: var(--weight-semibold);
     margin-bottom: var(--space-1);
     font-family: var(--font-ui);
+=======
+.recommendation-tooltip {
+    position: absolute;
+    z-index: 10000;
+    background: #1f2937;
+    color: white;
+    padding: 0.75rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    max-width: 250px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.recommendation-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 4px solid transparent;
+    border-top-color: #1f2937;
+}
+
+.tooltip-header {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 .tooltip-body {
     font-size: 0.75rem;
     opacity: 0.9;
+<<<<<<< HEAD
     font-family: var(--font-ui);
+=======
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
 
 /* ========== RESPONSIVE DESIGN ========== */
@@ -1194,6 +1673,16 @@
         flex-direction: column;
     }
     
+<<<<<<< HEAD
+=======
+    .wizard-sidebar {
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid #e5e7eb;
+        padding: 1rem;
+    }
+    
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
     .progress-steps {
         padding: 0;
     }
@@ -1239,13 +1728,19 @@
     }
     
     .wizard-footer {
+<<<<<<< HEAD
         padding: var(--space-3) var(--space-4);
         gap: var(--space-2);
         flex-wrap: wrap;
+=======
+        flex-direction: column;
+        gap: 0.75rem;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
     }
     
     .footer-left,
     .footer-right {
+<<<<<<< HEAD
         gap: var(--space-2);
     }
     
@@ -1259,6 +1754,10 @@
         font-size: var(--text-sm);
         min-width: 60px;
         flex-shrink: 1;
+=======
+        width: 100%;
+        justify-content: center;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
     }
 }
 
@@ -1277,6 +1776,7 @@
     .progress-connector {
         min-width: 20px;
     }
+<<<<<<< HEAD
 }
 
 /* ========== ACCESSIBILITY ENHANCEMENTS ========== */
@@ -1457,4 +1957,6 @@
 
 .error-message {
     color: var(--color-error);
+=======
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
 }
