@@ -1,0 +1,11 @@
+<div class="modal-overlay" id="medical-history-modal" style="display: none; align-items: center; justify-content: center;">
+  <div class="modal-content modal-styled">
+    <span class="close" onclick="closeMedicalHistoryModal()">&times;</span>
+    <h2>AI Summary of Medical History</h2>
+    <p><strong>Generated:</strong> <span id="ai-history-date">—</span></p>
+    <div id="ai-history-content" style="white-space: pre-wrap; margin-bottom: 20px;">
+      Loading medical history summary...
+    </div>
+    <button onclick="regenerateMedicalHistory(window.currentPatientId)">Regenerate Summary</button>
+  </div>
+</div>

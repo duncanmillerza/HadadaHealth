@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Patient Profile</title>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="robots" content="index,follow"/>
+    <link rel="stylesheet" href="/static/calendar.css">
+    <link rel="stylesheet" href="/static/nav.css">
+</head>
+<script src="/static/js/medical-history.js"></script>
+
+</head>
+<body id="icrwd">
+  <script src="/static/js/nav-bar.js"></script>
+  <div id="top-nav"></div>
+      <div class="mobile-profile-header">
+        <div class="profile-picture"></div>
+        <h2>Bob Brown</h2>
+        <p>1110045676087</p>
+      </div>
+  
+      <div class="button-grid">
+        <button onclick="openBookingsModal(window.currentPatientId)"><span class="material-icons">calendar_today</span><br>Bookings</button>
+        <button onclick="openPatientDetailsModal()"><span class="material-icons">person</span><br>Details</button>
+        <button><span class="material-icons">book</span><br>All Notes</button>
+        <button><span class="material-icons">warning</span><br>Alerts</button>
+        <button><span class="material-icons">chat</span><br>Chat</button>
+        <button id="medical-history-button" onclick="openMedicalHistoryModal(window.currentPatientId)">
+          <span class="material-icons">history_edu</span><br>Medical History
+        </button>
+      </div>
+  
+      <div class="alert-card" id="alert-card">
+        <strong>Alert: Important Note</strong><br>
+        <em>Loading alerts...</em>
+      </div>
+
+      <!-- Medical History Section removed -->
+  
+      </div>
+      <script src="/static/js/nav-bar.js"></script>
+      <div id="bottom-nav"></div>
+      <script>
+        function getPatientIdFromURL() {
+          const params = new URLSearchParams(window.location.search);
+          return params.get("id");
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+          const patientId = getPatientIdFromURL();
+          console.log("👤 Patient ID:", patientId);
+
+          if (patientId) {
+            fetch(`/api/patient/${patientId}`)
+              .then(res => {
+                if (!res.ok) throw new Error("Failed to load patient data");
+                return res.json();
+              })
+              .then(data => {
+                console.log("👤 Loaded patient:", data);
+                document.querySelector('.mobile-profile-header h2').textContent =
+                  data.preferred_name || `${data.first_name} ${data.surname}`;
+                document.querySelector('.mobile-profile-header p').textContent =
+                  data.id_number || "";
+                // Make patient data available to modal logic
+                window.allPatients = [data];
+                window.currentPatientId = data.id;
+              })
+              .catch(error => {
+                console.error("⚠️ Error loading patient:", error);
+              });
+
+            fetch(`/api/patient/${patientId}/professions`)
+              .then(res => res.json())
+              .then(professions => {
+                // Remove any old containers
+                document.querySelectorAll('#profession-summary-container, .profession-tabs').forEach(el => el.remove());
+
+                // Tab buttons container
+                const tabButtons = document.createElement('div');
+                tabButtons.className = 'profession-tabs';
+                document.body.appendChild(tabButtons);
+
+                // Summary container for tab contents
+                const summaryContainer = document.createElement('div');
+                summaryContainer.id = "profession-summary-container";
+                document.body.appendChild(summaryContainer);
+
+                professions.forEach((prof, index) => {
+                  const tabId = `tab-${prof.replace(/\s+/g, '-')}`;
+
+                  // Create tab button
+                  const tabBtn = document.createElement('button');
+                  tabBtn.textContent = prof;
+                  tabBtn.className = 'tab-button';
+                  tabBtn.onclick = () => {
+                    document.querySelectorAll('.tab-content').forEach(div => div.style.display = 'none');
+                    document.getElementById(tabId).style.display = 'block';
+                  };
+                  tabButtons.appendChild(tabBtn);
+
+                  // Create tab content
+                  fetch(`/api/patient/${patientId}/summary/${prof}`)
+                    .then(res => res.json())
+                    .then(summary => {
+                      const card = document.createElement('div');
+                      card.className = 'progress-card tab-content';
+                      card.id = tabId;
+                      card.style.display = index === 0 ? 'block' : 'none';
+                      card.innerHTML = `
+                        <h3>${prof} Summary</h3>
+                        <p><strong>Last Session:</strong> ${
+                          summary.last_session
+                            ? `<span class="last-session-link" data-profession="${prof}">${summary.last_session}</span>`
+                            : "No session available"
+                        }</p>
+                        <p><strong>Past Bookings:</strong> ${summary.past_bookings}</p>
+                        <p><strong>Future Bookings:</strong> ${summary.future_bookings}</p>
+                      `;
+                      summaryContainer.appendChild(card);
+                    });
+                });
+              })
+              .catch(err => {
+                console.error("Error loading profession summaries:", err);
+              });
+
+            // Fetch alerts for the patient and populate the alert card
+            fetch(`/api/patient/${patientId}/alerts`)
+              .then(res => res.json())
+              .then(alerts => {
+                const alertCard = document.getElementById('alert-card');
+                if (alerts.length === 0) {
+                  alertCard.innerHTML = '<strong>Alert: Important Note</strong><br><em>No alerts for this patient</em>';
+                  return;
+                }
+                alertCard.innerHTML = '<strong>Alert: Important Note</strong><br>';
+                alerts.forEach(alert => {
+                  const isResolved = alert.resolved === "Yes";
+                  const resolvedClass = isResolved ? 'style="opacity:0.6;text-decoration:line-through;"' : '';
+                  alertCard.innerHTML += `
+                    <div ${resolvedClass}>
+                      <em>${alert.profession} ${alert.therapist}: ${alert.date}</em><br>
+                      ${alert.note}<br>
+                      <button onclick="toggleResolved(${patientId}, '${alert.id}', ${!isResolved})">
+                        Mark as ${isResolved ? 'Unresolved' : 'Resolved'}
+                      </button>
+                    </div><br>`;
+                });
+              })
+              .catch(err => {
+                console.error("Error loading alerts:", err);
+                document.getElementById('alert-card').innerHTML += '<br><em>Error loading alerts</em>';
+              });
+
+          }
+        });
+
+              // Modal for last session detail
+      document.body.addEventListener('click', function(event) {
+        if (event.target.classList.contains('last-session-link')) {
+          // Remove any existing modal overlays before creating a new one
+          document.querySelectorAll('.modal-overlay').forEach(el => el.remove());
+          const profession = event.target.dataset.profession;
+          const patientId = getPatientIdFromURL();
+          fetch(`/api/patient/${patientId}/latest-session-note/${profession}`)
+            .then(res => res.json())
+            .then(data => {
+              const modal = document.createElement('div');
+              modal.className = 'modal-overlay';
+              modal.innerHTML = `
+  <div class="modal" style="background: rgba(255, 255, 255, 0.95); border-radius: 12px; padding: 1rem; max-width: 600px; width: 90%; box-shadow: 0 0 15px rgba(0,0,0,0.3);">
+    <h2>${profession} Session Detail</h2>
+    <p><strong>Date:</strong> ${data.date}</p>
+    <p><strong>Time:</strong> ${data.start_time}</p>
+    <p><strong>Therapist:</strong> ${data.therapist_name}</p>
+    <hr>
+    <p><strong>Subjective:</strong><br>${data.subjective_findings}</p>
+    <p><strong>Objective:</strong><br>${data.objective_findings}</p>
+    <p><strong>Treatment:</strong><br>${data.treatment}</p>
+    <p><strong>Plan:</strong><br>${data.plan}</p>
+    ${data.billing_codes && data.billing_codes.length
+      ? `<p><strong>Billing Codes:</strong><br>${data.billing_codes.map(c => `<div>${c}</div>`).join("")}</p>`
+      : ""}
+    <div style="text-align: right; margin-top: 1rem;">
+      <button onclick="this.closest('.modal-overlay').remove()">Close</button>
+    </div>
+  </div>
+`;
+              modal.style.position = "fixed";
+              modal.style.top = 0;
+              modal.style.left = 0;
+              modal.style.right = 0;
+              modal.style.bottom = 0;
+              modal.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+              modal.style.display = "flex";
+              modal.style.alignItems = "center";
+              modal.style.justifyContent = "center";
+              modal.style.zIndex = 999;
+              document.body.appendChild(modal);
+            });
+        }
+      });
+      </script>
+      <script src="/static/js/nav-bar.js"></script>
+      <script src="/static/js/patient-modal.js"></script>
+      <script src="/static/js/booking-table.js"></script>
+      <script>
+        // Load and inject the patient-modal fragment on page load
+        document.addEventListener("DOMContentLoaded", () => {
+          fetch("/static/fragments/patient-modal.html")
+            .then(res => res.text())
+            .then(html => {
+              const container = document.createElement('div');
+              container.innerHTML = html;
+              document.body.appendChild(container);
+            })
+            .catch(err => console.error("Failed to load patient modal fragment:", err));
+        });
+      </script>
+      <script>
+        function openPatientDetailsModal() {
+          if (window.allPatients && window.allPatients.length > 0) {
+            openPatientModal(window.allPatients[0]);
+          } else {
+            console.error("Patient data not loaded yet.");
+          }
+        }
+        document.addEventListener("DOMContentLoaded", () => {
+          fetch("/static/fragments/booking-table.html")
+            .then(res => res.text())
+            .then(html => {
+              const container = document.createElement('div');
+              container.innerHTML = html;
+              document.body.appendChild(container);
+
+              const closeBookingsBtn = document.getElementById("close-bookings-modal");
+              if (closeBookingsBtn) {
+                closeBookingsBtn.addEventListener("click", () => {
+                  const modal = document.getElementById("booking-modal");
+                  const backdrop = document.getElementById("booking-modal-backdrop");
+                  if (modal) modal.style.display = "none";
+                  if (backdrop) backdrop.style.display = "none";
+                });
+              }
+            })
+            .catch(err => console.error("Failed to load booking modal fragment:", err));
+        });
+
+        function toggleResolved(patientId, alertId, newState) {
+          fetch(`/api/patient/${patientId}/alerts/${alertId}/resolve`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ resolved: newState }),
+          })
+            .then(response => {
+              if (!response.ok) {
+                throw new Error("Failed to update alert resolution");
+              }
+              location.reload(); // refresh to reflect change
+            })
+            .catch(error => {
+              console.error("Error updating alert:", error);
+            });
+        }
+      </script>
+      
+      </body>
+      </html>
+
+
+      <script>
+        // Show/hide sections by ID, hiding all others of the same type
+        function showSection(sectionId) {
+          // List of section IDs
+          const sectionIds = [
+            'medical-history-section'
+            // Add other section IDs here if needed, e.g., 'notes-section', 'alerts-section'
+          ];
+          // Hide all sections
+          sectionIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+          });
+          // Show the selected section
+          const target = document.getElementById(sectionId);
+          if (target) target.style.display = 'block';
+
+          // If showing medical history, fetch content if not already loaded
+          if (sectionId === 'medical-history-section') {
+            const contentDiv = document.getElementById('medical-history-content');
+            // Only fetch if not already loaded
+            if (contentDiv && !contentDiv.dataset.loaded) {
+              const patientId = getPatientIdFromURL();
+              fetch(`/api/patient/${patientId}/summary/ai`)
+                .then(res => {
+                  if (!res.ok) throw new Error("Failed to load medical history summary");
+                  return res.json();
+                })
+                .then(data => {
+                  contentDiv.innerHTML = `<div class="ai-summary">${data.summary}</div>`;
+                  contentDiv.dataset.loaded = "true";
+                })
+                .catch(err => {
+                  contentDiv.innerHTML = `<p style="color:red;">Error loading summary.</p>`;
+                });
+            }
+          }
+        }
+      </script>
+      

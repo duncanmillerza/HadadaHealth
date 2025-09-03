@@ -1,0 +1,658 @@
+/* Dashboard Widgets CSS - AI Report Writing System */
+
+/* Widget Container Grid */
+.dashboard-widgets {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 2.5rem;
+    margin: 2rem 0;
+    align-items: start;
+    width: 100%;
+    max-width: 1400px;
+}
+
+/* Consolidated Reports Widget - Single Width */
+.reports-mega-widget {
+    grid-column: span 1 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: block !important;
+    visibility: visible !important;
+    position: relative !important;
+    z-index: 1 !important;
+    margin-bottom: 0 !important;
+}
+
+@media (max-width: 768px) {
+    .reports-mega-widget {
+        grid-column: span 1;
+        min-width: auto;
+    }
+}
+
+/* Base Widget Styles */
+.dashboard-widget {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    overflow: visible;
+    transition: box-shadow 0.3s ease, transform 0.2s ease;
+    border: 1px solid #e0e0e0;
+    position: relative;
+    z-index: 1;
+    contain: layout;
+    margin: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.dashboard-widget:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+/* Widget Headers */
+.widget-header {
+    background: linear-gradient(135deg, #2D6356 0%, #3a7865 100%);
+    color: white;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.widget-title {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.widget-title .widget-icon {
+    font-size: 1.4rem;
+}
+
+.widget-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.widget-action-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.widget-action-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.widget-action-btn.primary {
+    background: rgba(255, 255, 255, 0.9);
+    color: #2D6356;
+    font-weight: 500;
+}
+
+.widget-action-btn.primary:hover {
+    background: white;
+}
+
+/* Widget Body */
+.widget-body {
+    padding: 1.5rem;
+}
+
+.widget-body.no-padding {
+    padding: 0;
+}
+
+/* Summary Cards within Widgets */
+.widget-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.summary-card {
+    text-align: center;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    transition: background-color 0.2s;
+}
+
+.summary-card:hover {
+    background: #e9ecef;
+}
+
+.summary-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #2D6356;
+    margin-bottom: 0.25rem;
+}
+
+.summary-label {
+    font-size: 0.875rem;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Report Items */
+.widget-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.widget-list-item {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background-color 0.2s;
+    cursor: pointer;
+}
+
+.widget-list-item:hover {
+    background: #f8f9fa;
+}
+
+.widget-list-item:last-child {
+    border-bottom: none;
+}
+
+.report-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.report-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.report-title {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.report-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+    color: #666;
+}
+
+.report-patient {
+    font-weight: 500;
+}
+
+.report-disciplines {
+    color: #888;
+}
+
+.report-badges {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-end;
+}
+
+.priority-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.priority-high {
+    background: #ffebee;
+    color: #c62828;
+    border: 1px solid #f8bbd9;
+}
+
+.priority-normal {
+    background: #fff3e0;
+    color: #ef6c00;
+    border: 1px solid #ffcc80;
+}
+
+.priority-low {
+    background: #e8f5e8;
+    color: #2e7d32;
+    border: 1px solid #a5d6a7;
+}
+
+.status-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.status-pending {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.status-in-progress {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.status-completed {
+    background: #e8f5e8;
+    color: #2e7d32;
+}
+
+.status-overdue {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.deadline-badge {
+    font-size: 0.75rem;
+    color: #666;
+}
+
+.deadline-warning {
+    color: #f57c00;
+    font-weight: 600;
+}
+
+.deadline-overdue {
+    color: #d32f2f;
+    font-weight: 700;
+}
+
+/* Empty State */
+.widget-empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #888;
+}
+
+.empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-state-message {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.empty-state-submessage {
+    font-size: 0.875rem;
+    color: #aaa;
+}
+
+/* Loading States */
+.widget-loading {
+    text-align: center;
+    padding: 2rem;
+    color: #666;
+}
+
+.loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #e0e0e0;
+    border-top: 3px solid #2D6356;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Urgency Indicators */
+.urgency-indicator {
+    position: relative;
+}
+
+.urgency-indicator::before {
+    content: '';
+    position: absolute;
+    left: -1.5rem;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #f44336;
+    border-radius: 2px;
+}
+
+.urgency-pulse {
+    animation: urgency-pulse 2s infinite;
+}
+
+@keyframes urgency-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* Deadline Tracking */
+.deadline-timeline {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #2D6356;
+}
+
+.timeline-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e0e0e0;
+    font-size: 0.875rem;
+}
+
+.timeline-item:last-child {
+    border-bottom: none;
+}
+
+.timeline-date {
+    font-weight: 600;
+    color: #2D6356;
+}
+
+.timeline-status {
+    font-weight: 500;
+}
+
+.timeline-title {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.25rem;
+}
+
+.timeline-patient {
+    font-size: 0.875rem;
+    color: #666;
+}
+
+.timeline-item.timeline-overdue .timeline-date {
+    color: #d32f2f;
+    font-weight: 700;
+}
+
+.timeline-item.timeline-urgent .timeline-date {
+    color: #f57c00;
+    font-weight: 600;
+}
+
+.timeline-item.timeline-normal .timeline-date {
+    color: #2D6356;
+    font-weight: 500;
+}
+
+/* Progress Bars */
+.progress-container {
+    margin: 1rem 0;
+}
+
+.progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+    color: #666;
+    margin-bottom: 0.5rem;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #2D6356 0%, #4CAF50 100%);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+/* Analytics Charts Placeholder */
+.chart-container {
+    height: 200px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    font-size: 0.875rem;
+    border: 1px solid #e0e0e0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .dashboard-widgets {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .widget-header {
+        padding: 1rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .widget-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+    
+    .widget-body {
+        padding: 1rem;
+    }
+    
+    .widget-summary {
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 0.5rem;
+    }
+    
+    .summary-card {
+        padding: 0.75rem;
+    }
+    
+    .summary-value {
+        font-size: 1.5rem;
+    }
+    
+    .report-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+    
+    .report-badges {
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+    }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+    .dashboard-widget {
+        border: 2px solid #000;
+    }
+    
+    .widget-header {
+        background: #000;
+        color: #fff;
+    }
+    
+    .priority-badge,
+    .status-badge {
+        border: 2px solid currentColor;
+    }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+    .dashboard-widget,
+    .widget-list-item,
+    .summary-card,
+    .progress-fill,
+    .loading-spinner {
+        transition: none;
+        animation: none;
+    }
+    
+    .dashboard-widget:hover {
+        transform: none;
+    }
+}
+
+/* Tabbed Interface for Consolidated Reports Widget */
+.widget-tabs {
+    display: flex !important;
+    background: rgba(255, 255, 255, 0.25) !important;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.4) !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    min-height: 52px !important;
+    width: 100% !important;
+    position: relative !important;
+    z-index: 10 !important;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.widget-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.widget-tab {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    padding: 0.8rem 1rem !important;
+    cursor: pointer !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+    transition: all 0.2s ease;
+    border-bottom: 3px solid transparent !important;
+    min-width: 0;
+    flex-shrink: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    height: auto !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+    border-radius: 6px 6px 0 0 !important;
+    margin-right: 2px !important;
+}
+
+.widget-tab:hover {
+    background: rgba(255, 255, 255, 0.25) !important;
+    color: white !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.widget-tab.active {
+    background: rgba(255, 255, 255, 0.4) !important;
+    color: white !important;
+    border-bottom-color: white !important;
+    border-color: rgba(255, 255, 255, 0.6) !important;
+    font-weight: 700 !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7) !important;
+}
+
+.widget-tab-badge {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.8);
+    color: #2D6356;
+    border-radius: 12px;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-left: 0.5rem;
+    min-width: 18px;
+    text-align: center;
+    text-shadow: none;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.widget-tab.active .widget-tab-badge {
+    background: white;
+    color: #2D6356;
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Tab-specific styling adjustments */
+.widget-body .tab-content {
+    padding: 0;
+}
+
+.tab-content .widget-summary,
+.tab-content .widget-list {
+    margin: 0;
+}
+
+.tab-content .widget-list {
+    border-top: none;
+}
+
+/* Mobile tab adjustments */
+@media (max-width: 768px) {
+    .widget-tabs {
+        justify-content: flex-start;
+        padding: 0;
+    }
+    
+    .widget-tab {
+        padding: 0.6rem 0.8rem;
+        font-size: 0.8rem;
+    }
+    
+    .widget-tab-badge {
+        padding: 0.15rem 0.4rem;
+        font-size: 0.7rem;
+        margin-left: 0.3rem;
+    }
+}

@@ -1,0 +1,22 @@
+<div id="booking-modal" class="modal" style="display: none; position: fixed; z-index: 2000; top: 0; left: 0; width: 100%; height: 100%; overflow-y: auto; background-color: rgba(0,0,0,0.5);">
+    <div class="modal-content" style="margin: 4rem auto 2rem auto; max-width: 800px;">
+      <span class="close-button" id="close-bookings-modal">&times;</span>
+      <h2>Booking Details</h2>
+      <table class="booking-table" style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th style="padding: 0.75rem;" onclick="sortBookingsTable(0)">Date</th>
+            <th style="padding: 0.75rem;" onclick="sortBookingsTable(1)">Time</th>
+            <th style="padding: 0.75rem;" onclick="sortBookingsTable(2)">Profession</th>
+            <th style="padding: 0.75rem;" onclick="sortBookingsTable(3)">Therapist</th>
+            <th style="padding: 0.75rem;" onclick="sortBookingsTable(4)">Billing</th>
+            <th style="padding: 0.75rem;" onclick="sortBookingsTable(5)">Notes</th>
+          </tr>
+        </thead>
+        <tbody id="booking-table-body">
+          <tr><td colspan="6" style="padding: 1rem;">Loading...</td></tr>
+        </tbody>
+      </table>
+      
+  </div>
+  <div id="booking-modal-backdrop" class="modal-backdrop"></div>

@@ -1,0 +1,353 @@
+{
+  "title": "Discharge Summary.docx",
+  "paragraphs": [
+    {
+      "text": "DISCHARGE DATE:",
+      "style": "Normal",
+      "is_header": false
+    },
+    {
+      "text": "BACKGROUND HISTORY:",
+      "style": "Heading 1",
+      "is_header": true
+    },
+    {
+      "text": "MEDICAL STATUS:",
+      "style": "Heading 1",
+      "is_header": true
+    },
+    {
+      "text": "SKIN:",
+      "style": "Heading 1",
+      "is_header": true
+    },
+    {
+      "text": "BLADDER AND BOWEL:",
+      "style": "Heading 1",
+      "is_header": true
+    },
+    {
+      "text": "DISCHARGE MEDICATION:",
+      "style": "Heading 1",
+      "is_header": true
+    },
+    {
+      "text": "MEDICAL FOLLOW UP:",
+      "style": "Heading 1",
+      "is_header": true
+    },
+    {
+      "text": "Self-care",
+      "style": "List Paragraph",
+      "is_header": false
+    },
+    {
+      "text": "Mobility",
+      "style": "List Paragraph",
+      "is_header": false
+    },
+    {
+      "text": "Leisure",
+      "style": "List Paragraph",
+      "is_header": false
+    },
+    {
+      "text": "Psychological well being",
+      "style": "List Paragraph",
+      "is_header": false
+    },
+    {
+      "text": "Patient and caregiver education and training",
+      "style": "List Paragraph",
+      "is_header": false
+    }
+  ],
+  "tables": [
+    {
+      "index": 0,
+      "data": [
+        [
+          "Report Date:",
+          ""
+        ],
+        [
+          "Patient Name:",
+          ""
+        ],
+        [
+          "Funder name:",
+          ""
+        ],
+        [
+          "Membership number:",
+          ""
+        ],
+        [
+          "Authorisation Number:",
+          ""
+        ],
+        [
+          "Diagnosis:",
+          ""
+        ],
+        [
+          "ICD 10 code/s:",
+          ""
+        ],
+        [
+          "Date of admission:",
+          ""
+        ],
+        [
+          "Date of incident:",
+          ""
+        ],
+        [
+          "Attending Physician:",
+          ""
+        ],
+        [
+          "Therapy Practice:",
+          ""
+        ],
+        [
+          "",
+          ""
+        ],
+        [
+          "",
+          ""
+        ],
+        [
+          "",
+          ""
+        ],
+        [
+          "Social Work Practice:",
+          ""
+        ],
+        [
+          "Psychology Practice:",
+          ""
+        ],
+        [
+          "Dietician Practice:",
+          ""
+        ]
+      ]
+    },
+    {
+      "index": 1,
+      "data": [
+        [
+          "REHABILITATION OUTCOME",
+          "REHABILITATION OUTCOME",
+          "REHABILITATION OUTCOME",
+          "REHABILITATION OUTCOME"
+        ],
+        [
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Summary of Environmental &\nContextual Factors",
+          "Assistive Devices, Technology &\nHome Adaptations",
+          "Education & Training completed",
+          "Psychosocial Summary &\nRecommendations"
+        ],
+        [
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    },
+    {
+      "index": 2,
+      "data": [
+        [
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "GOALS ADDRESSED DURING INPATIENT EPISODE",
+          "GOALS ADDRESSED DURING INPATIENT EPISODE",
+          "GOALS ADDRESSED DURING INPATIENT EPISODE",
+          "GOALS ADDRESSED DURING INPATIENT EPISODE"
+        ],
+        [
+          "Cognition/perception/vision\n\nCommunication",
+          "Cognition/perception/vision\n\nCommunication",
+          "Cognition/perception/vision\n\nCommunication",
+          "Cognition/perception/vision\n\nCommunication"
+        ]
+      ]
+    },
+    {
+      "index": 3,
+      "data": [
+        [
+          ""
+        ],
+        [
+          "ADDITIONAL INFORMATION REGARDING LEVEL OF FUNCTION ON DISCHARGE"
+        ],
+        [
+          "Mobility:\n\nStrength:"
+        ]
+      ]
+    },
+    {
+      "index": 4,
+      "data": [
+        [
+          "ROM:\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nUpper limb:",
+          "ROM:\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nUpper limb:",
+          "ROM:\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nUpper limb:",
+          "ROM:\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nUpper limb:",
+          "ROM:\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nUpper limb:"
+        ],
+        [
+          "",
+          "Aspect assessed",
+          "Admission",
+          "Discharge",
+          ""
+        ],
+        [
+          "",
+          "Upper extremity",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "Wrist",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "Hand",
+          "",
+          "",
+          ""
+        ]
+      ]
+    },
+    {
+      "index": 5,
+      "data": [
+        [
+          "",
+          "Co-ordination/Speed",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "Sensation",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "Passive joint motion",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "Joint pain",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Cognition:\n\nSelf-care:\n\nCommunication:\n\nSwallowing:",
+          "Cognition:\n\nSelf-care:\n\nCommunication:\n\nSwallowing:",
+          "Cognition:\n\nSelf-care:\n\nCommunication:\n\nSwallowing:",
+          "Cognition:\n\nSelf-care:\n\nCommunication:\n\nSwallowing:",
+          "Cognition:\n\nSelf-care:\n\nCommunication:\n\nSwallowing:",
+          "Cognition:\n\nSelf-care:\n\nCommunication:\n\nSwallowing:"
+        ],
+        [
+          "REFERRALS",
+          "REFERRALS",
+          "REFERRALS",
+          "REFERRALS",
+          "REFERRALS",
+          "TREATING CLINICIANS"
+        ]
+      ]
+    },
+    {
+      "index": 6,
+      "data": [
+        [
+          "Psychologist\n\nDietician",
+          "Rehab Programme Manager\n\nPhysiotherapist: \nOccupational Therapist: \nSpeech Therapist: \nSocial Worker:"
+        ]
+      ]
+    },
+    {
+      "index": 7,
+      "data": [
+        [
+          "THERAPEUTIC FOLLOW-UP"
+        ],
+        [
+          "Ongoing outpatient rehabilitation is recommended for … in order to focus on;\n\nPhysiotherapy\n\nOccupational Therapy\n\nSpeech Therapy"
+        ]
+      ]
+    },
+    {
+      "index": 8,
+      "data": [
+        [
+          "OUTPATIENT THERAPY PRACTICE DETAILS (PLEASE CONTACT TO MAKE AN APPOINTMENT)",
+          "OUTPATIENT THERAPY PRACTICE DETAILS (PLEASE CONTACT TO MAKE AN APPOINTMENT)",
+          "OUTPATIENT THERAPY PRACTICE DETAILS (PLEASE CONTACT TO MAKE AN APPOINTMENT)"
+        ],
+        [
+          "Physiotherapy",
+          "",
+          ""
+        ],
+        [
+          "Occupational Therapy",
+          "",
+          ""
+        ],
+        [
+          "Speech Therapy",
+          "",
+          ""
+        ]
+      ]
+    }
+  ],
+  "headers": [
+    "DISCHARGE DATE:",
+    "BACKGROUND HISTORY:",
+    "MEDICAL STATUS:",
+    "SKIN:",
+    "BLADDER AND BOWEL:",
+    "DISCHARGE MEDICATION:",
+    "MEDICAL FOLLOW UP:"
+  ]
+}

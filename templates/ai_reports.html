@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Reports Dashboard - HadadaHealth</title>
+  
+  <!-- PWA Meta Tags -->
+  <meta name="application-name" content="HadadaHealth">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="HadadaHealth">
+  <meta name="description" content="AI-powered reports dashboard for healthcare professionals">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#2D6356">
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="stylesheet" href="/static/nav.css">
+  <link rel="stylesheet" href="/static/css/ai-reports-dashboard.css">
+  <link rel="stylesheet" href="/static/css/report_wizard.css">
+  <link rel="stylesheet" href="/static/css/report-editor.css">
+  <link rel="icon" href="/static/favicon.ico" type="image/x-icon" />
+  <link rel="preload" href="/static/fonts/MaterialIcons-Regular.woff2" as="font" type="font/ttf" crossorigin="anonymous">
+  
+  <!-- Inline styles removed - now using external brand-compliant CSS -->
+</head>
+<body>
+  <div id="top-nav"></div>
+  
+  <div class="container">
+    <!-- Page Header with Stats -->
+    <div class="page-header-section">
+      <div class="header-content">
+        <h1 class="animate-fade-up" style="animation-play-state: running; opacity: 1;"><i class="fas fa-file-medical me-3"></i>AI Reports Dashboard</h1>
+        <p class="muted animate-fade-up animate-delay-200">Manage and track AI-generated healthcare reports for your practice</p>
+      </div>
+      <div class="stats-card-container">
+        <div class="card stats-summary">
+          <div class="stats-row">
+            <div class="stat-item">
+              <div class="stat-number" id="active-reports">0</div>
+              <div class="stat-label">Active</div>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+              <div class="stat-number" id="completed-reports">0</div>
+              <div class="stat-label">My Parts Done</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    
+    <!-- Reports Dashboard -->
+    <div class="reports-dashboard">
+      <div class="reports-header">
+        <h2>AI Reports</h2>
+        <div class="primary-actions">
+          <button class="btn btn-primary" onclick="openReportWizard('therapist')" title="Add Report">
+            <i class="fas fa-plus me-2"></i>Add Report
+          </button>
+          <button class="btn btn-secondary" onclick="window.location.href='/template-management'" title="Manage Templates">
+            <i class="fas fa-cogs me-2"></i>Manage Templates
+          </button>
+        </div>
+      </div>
+      
+      <div class="search-controls">
+        <div class="input-group search-input">
+          <input type="text" class="form-control" placeholder="Search reports..." id="reports-search">
+          <button class="btn btn-outline-secondary" type="button">
+            <i class="fas fa-search"></i>
+          </button>
+        </div>
+        <div class="dropdown">
+          <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+            <i class="fas fa-filter me-2"></i>Filter
+          </button>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#" data-filter="all">All Reports</a></li>
+            <li><a class="dropdown-item" href="#" data-filter="pending">Pending</a></li>
+            <li><a class="dropdown-item" href="#" data-filter="in-progress">In Progress</a></li>
+            <li><a class="dropdown-item" href="#" data-filter="completed">Completed</a></li>
+            <li><a class="dropdown-item" href="#" data-filter="overdue">Overdue</a></li>
+          </ul>
+        </div>
+      </div>
+      
+      <!-- Tabs for different report views -->
+      <ul class="nav nav-tabs" id="reportTabs">
+        <li class="nav-item">
+          <button class="nav-link active" id="my-active-tab" data-bs-toggle="tab" data-bs-target="#my-active">
+            My Active Reports
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" id="my-completed-tab" data-bs-toggle="tab" data-bs-target="#my-completed">
+            My Completed Reports
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" id="team-reports-tab" data-bs-toggle="tab" data-bs-target="#team-reports">
+            Team Reports
+          </button>
+        </li>
+      </ul>
+      
+      <div class="tab-content mt-4" id="reportTabsContent">
+        
+        <!-- My Active Reports Tab -->
+        <div class="tab-pane fade show active" id="my-active">
+          <div id="my-active-container">
+            <div class="empty-state">
+              <i class="fas fa-tasks"></i>
+              <h3>No Active Reports</h3>
+              <p>Reports that need your attention will appear here</p>
+              <button class="btn btn-primary btn-lg mt-3" onclick="openReportWizard('therapist')">
+                <i class="fas fa-plus me-2"></i>Add Your First Report
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- My Completed Reports Tab -->
+        <div class="tab-pane fade" id="my-completed">
+          <div id="my-completed-container">
+            <div class="empty-state">
+              <i class="fas fa-check-circle"></i>
+              <h3>No Completed Reports</h3>
+              <p>Reports where you've completed your portion will appear here</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Team Reports Tab -->
+        <div class="tab-pane fade" id="team-reports">
+          <div id="team-reports-container">
+            <div class="empty-state">
+              <i class="fas fa-users"></i>
+              <h3>No Team Reports</h3>
+              <p>All practice reports will appear here</p>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+  </div>
+  
+  
+  <!-- Report Wizard Modal Container -->
+  <div id="report-wizard-modal-container">
+    <!-- Modal will be loaded dynamically -->
+  </div>
+  
+  <!-- Delete Confirmation Modal -->
+  <div class="modal fade" id="deleteReportModal" tabindex="-1" aria-labelledby="deleteReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="deleteReportModalLabel">
+            <i class="fas fa-exclamation-triangle text-warning me-2"></i>Delete Report
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-3">Are you sure you want to delete this report?</p>
+          <div class="alert alert-warning">
+            <strong id="reportToDelete"></strong>
+          </div>
+          <p class="text-muted mb-0">
+            <i class="fas fa-info-circle me-1"></i>
+            This action cannot be undone. The report and all its data will be permanently deleted.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+            <i class="fas fa-trash me-1"></i>Delete Report
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reassign Report Modal -->
+  <div class="modal fade" id="reassignReportModal" tabindex="-1" aria-labelledby="reassignReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="reassignReportModalLabel">
+            <i class="fas fa-user-friends text-warning me-2"></i>Reassign Report
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-3">Reassign this report to different therapists:</p>
+          <div class="alert alert-info">
+            <strong id="reportToReassign"></strong>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Select Therapists:</label>
+            <div id="therapistCheckboxes" class="mt-2">
+              <!-- Therapist checkboxes will be loaded here -->
+            </div>
+          </div>
+          
+          <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Note:</strong> Reassigning will reset all completion status for this report. All therapists will need to mark their portions complete again.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-warning" id="confirmReassignBtn">
+            <i class="fas fa-user-friends me-1"></i>Reassign Report
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/static/js/report_wizard.js"></script>
+  <script src="/static/js/nav-bar.js"></script>
+  
+  <!-- Bottom Navigation for Mobile -->
+  <div id="bottom-nav"></div>
+  
+  <script>
+    // AI Reports Dashboard Controller
+    class AIReportsDashboard {
+      constructor() {
+        this.reports = [];
+        this.filteredReports = [];
+        this.currentFilter = 'all';
+        this.currentTab = 'my-active';
+        this.init();
+      }
+      
+      async init() {
+        console.log('📊 Initializing AI Reports Dashboard...');
+        await this.loadReports();
+        this.setupEventListeners();
+        await this.updateStats();
+        console.log('✅ AI Reports Dashboard initialized');
+      }
+      
+      async loadReports() {
+        try {
+          console.log('📋 Loading reports...');
+          const response = await fetch('/api/reports');
+          if (response.ok) {
+            this.reports = await response.json();
+            this.filteredReports = [...this.reports];
+            await this.renderReports();
+            console.log(`✅ Loaded ${this.reports.length} reports`);
+            console.log('📋 Raw API reports data:', this.reports);
+          } else {
+            console.log('ℹ️ No reports found or API not available, using mock data');
+            await this.loadMockReports();
+          }
+        } catch (error) {
+          console.log('ℹ️ Reports API not available, using mock data');
+          await this.loadMockReports();
+        }
+      }
+      
+      async loadMockReports() {
+        // Get current user info first
+        const currentUser = this.getCurrentUserSync();
+        
+        // Mock data for demonstration - including both user and practice-wide reports
+        const allPracticeReports = [
+          {
+            id: 1,
+            title: "Physical Therapy Progress Report - John Doe",
+            patient: "John Doe",
+            type: "progress",
+            status: "pending",
+            assignedTo: "Current User", // This matches current user
+            assigned_to_current_user: true,
+            assigned_therapist_ids: [currentUser.id || '1'], // Current user assigned
+            createdBy: "Alice Johnson",
+            createdDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+            deadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+            description: "6-week progress assessment for knee rehabilitation"
+          },
+          {
+            id: 2,
+            title: "Occupational Therapy Assessment - Jane Smith",
+            patient: "Jane Smith",
+            type: "assessment",
+            status: "in-progress",
+            assignedTo: "Current User", // This matches current user
+            assigned_to_current_user: true,
+            assigned_therapist_ids: [currentUser.id || '1'], // Current user assigned
+            createdBy: "Bob Wilson",
+            createdDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+            deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+            description: "Initial assessment for upper limb function"
+          },
+          {
+            id: 3,
+            title: "Speech Therapy Discharge Summary - Mike Johnson",
+            patient: "Mike Johnson",
+            type: "discharge",
+            status: "completed",
+            assignedTo: "Dr. Davis", // Different user
+            assigned_to_current_user: false,
+            assigned_therapist_ids: ['3'], // Different therapist assigned
+            createdBy: "Carol Lee",
+            createdDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+            completedDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+            description: "Final discharge summary after 12 weeks of treatment"
+          },
+          {
+            id: 4,
+            title: "Psychology Assessment - Sarah Wilson",
+            patient: "Sarah Wilson", 
+            type: "assessment",
+            status: "completed",
+            assignedTo: "Current User", // This matches current user
+            assigned_to_current_user: true,
+            assigned_therapist_ids: [currentUser.id || '1'], // Current user assigned
+            createdBy: "Current User",
+            createdDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+            completedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+            description: "Comprehensive psychological assessment"
+          },
+          {
+            id: 6,
+            title: "Multi-Disciplinary Report - Emma Davis",
+            patient: "Emma Davis",
+            type: "progress", 
+            status: "in-progress", // Overall report still in progress
+            assignedTo: "Current User, Dr. Brown", // Multiple therapists
+            assigned_to_current_user: true,
+            assigned_therapist_ids: [currentUser.id || '1', '3'], // Current user and another therapist
+            createdBy: "Manager",
+            createdDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+            deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+            description: "Multi-disciplinary progress assessment",
+            user_completed_portion: true, // Current user completed their part
+            therapist_completions: [
+              {
+                therapist_id: currentUser.id || '1',
+                completed_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+                completion_notes: "Physiotherapy portion complete"
+              }
+            ]
+          },
+          {
+            id: 5,
+            title: "Team Report - Robert Brown",
+            patient: "Robert Brown",
+            type: "progress", 
+            status: "pending",
+            assignedTo: "Dr. Kim", // Different user
+            assigned_to_current_user: false,
+            assigned_therapist_ids: ['2'], // Different therapist assigned
+            createdBy: "Dr. Kim",
+            createdDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+            deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            description: "Multi-disciplinary progress report"
+          }
+        ];
+        
+        // Simulate API behavior: filter reports for current user only
+        // In real implementation, the API endpoint /api/reports already does this filtering
+        this.reports = allPracticeReports.filter(report => 
+          this.isAssignedToCurrentUser(report, currentUser)
+        );
+        
+        this.filteredReports = [...this.reports];
+        await this.renderReports();
+        
+        console.log('📊 Mock reports loaded:', {
+          totalPracticeReports: allPracticeReports.length,
+          userReports: this.reports.length,
+          currentUser: currentUser
+        });
+      }
+      
+      setupEventListeners() {
+        // Search functionality
+        const searchInput = document.getElementById('reports-search');
+        if (searchInput) {
+          searchInput.addEventListener('input', async (e) => {
+            await this.filterReports(e.target.value, this.currentFilter);
+          });
+        }
+        
+        // Filter dropdown
+        document.querySelectorAll('[data-filter]').forEach(item => {
+          item.addEventListener('click', async (e) => {
+            e.preventDefault();
+            this.currentFilter = e.target.dataset.filter;
+            await this.filterReports(searchInput.value || '', this.currentFilter);
+          });
+        });
+        
+        // Tab switching
+        document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+          tab.addEventListener('shown.bs.tab', async (e) => {
+            this.currentTab = e.target.getAttribute('data-bs-target').substring(1);
+            await this.renderReports();
+          });
+        });
+      }
+      
+      async filterReports(searchTerm, filter) {
+        let filtered = [...this.reports];
+        
+        // Apply search filter
+        if (searchTerm) {
+          filtered = filtered.filter(report => 
+            report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            report.patient.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            report.description?.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+        }
+        
+        // Apply category filter
+        switch (filter) {
+          case 'pending':
+            filtered = filtered.filter(report => report.status === 'pending');
+            break;
+          case 'in-progress':
+            filtered = filtered.filter(report => report.status === 'in-progress');
+            break;
+          case 'completed':
+            filtered = filtered.filter(report => report.status === 'completed');
+            break;
+          case 'overdue':
+            const now = new Date();
+            filtered = filtered.filter(report => 
+              report.status !== 'completed' && new Date(report.deadline) < now
+            );
+            break;
+        }
+        
+        this.filteredReports = filtered;
+        await this.renderReports();
+      }
+      
+      async renderReports() {
+        const containerId = `${this.currentTab}-container`;
+        const container = document.getElementById(containerId);
+        
+        if (!container) return;
+        
+        let reportsToShow = [];
+        
+        // Apply tab-specific filtering with proper async handling
+        switch (this.currentTab) {
+          case 'my-active':
+            reportsToShow = await this.getMyActiveReports();
+            break;
+          case 'my-completed':
+            reportsToShow = await this.getMyCompletedReports();
+            break;
+          case 'team-reports':
+            reportsToShow = await this.getTeamReports();
+            break;
+          default:
+            reportsToShow = this.filteredReports;
+        }
+        
+        if (reportsToShow.length === 0) {
+          this.renderEmptyState(container);
+          return;
+        }
+        
+        const reportsHtml = reportsToShow.map(report => `
+          <div class="report-card" data-report-id="${report.id}" role="article" aria-labelledby="report-title-${report.id}">
+            <div class="report-card-header">
+              <div class="report-info">
+                <h4 id="report-title-${report.id}">${report.title}</h4>
+                <p class="report-description">${report.description}</p>
+                <div class="report-meta">
+                  <span class="meta-item"><i class="fas fa-user" aria-hidden="true"></i>Patient: <strong>${report.patient}</strong></span>
+                  <span class="meta-item"><i class="fas fa-user-md" aria-hidden="true"></i>Assigned to: <strong>${report.assignedTo}</strong></span>
+                  <span class="meta-item"><i class="fas fa-calendar" aria-hidden="true"></i>Created: ${this.formatDate(report.createdDate)}</span>
+                  ${report.deadline ? `<span class="meta-item"><i class="fas fa-clock" aria-hidden="true"></i>Due: ${this.formatDate(report.deadline)}</span>` : ''}
+                </div>
+              </div>
+              <div class="report-status-container">
+                <span class="report-status status-${report.status}" role="status" aria-label="Report status: ${this.formatStatus(report.status)}">${this.formatStatus(report.status)}</span>
+              </div>
+            </div>
+            
+            <div class="completion-section" id="completion-${report.id}">
+              <!-- Completion status and controls will be loaded here -->
+            </div>
+            
+            <div class="report-actions">
+              <div class="primary-actions">
+                <button class="btn btn-sm btn-secondary" onclick="editReport(${report.id})" aria-label="Edit report ${report.title}">
+                  <i class="fas fa-edit" aria-hidden="true"></i>
+                  <span class="btn-text">Edit</span>
+                </button>
+                <button class="btn btn-sm btn-secondary" onclick="viewReport(${report.id})" aria-label="View report ${report.title}">
+                  <i class="fas fa-eye" aria-hidden="true"></i>
+                  <span class="btn-text">View</span>
+                </button>
+                <button class="btn btn-sm btn-secondary" onclick="downloadReport(${report.id})" aria-label="Download report ${report.title}">
+                  <i class="fas fa-download" aria-hidden="true"></i>
+                  <span class="btn-text">Download</span>
+                </button>
+              </div>
+              <div class="secondary-actions">
+                <button class="btn btn-sm btn-tertiary" onclick="reassignReport(${report.id}, '${report.title}')" aria-label="Reassign report ${report.title}">
+                  <i class="fas fa-user-friends" aria-hidden="true"></i>
+                  <span class="btn-text">Reassign</span>
+                </button>
+                <button class="btn btn-sm btn-destructive" onclick="deleteReport(${report.id}, '${report.title}')" aria-label="Delete report ${report.title}">
+                  <i class="fas fa-trash" aria-hidden="true"></i>
+                  <span class="btn-text">Delete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        `).join('');
+        
+        container.innerHTML = reportsHtml;
+        
+        // Load completion status for each report
+        this.filteredReports.forEach(report => {
+          this.loadCompletionStatus(report.id);
+        });
+      }
+      
+      renderEmptyState(container) {
+        let emptyMessage = '';
+        
+        switch (this.currentTab) {
+          case 'my-active':
+            emptyMessage = `
+              <div class="empty-state">
+                <i class="fas fa-tasks"></i>
+                <h3>No Active Reports</h3>
+                <p>Reports that need your attention will appear here</p>
+                <button class="btn btn-primary btn-lg mt-3" onclick="openReportWizard('therapist')">
+                  <i class="fas fa-plus me-2"></i>Add Your First Report
+                </button>
+              </div>
+            `;
+            break;
+          case 'my-completed':
+            emptyMessage = `
+              <div class="empty-state">
+                <i class="fas fa-check-circle"></i>
+                <h3>No Completed Reports</h3>
+                <p>Reports where you've completed your portion will appear here</p>
+              </div>
+            `;
+            break;
+          case 'team-reports':
+            emptyMessage = `
+              <div class="empty-state">
+                <i class="fas fa-users"></i>
+                <h3>No Team Reports</h3>
+                <p>All practice reports will appear here</p>
+              </div>
+            `;
+            break;
+          default:
+            emptyMessage = `
+              <div class="empty-state">
+                <i class="fas fa-file-medical"></i>
+                <h3>No Reports Found</h3>
+                <p>Create your first AI-generated report to get started</p>
+                <button class="btn btn-primary btn-lg mt-3" onclick="openReportWizard('therapist')">
+                  <i class="fas fa-plus me-2"></i>Add Your First Report
+                </button>
+              </div>
+            `;
+        }
+        
+        container.innerHTML = emptyMessage;
+      }
+      
+      async updateStats() {
+        console.log('📊 Raw reports data:', this.reports);
+        
+        // Log each report individually for easier debugging
+        this.reports.forEach((report, index) => {
+          console.log(`📋 Report ${index + 1}:`, report);
+        });
+        
+        // Get current user info (you may need to adjust this based on your auth system)
+        const currentUser = await this.getCurrentUser();
+        console.log('👤 Current user:', currentUser);
+        
+        // Calculate active reports assigned to current user (pending + in-progress BUT user hasn't completed their part)
+        const activeReports = await this.getActiveReportsCount(currentUser);
+        
+        // Calculate reports where current user has completed their part
+        // We need to check the completion API for each report to get accurate therapist completion data
+        const completedReports = await this.getCompletedReportsCount(currentUser);
+        
+        console.log('📊 User Stats Update:', { 
+          activeReports, 
+          completedReports, 
+          currentUser,
+          userReports: this.reports.filter(r => this.isAssignedToCurrentUser(r, currentUser)).length,
+          totalReports: this.reports.length,
+          breakdown: {
+            fullyCompleted: this.reports.filter(r => 
+              this.isAssignedToCurrentUser(r, currentUser) && r.status === 'completed'
+            ).length,
+            userPortionComplete: this.reports.filter(r => 
+              this.isAssignedToCurrentUser(r, currentUser) && 
+              (r.user_completed_portion || (r.therapist_completions && r.therapist_completions.some(tc => 
+                [currentUser.id, currentUser.user_id, currentUser.username].includes(tc.therapist_id)
+              )))
+            ).length
+          }
+        });
+        
+        // Update the stats display
+        const activeElement = document.getElementById('active-reports');
+        const completedElement = document.getElementById('completed-reports');
+        
+        if (activeElement) activeElement.textContent = activeReports;
+        if (completedElement) completedElement.textContent = completedReports;
+      }
+      
+      getCurrentUserSync() {
+        // Synchronous version for mock data setup
+        // TODO: Replace with actual user data from your auth system
+        return {
+          name: 'Current User', // Replace with actual user name
+          id: '1', // Replace with actual user ID - using '1' to match mock data
+          user_id: '1', // Also provide user_id field for compatibility
+          email: 'user@example.com', // Replace with actual user email
+          username: 'Current User' // Also provide username field
+        };
+      }
+      
+      isAssignedToCurrentUser(report, currentUser) {
+        // Check multiple possible fields where user assignment might be stored
+        const userIdentifiers = [
+          String(currentUser.name), 
+          String(currentUser.id), 
+          String(currentUser.user_id), 
+          String(currentUser.username), 
+          String(currentUser.email)
+        ].filter(Boolean); // Remove any undefined/null values
+        
+        // Check common assignment fields
+        const isAssignedByField = (
+          userIdentifiers.includes(String(report.assignedTo)) ||
+          userIdentifiers.includes(String(report.assigned_to)) ||
+          userIdentifiers.includes(String(report.assignee)) ||
+          userIdentifiers.includes(String(report.therapist)) ||
+          userIdentifiers.includes(String(report.user))
+        );
+        
+        // Check assigned_therapist_ids array (handle both string and array formats)
+        let isAssignedByArray = false;
+        if (report.assigned_therapist_ids) {
+          let therapistIds = report.assigned_therapist_ids;
+          
+          // Parse if it's a JSON string
+          if (typeof therapistIds === 'string') {
+            try {
+              therapistIds = JSON.parse(therapistIds);
+            } catch (e) {
+              therapistIds = [therapistIds]; // Treat as single ID if not valid JSON
+            }
+          }
+          
+          if (Array.isArray(therapistIds)) {
+            isAssignedByArray = therapistIds.some(id => userIdentifiers.includes(String(id)));
+          }
+        }
+        
+        // Check explicit flag
+        const isAssignedByFlag = report.assigned_to_current_user === true;
+        
+        // Since the API endpoint /api/reports already filters by user, if we got the report, we're likely assigned
+        // Re-enable this now that we've verified the assignment logic works
+        const isFromUserAPI = true; // The API endpoint already does user filtering
+        
+        console.log(`🔍 Assignment check for report ${report.id}:`, {
+          userIdentifiers,
+          report: {
+            id: report.id,
+            assignedTo: report.assignedTo,
+            assigned_therapist_ids: report.assigned_therapist_ids,
+            assigned_to_current_user: report.assigned_to_current_user,
+            status: report.status
+          },
+          isAssignedByField,
+          isAssignedByArray,
+          isAssignedByFlag,
+          result: isAssignedByField || isAssignedByArray || isAssignedByFlag || isFromUserAPI
+        });
+        
+        return isAssignedByField || isAssignedByArray || isAssignedByFlag || isFromUserAPI;
+      }
+      
+      formatDate(dateString) {
+        if (!dateString) return 'Unknown';
+        return new Date(dateString).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+      }
+      
+      formatStatus(status) {
+        const statusMap = {
+          'pending': 'Pending',
+          'in-progress': 'In Progress',
+          'completed': 'Completed',
+          'overdue': 'Overdue'
+        };
+        return statusMap[status] || status;
+      }
+
+      // Therapist completion functionality
+      async loadCompletionStatus(reportId) {
+        try {
+          const response = await fetch(`/api/reports/${reportId}/completion-status`);
+          if (response.ok) {
+            const completionData = await response.json();
+            await this.renderCompletionControls(reportId, completionData);
+          }
+        } catch (error) {
+          console.error('Failed to load completion status:', error);
+        }
+      }
+
+      async renderCompletionControls(reportId, completionData) {
+        const completionContainer = document.getElementById(`completion-${reportId}`);
+        if (!completionContainer) return;
+        
+        const currentUser = await this.getCurrentUser();
+        const isAssigned = completionData.assigned_therapist_ids?.includes(String(currentUser?.user_id));
+        const hasCompleted = completionData.therapist_completions?.some(tc => tc.therapist_id === String(currentUser?.user_id));
+        
+        if (!isAssigned) {
+          completionContainer.innerHTML = '';
+          return;
+        }
+        
+        const progressPercentage = completionData.completion_percentage || 0;
+        const completedCount = completionData.completed_therapists || 0;
+        const totalCount = completionData.total_assigned_therapists || 1;
+        
+        const completionHTML = `
+          <div class="completion-status">
+            <div class="completion-progress mb-2">
+              <small class="text-muted">Progress: ${completedCount}/${totalCount} therapists completed</small>
+              <div class="progress" style="height: 4px;">
+                <div class="progress-bar ${completionData.is_fully_completed ? 'bg-success' : 'bg-warning'}" 
+                     style="width: ${progressPercentage}%"></div>
+              </div>
+            </div>
+            <div class="completion-actions">
+              ${hasCompleted ? 
+                `<button class="btn btn-sm btn-outline-warning" onclick="aiReportsDashboard.removeCompletion(${reportId})">
+                   <i class="fas fa-undo"></i> Undo Completion
+                 </button>` :
+                `<button class="btn btn-sm btn-primary" onclick="aiReportsDashboard.markComplete(${reportId})">
+                   <i class="fas fa-check"></i> Mark My Part Complete
+                 </button>`
+              }
+            </div>
+          </div>
+        `;
+        completionContainer.innerHTML = completionHTML;
+        
+        // Update the assigned therapists display with color coding
+        await this.updateAssignedTherapistsDisplay(reportId, completionData);
+      }
+
+      async updateAssignedTherapistsDisplay(reportId, completionData) {
+        // Find the report card and update the "Assigned to" display with color coding
+        const reportCard = document.querySelector(`[data-report-id="${reportId}"]`);
+        if (!reportCard) return;
+        
+        const assignedToSpan = reportCard.querySelector('.report-meta .meta-item:nth-child(2)');
+        if (!assignedToSpan) return;
+        
+        // Get completed therapist IDs for color coding
+        const completedTherapistIds = completionData.therapist_completions?.map(tc => tc.therapist_id) || [];
+        
+        // Build the assigned therapists display with color coding
+        // Use dynamic loading or fallback names
+        const assignedTherapistIds = completionData.assigned_therapist_ids || [];
+        
+        // Try to get therapist names from cache or API
+        try {
+          if (!window.therapistNamesCache) {
+            const response = await fetch('/api/therapists');
+            if (response.ok) {
+              const therapists = await response.json();
+              window.therapistNamesCache = {};
+              therapists.forEach(t => {
+                window.therapistNamesCache[t.id] = t.name;
+              });
+            }
+          }
+        } catch (e) {
+          console.log('Failed to load therapist cache:', e);
+        }
+        
+        // Build the display with therapist names and completion status
+        const therapistDisplay = assignedTherapistIds.map(therapistId => {
+          let name = `Therapist ${therapistId}`;
+          
+          if (window.therapistNamesCache && window.therapistNamesCache[therapistId]) {
+            name = window.therapistNamesCache[therapistId];
+          } else {
+            // Fallback to basic names if cache fails
+            const fallbackNames = { '1': 'Duncan Miller', '3': 'Kim Jones', '4': 'Anel Richards' };
+            name = fallbackNames[therapistId] || `Therapist ${therapistId}`;
+          }
+          
+          const isCompleted = completedTherapistIds.includes(therapistId);
+          const colorClass = isCompleted ? 'text-success fw-bold' : '';
+          return `<span class="${colorClass}">${name}</span>`;
+        });
+        
+        const therapistDisplayText = therapistDisplay.join(', ');
+        
+        // Update the HTML
+        assignedToSpan.innerHTML = `<i class="fas fa-user-md" aria-hidden="true"></i>Assigned to: <strong>${therapistDisplayText}</strong>`;
+      }
+
+      async markComplete(reportId, notes = '') {
+        try {
+          const response = await fetch(`/api/reports/${reportId}/complete-therapist`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({ completion_notes: notes })
+          });
+          
+          if (response.ok) {
+            showNotification('Your portion has been marked as complete!', 'success');
+            this.loadCompletionStatus(reportId); // Refresh the status
+            this.loadReports(); // Refresh the reports list
+          } else {
+            const error = await response.json();
+            showNotification(error.detail || 'Failed to mark as complete', 'error');
+          }
+        } catch (error) {
+          console.error('Error marking complete:', error);
+          showNotification('Failed to mark as complete', 'error');
+        }
+      }
+
+      async removeCompletion(reportId) {
+        try {
+          const response = await fetch(`/api/reports/${reportId}/complete-therapist`, {
+            method: 'DELETE',
+            credentials: 'include'
+          });
+          
+          if (response.ok) {
+            showNotification('Completion removed successfully', 'success');
+            this.loadCompletionStatus(reportId); // Refresh the status
+            this.loadReports(); // Refresh the reports list
+          } else {
+            const error = await response.json();
+            showNotification(error.detail || 'Failed to remove completion', 'error');
+          }
+        } catch (error) {
+          console.error('Error removing completion:', error);
+          showNotification('Failed to remove completion', 'error');
+        }
+      }
+
+      async getCurrentUser() {
+        // Cache the current user to avoid repeated API calls
+        if (this.currentUser) {
+          return this.currentUser;
+        }
+        
+        try {
+          // Try to get user info from session/auth endpoint
+          const response = await fetch('/api/auth/me', { credentials: 'include' });
+          if (response.ok) {
+            this.currentUser = await response.json();
+            // Ensure consistent ID fields for filtering
+            this.currentUser.id = this.currentUser.id || this.currentUser.user_id || '1';
+            this.currentUser.user_id = this.currentUser.user_id || this.currentUser.id || '1';
+            return this.currentUser;
+          }
+        } catch (error) {
+          console.log('Auth endpoint not available, using fallback');
+        }
+        
+        // Fallback if auth endpoint fails - match the sync version
+        this.currentUser = this.getCurrentUserSync();
+        return this.currentUser;
+      }
+
+      async getActiveReportsCount(currentUser) {
+        let activeCount = 0;
+        
+        // Check each report to see if it's active for the current user
+        for (const report of this.reports) {
+          const isAssigned = this.isAssignedToCurrentUser(report, currentUser);
+          if (!isAssigned) continue;
+          
+          // Only consider pending or in-progress reports
+          const hasCorrectStatus = (
+            report.status === 'pending' || 
+            report.status === 'in-progress' || 
+            report.status === 'in_progress'
+          );
+          
+          if (!hasCorrectStatus) {
+            console.log(`⏭️ Report ${report.id} skipped - status: ${report.status}`);
+            continue;
+          }
+          
+          // Check if the user has already completed their portion
+          let userCompletedPortion = false;
+          try {
+            const response = await fetch(`/api/reports/${report.id}/completion-status`);
+            if (response.ok) {
+              const completionData = await response.json();
+              
+              // Check if current user appears in the therapist completions
+              userCompletedPortion = completionData.therapist_completions?.some(tc => 
+                [String(currentUser.id), String(currentUser.user_id), String(currentUser.username)].includes(String(tc.therapist_id))
+              );
+            }
+          } catch (error) {
+            console.log(`❌ Error checking completion for active report ${report.id}:`, error);
+          }
+          
+          // Only count as active if user hasn't completed their portion
+          if (!userCompletedPortion) {
+            activeCount++;
+            console.log(`⚡ Report ${report.id} is active for user`);
+          } else {
+            console.log(`✅ Report ${report.id} not active - user completed their portion`);
+          }
+        }
+        
+        console.log(`📊 Active reports count: ${activeCount} out of ${this.reports.length} assigned reports`);
+        return activeCount;
+      }
+
+      async getCompletedReportsCount(currentUser) {
+        let completedCount = 0;
+        
+        // Check each report for individual user completion
+        for (const report of this.reports) {
+          const isAssigned = this.isAssignedToCurrentUser(report, currentUser);
+          if (!isAssigned) continue;
+          
+          // First check if the overall report is completed
+          if (report.status === 'completed') {
+            completedCount++;
+            console.log(`✅ Report ${report.id} fully completed`);
+            continue;
+          }
+          
+          // Then check if the user has completed their individual portion
+          try {
+            const response = await fetch(`/api/reports/${report.id}/completion-status`);
+            if (response.ok) {
+              const completionData = await response.json();
+              
+              // Check if current user appears in the therapist completions
+              const hasUserCompletion = completionData.therapist_completions?.some(tc => 
+                [String(currentUser.id), String(currentUser.user_id), String(currentUser.username)].includes(String(tc.therapist_id))
+              );
+              
+              if (hasUserCompletion) {
+                completedCount++;
+                console.log(`✅ Report ${report.id} - user completed their portion`);
+              } else {
+                console.log(`⏳ Report ${report.id} - user has not completed their portion`);
+              }
+            } else {
+              console.log(`❌ Could not fetch completion status for report ${report.id}`);
+            }
+          } catch (error) {
+            console.log(`❌ Error checking completion for report ${report.id}:`, error);
+          }
+        }
+        
+        console.log(`📊 Completed reports count: ${completedCount} out of ${this.reports.length} assigned reports`);
+        return completedCount;
+      }
+
+      async getMyActiveReports() {
+        const currentUser = await this.getCurrentUser();
+        const activeReports = [];
+        
+        for (const report of this.filteredReports) {
+          const isAssigned = this.isAssignedToCurrentUser(report, currentUser);
+          if (!isAssigned) continue;
+          
+          const hasCorrectStatus = (
+            report.status === 'pending' || 
+            report.status === 'in-progress' || 
+            report.status === 'in_progress'
+          );
+          
+          if (!hasCorrectStatus) continue;
+          
+          // Check if user has already completed their portion
+          let userCompletedPortion = false;
+          try {
+            const response = await fetch(`/api/reports/${report.id}/completion-status`);
+            if (response.ok) {
+              const completionData = await response.json();
+              userCompletedPortion = completionData.therapist_completions?.some(tc => 
+                [String(currentUser.id), String(currentUser.user_id), String(currentUser.username)].includes(String(tc.therapist_id))
+              );
+            }
+          } catch (error) {
+            console.log('Error checking completion status for active report:', error);
+          }
+          
+          // Only include if user hasn't completed their portion
+          if (!userCompletedPortion) {
+            activeReports.push(report);
+          }
+        }
+        
+        return activeReports;
+      }
+
+      async getMyCompletedReports() {
+        const currentUser = await this.getCurrentUser();
+        const completedReports = [];
+        
+        for (const report of this.filteredReports) {
+          const isAssigned = this.isAssignedToCurrentUser(report, currentUser);
+          if (!isAssigned) continue;
+          
+          // Check if fully completed
+          if (report.status === 'completed') {
+            completedReports.push(report);
+            continue;
+          }
+          
+          // Check if user completed their portion
+          try {
+            const response = await fetch(`/api/reports/${report.id}/completion-status`);
+            if (response.ok) {
+              const completionData = await response.json();
+              const userCompletedPortion = completionData.therapist_completions?.some(tc => 
+                [String(currentUser.id), String(currentUser.user_id), String(currentUser.username)].includes(String(tc.therapist_id))
+              );
+              
+              if (userCompletedPortion) {
+                completedReports.push(report);
+              }
+            }
+          } catch (error) {
+            console.log('Error checking completion status for completed report:', error);
+          }
+        }
+        
+        return completedReports;
+      }
+
+      async getTeamReports() {
+        // For team reports, we want to show ALL reports in the practice, not just user's
+        // We need to fetch all reports from a different endpoint
+        try {
+          // First try to get all practice reports
+          // Note: This might need a new API endpoint like /api/reports/all or /api/reports/practice
+          // For now, we'll use the existing endpoint but this should be changed
+          const response = await fetch('/api/reports/all');
+          if (response.ok) {
+            const allReports = await response.json();
+            return allReports;
+          } else {
+            // Fallback to showing current filtered reports
+            console.log('Could not fetch all practice reports, showing filtered reports');
+            return this.filteredReports;
+          }
+        } catch (error) {
+          console.log('Error fetching team reports, using current reports:', error);
+          return this.filteredReports;
+        }
+      }
+    }
+    
+    // Global variables for modal operations
+    let reportToDeleteId = null;
+    let reportToReassignId = null;
+    
+    // Global functions for report actions
+    async function deleteReport(reportId, reportTitle) {
+      console.log(`🗑️ Preparing to delete report ${reportId}: ${reportTitle}...`);
+      
+      // Store the report ID for deletion
+      reportToDeleteId = reportId;
+      
+      // Update the modal with report title
+      document.getElementById('reportToDelete').textContent = reportTitle;
+      
+      // Show the confirmation modal
+      const deleteModal = new bootstrap.Modal(document.getElementById('deleteReportModal'));
+      deleteModal.show();
+    }
+    
+    async function reassignReport(reportId, reportTitle) {
+      console.log(`👥 Preparing to reassign report ${reportId}: ${reportTitle}...`);
+      
+      // Store the report ID for reassignment
+      reportToReassignId = reportId;
+      
+      // Update the modal with report info
+      document.getElementById('reportToReassign').textContent = reportTitle;
+      
+      // Load available therapists
+      await loadTherapistList(reportId);
+      
+      // Show the modal
+      const reassignModal = new bootstrap.Modal(document.getElementById('reassignReportModal'));
+      reassignModal.show();
+    }
+
+    async function loadTherapistList(reportId) {
+      try {
+        // Get current assignments from completion status API (which we know works)
+        const completionResponse = await fetch(`/api/reports/${reportId}/completion-status`);
+        let currentAssignedIds = [];
+        if (completionResponse.ok) {
+          const completionData = await completionResponse.json();
+          currentAssignedIds = completionData.assigned_therapist_ids || [];
+        }
+
+        // Load actual therapists from your staff
+        const therapistResponse = await fetch('/api/therapists');
+        let therapists = [];
+        if (therapistResponse.ok) {
+          therapists = await therapistResponse.json();
+        } else {
+          // Fallback if API fails
+          therapists = [
+            { id: '1', name: 'Duncan Miller', profession: 'Administrator' },
+            { id: '3', name: 'Kim Jones', profession: 'Therapist' }
+          ];
+        }
+
+        const therapistContainer = document.getElementById('therapistCheckboxes');
+        therapistContainer.innerHTML = therapists.map(therapist => `
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="${therapist.id}" 
+                   id="therapist_${therapist.id}" 
+                   ${currentAssignedIds.includes(therapist.id) ? 'checked' : ''}>
+            <label class="form-check-label" for="therapist_${therapist.id}">
+              <strong>${therapist.name}</strong>
+              <br><small class="text-muted">${therapist.profession}</small>
+            </label>
+          </div>
+        `).join('');
+      } catch (error) {
+        console.error('Failed to load therapist list:', error);
+        showNotification('Failed to load available therapists', 'error');
+      }
+    }
+    
+    async function viewReport(reportId) {
+      console.log(`👀 Viewing report ${reportId}...`);
+      // TODO: Open report in read-only viewer mode
+      // For now, show message that view mode is coming soon
+      showNotification('Read-only view mode coming soon. Use Edit to modify the report.', 'info');
+    }
+    
+    async function editReport(reportId) {
+      console.log(`✏️ Editing report ${reportId}...`);
+      // Open report editor (this is the working path)
+      window.location.href = `/report/${reportId}`;
+    }
+    
+    async function downloadReport(reportId) {
+      console.log(`📥 Downloading report ${reportId}...`);
+      try {
+        const response = await fetch(`/api/reports/${reportId}/download`);
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `report-${reportId}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        } else {
+          alert('Error downloading report');
+        }
+      } catch (error) {
+        console.error('Error downloading report:', error);
+        alert('Error downloading report. Please try again.');
+      }
+    }
+    
+    // Load report wizard modal HTML
+    async function loadReportWizardModal() {
+      try {
+        const container = document.getElementById('report-wizard-modal-container');
+        if (!container) return;
+        
+        console.log('📥 Loading report wizard modal HTML...');
+        const response = await fetch('/static/fragments/report_wizard_modal.html');
+        if (response.ok) {
+          const modalHtml = await response.text();
+          container.innerHTML = modalHtml;
+          console.log('✅ Report wizard modal HTML loaded');
+        }
+      } catch (error) {
+        console.error('❌ Error loading report wizard modal:', error);
+      }
+    }
+    
+    // Handle delete confirmation
+    async function confirmDeleteReport() {
+      if (!reportToDeleteId) {
+        console.error('❌ No report ID stored for deletion');
+        return;
+      }
+      
+      console.log(`🗑️ Confirming deletion of report ${reportToDeleteId}...`);
+      
+      try {
+        // Show loading state
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        const originalText = confirmBtn.innerHTML;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Deleting...';
+        confirmBtn.disabled = true;
+        
+        const response = await fetch(`/api/reports/${reportToDeleteId}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          console.log('✅ Report deleted successfully');
+          
+          // Hide the modal
+          const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteReportModal'));
+          deleteModal.hide();
+          
+          // Show success message
+          showNotification('Report deleted successfully', 'success');
+          
+          // Refresh the reports list
+          if (window.aiReportsDashboard) {
+            await window.aiReportsDashboard.loadReports();
+          }
+          
+          // Reset the stored report ID
+          reportToDeleteId = null;
+        } else {
+          const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+          console.error('❌ Failed to delete report:', errorData);
+          showNotification(errorData.message || 'Failed to delete report. Please try again.', 'error');
+        }
+      } catch (error) {
+        console.error('❌ Error deleting report:', error);
+        showNotification('Error deleting report. Please try again.', 'error');
+      } finally {
+        // Reset button state
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        confirmBtn.innerHTML = '<i class="fas fa-trash me-1"></i>Delete Report';
+        confirmBtn.disabled = false;
+      }
+    }
+
+    async function confirmReassignReport() {
+      if (!reportToReassignId) {
+        console.error('❌ No report ID stored for reassignment');
+        return;
+      }
+      
+      console.log(`👥 Confirming reassignment of report ${reportToReassignId}...`);
+      
+      try {
+        // Get selected therapists
+        const checkboxes = document.querySelectorAll('#therapistCheckboxes input[type="checkbox"]:checked');
+        const selectedTherapistIds = Array.from(checkboxes).map(cb => cb.value);
+        
+        if (selectedTherapistIds.length === 0) {
+          showNotification('Please select at least one therapist', 'error');
+          return;
+        }
+        
+        // Show loading state
+        const confirmBtn = document.getElementById('confirmReassignBtn');
+        const originalText = confirmBtn.innerHTML;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Reassigning...';
+        confirmBtn.disabled = true;
+        
+        const response = await fetch(`/api/reports/${reportToReassignId}/reassign`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            assigned_therapist_ids: selectedTherapistIds
+          })
+        });
+        
+        if (response.ok) {
+          console.log('✅ Report reassigned successfully');
+          
+          // Hide the modal
+          const reassignModal = bootstrap.Modal.getInstance(document.getElementById('reassignReportModal'));
+          reassignModal.hide();
+          
+          // Show success message
+          showNotification('Report reassigned successfully', 'success');
+          
+          // Refresh the reports list
+          if (window.aiReportsDashboard) {
+            await window.aiReportsDashboard.loadReports();
+          }
+          
+          // Reset the stored report ID
+          reportToReassignId = null;
+        } else {
+          const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+          console.error('❌ Failed to reassign report:', errorData);
+          showNotification(errorData.detail || errorData.message || 'Failed to reassign report. Please try again.', 'error');
+        }
+      } catch (error) {
+        console.error('❌ Error reassigning report:', error);
+        showNotification('Error reassigning report. Please try again.', 'error');
+      } finally {
+        // Reset button state
+        const confirmBtn = document.getElementById('confirmReassignBtn');
+        confirmBtn.innerHTML = '<i class="fas fa-user-friends me-1"></i>Reassign Report';
+        confirmBtn.disabled = false;
+      }
+    }
+    
+    // Simple notification function
+    function showNotification(message, type = 'info') {
+      // Create a simple notification at the top of the page
+      const notification = document.createElement('div');
+      notification.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'} alert-dismissible fade show`;
+      notification.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 1060; min-width: 300px;';
+      notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      `;
+      
+      document.body.appendChild(notification);
+      
+      // Auto-remove after 5 seconds
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.remove();
+        }
+      }, 5000);
+    }
+    
+    // Initialize dashboard when DOM is loaded
+    document.addEventListener('DOMContentLoaded', async function() {
+      // Load the report wizard modal first
+      await loadReportWizardModal();
+      
+      // Set up delete confirmation handler
+      document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDeleteReport);
+      document.getElementById('confirmReassignBtn').addEventListener('click', confirmReassignReport);
+      
+      // Initialize the dashboard
+      window.aiReportsDashboard = new AIReportsDashboard();
+    });
+  </script>
+  
+</body>
+</html>

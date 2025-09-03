@@ -1,0 +1,426 @@
+/**
+ * Template Customization CSS
+ * 
+ * Styles for the template customization interface including
+ * field management, preview, and admin interface components.
+ */
+
+/* Modal Customization */
+#templateCustomizationModal .modal-dialog {
+    max-width: 90vw;
+    min-height: 70vh;
+}
+
+#templateCustomizationModal .modal-content {
+    height: 85vh;
+    overflow: hidden;
+}
+
+#templateCustomizationModal .modal-body {
+    overflow-y: auto;
+    max-height: calc(85vh - 130px);
+}
+
+/* Template Configuration Sections */
+.field-configuration-section {
+    background-color: var(--bs-gray-50);
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.section-title {
+    color: var(--bs-primary);
+    font-weight: 600;
+    border-bottom: 2px solid var(--bs-primary);
+    padding-bottom: 8px;
+}
+
+/* Field List Styling */
+.field-list {
+    min-height: 200px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.field-item {
+    transition: all 0.2s ease;
+    border: 1px solid var(--bs-gray-300);
+}
+
+.field-item:hover {
+    border-color: var(--bs-primary);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.field-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.field-info .fas {
+    width: 20px;
+    text-align: center;
+}
+
+.field-actions {
+    display: flex;
+    gap: 2px;
+}
+
+.field-actions .btn {
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+/* Add Field Section */
+.add-field-section {
+    background-color: white;
+    border-radius: 6px;
+    padding: 15px;
+    border: 2px dashed var(--bs-gray-300);
+    transition: border-color 0.2s ease;
+}
+
+.add-field-section:hover {
+    border-color: var(--bs-primary);
+}
+
+/* Field Type Selection */
+#fieldTypeSelect {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+}
+
+/* Template Preview Styles */
+.template-preview-container {
+    min-height: 400px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.template-preview {
+    background-color: white;
+    border-radius: 8px;
+    padding: 30px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.template-preview h2 {
+    color: var(--primary-dark, #2c5282);
+    border-bottom: 3px solid var(--primary-green, #22c55e);
+    padding-bottom: 10px;
+    margin-bottom: 30px;
+}
+
+.field-section {
+    margin-bottom: 25px;
+    padding: 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background-color: #fafafa;
+}
+
+.field-label {
+    font-weight: 600;
+    color: #374151;
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.field-label .required {
+    color: #dc3545;
+}
+
+/* Field Type Preview Styles */
+.auto-populated-field {
+    background-color: #e3f2fd;
+    border: 1px solid #90caf9;
+    border-radius: 4px;
+    padding: 12px;
+    color: #1565c0;
+    font-style: italic;
+}
+
+.auto-populated-field p {
+    margin-bottom: 5px;
+    font-size: 13px;
+}
+
+.auto-populated-field strong {
+    font-weight: 600;
+}
+
+.rich-text-field {
+    background-color: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 12px;
+    min-height: 60px;
+    color: #6b7280;
+    font-style: italic;
+}
+
+.multiple-choice-field {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    background-color: white;
+}
+
+.signature-field {
+    background-color: #f3f4f6;
+    border: 2px dashed #9ca3af;
+    border-radius: 4px;
+    padding: 20px;
+    text-align: center;
+    color: #6b7280;
+    font-style: italic;
+}
+
+.structured-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+}
+
+.structured-table th,
+.structured-table td {
+    border: 1px solid #d1d5db;
+    padding: 8px 12px;
+    text-align: left;
+}
+
+.structured-table th {
+    background-color: #f9fafb;
+    font-weight: 600;
+    color: #374151;
+}
+
+.structured-table td {
+    color: #6b7280;
+    font-style: italic;
+}
+
+.field-placeholder {
+    background-color: #f0f9ff;
+    border: 1px solid #7dd3fc;
+    border-radius: 4px;
+    padding: 12px;
+    color: #0369a1;
+    font-style: italic;
+    text-align: center;
+}
+
+/* Preview Placeholder */
+.preview-placeholder {
+    background-color: #f8fafc;
+    border: 2px dashed #cbd5e0;
+    border-radius: 8px;
+}
+
+.preview-placeholder i {
+    color: #a0aec0;
+}
+
+/* Field Configuration Modal */
+#fieldConfigModal .modal-dialog {
+    max-width: 600px;
+}
+
+.options-container,
+.columns-container {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 10px;
+    background-color: #fafafa;
+}
+
+.options-container .input-group,
+.columns-container .input-group {
+    margin-bottom: 8px;
+}
+
+.options-container .input-group:last-child,
+.columns-container .input-group:last-child {
+    margin-bottom: 0;
+}
+
+/* Validation Status */
+#validationStatus .badge {
+    font-size: 12px;
+    padding: 6px 10px;
+}
+
+/* Tab Content */
+.tab-content {
+    min-height: 500px;
+}
+
+/* Edit Template Tab */
+#edit-template .row {
+    align-items: center;
+}
+
+#templateSelect {
+    background-color: white;
+}
+
+/* Version History Modal */
+.version-history-item {
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 10px;
+    background-color: #fafafa;
+}
+
+.version-number {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--bs-primary);
+}
+
+.version-date {
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.version-author {
+    font-weight: 500;
+    color: #374151;
+}
+
+.version-summary {
+    color: #4b5563;
+    font-style: italic;
+    margin-top: 5px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    #templateCustomizationModal .modal-dialog {
+        max-width: 95vw;
+        margin: 10px auto;
+    }
+    
+    #templateCustomizationModal .modal-content {
+        height: 95vh;
+    }
+    
+    .field-actions {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .add-field-section .row {
+        flex-direction: column;
+    }
+    
+    .add-field-section .col-md-4,
+    .add-field-section .col-md-6,
+    .add-field-section .col-md-2 {
+        margin-bottom: 10px;
+    }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    .field-configuration-section {
+        background-color: #1f2937;
+    }
+    
+    .template-preview {
+        background-color: #111827;
+        color: #f9fafb;
+    }
+    
+    .field-section {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+    
+    .field-label {
+        color: #d1d5db;
+    }
+    
+    .auto-populated-field {
+        background-color: #1e3a8a;
+        border-color: #3b82f6;
+        color: #bfdbfe;
+    }
+    
+    .rich-text-field {
+        background-color: #1f2937;
+        border-color: #4b5563;
+        color: #9ca3af;
+    }
+    
+    .multiple-choice-field {
+        background-color: #1f2937;
+        border-color: #4b5563;
+        color: #d1d5db;
+    }
+    
+    .signature-field {
+        background-color: #1f2937;
+        border-color: #4b5563;
+        color: #9ca3af;
+    }
+    
+    .structured-table th {
+        background-color: #374151;
+        color: #d1d5db;
+    }
+    
+    .structured-table td {
+        color: #9ca3af;
+    }
+}
+
+/* Animation and Transitions */
+.field-item {
+    animation: slideInUp 0.3s ease;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.template-preview {
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Success/Error States */
+.is-valid {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.25);
+}
+
+.is-invalid {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 0 0.2rem rgba(239, 68, 68, 0.25);
+}

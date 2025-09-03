@@ -1,0 +1,32 @@
+
+
+<div id="cancel-modal" style="display:none; position:fixed; top:30%; left:50%; transform:translateX(-50%); background:white; padding:1rem; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,0.3); z-index:2000;">
+  <h3>Cancel Appointment</h3>
+  <p>Please provide a reason for cancellation:</p>
+  <textarea id="cancel-reason" rows="3" style="width: 100%;"></textarea><br><br>
+  <button onclick="confirmCancellation()">Confirm</button>
+  <button onclick="closeCancelModal()">Cancel</button>
+</div>
+<div id="summary-modal" data-patient-id="{{ patient_id }}" data-profession="{{ profession }}" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:1.5rem; border-radius:8px; box-shadow:0 0 12px rgba(0,0,0,0.3); z-index:1001; max-height:80vh; width:90vw; max-width:600px; overflow:hidden;">
+  <h3>Appointment Summary</h3>
+  <div class="summary-body" style="max-height:calc(80vh - 150px); overflow-y:auto; margin:0.5rem 0;">
+    <div id="summary-content" style="white-space: normal; word-wrap: break-word;"></div>
+    <div id="note-details" style="white-space: normal; word-wrap: break-word; margin-top: 1rem;"></div>
+    <div id="latest-summary" style="margin-top: 1rem; white-space: pre-wrap;"></div>
+  </div>
+  <div class="summary-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
+    <button onclick="goToPatientProfileFromSummary()">View Profile</button>
+    <button onclick="goToSession()" class="summary-btn neutral">Session</button>
+    <button onclick="editFromSummary()" class="summary-btn neutral">Edit</button>
+    <button onclick="deleteFromSummary()" class="summary-btn danger">Delete</button>
+    <button onclick="addBillingFromSummary()" class="summary-btn neutral">Add Billing</button>
+  </div>
+  <button onclick="loadLatestNoteSummary(currentPatientId, currentProfession)">Generate Latest AI Summary</button>
+
+  <div id="latest-summary-ai-block" style="display:none; margin-top: 1rem;">
+      <h4>Latest Summary (AI)</h4>
+      <div id="latest-summary" class="summary-ai-output"></div>
+  </div>
+
+  <button onclick="closeSummaryModal()">Close</button>
+</div>

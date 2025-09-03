@@ -1,0 +1,24 @@
+<head>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<div id="reminder-view-modal" class="modal" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.4); z-index: 1000;" onclick="if(event.target === this) closeReminderViewModal()">
+  <div class="modal-content modal-styled">
+    <span class="close-button" onclick="closeReminderViewModal()" style="float: right; font-size: 1.5em; cursor: pointer;">&times;</span>
+    <h2 id="reminder-view-title">Reminder Title</h2>
+    <p id="reminder-view-description" style="text-align: center; font-style: italic; color: #666; margin-top: -0.5rem; margin-bottom: 1.5rem;"></p>
+    <p><strong>Due Date:</strong> <span id="reminder-view-due-date"></span></p>
+    <p><strong>Recurrence:</strong> <span id="reminder-view-recurrence"></span></p>
+    <p><strong>Completed:</strong> <span id="reminder-view-completed"></span></p>
+    <p><strong>Completed At:</strong> <span id="reminder-view-completed-at"></span></p>
+    <p>
+      <span class="material-icons" title="Priority">flag</span> <span id="reminder-view-priority"></span>
+      <span class="material-icons" title="Visibility" style="margin-left: 1rem;">visibility</span> <span id="reminder-view-visibility"></span>
+      <span class="material-icons" title="Notify" style="margin-left: 1rem;">notifications</span> <span id="reminder-view-notify"></span>
+    </p>
+    <p><strong>Notification Time:</strong> <span id="reminder-view-notify-at"></span></p>
+    <p><strong>Linked Patient ID:</strong> <span id="reminder-view-patient-id"></span></p>
+    <p><strong>Linked Therapist ID:</strong> <span id="reminder-view-therapist-id"></span></p>
+    <p><strong>Created By:</strong> <span id="reminder-view-created-by"></span></p>
+    <p><strong>Created At:</strong> <span id="reminder-view-created-at"></span></p>
+  </div>
+</div>

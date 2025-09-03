@@ -1,0 +1,141 @@
+<!-- Discipline Selection Component -->
+<div id="discipline-selector-modal" class="modal unified-modal" style="display: none;">
+    <div class="modal-content medium-modal">
+        <div class="modal-header">
+            <h2>
+                <span class="modal-icon">🏥</span>
+                Select Disciplines
+            </h2>
+            <button class="close-btn" onclick="closeDisciplineSelector()">&times;</button>
+        </div>
+        
+        <div class="modal-body">
+            <!-- Patient History Disciplines -->
+            <div class="discipline-section" id="auto-detected-section" style="display: none;">
+                <div class="section-header">
+                    <h3>📋 Patient History</h3>
+                    <p class="section-description">Disciplines that have treated this patient</p>
+                </div>
+                <div class="discipline-grid" id="auto-detected-disciplines">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+            
+            <!-- Manual Selection -->
+            <div class="discipline-section">
+                <div class="section-header">
+                    <h3>📋 Available Disciplines</h3>
+                    <div class="search-controls">
+                        <input type="text" id="discipline-search" class="form-control" placeholder="Search disciplines...">
+                        <button type="button" class="btn btn-outline btn-sm" onclick="toggleSelectAll()">
+                            <span id="select-all-text">Select All</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Discipline Categories -->
+                <div class="discipline-categories">
+                    <div class="category-tabs">
+                        <button class="category-tab active" data-category="all" onclick="filterByCategory('all')">
+                            All
+                        </button>
+                        <button class="category-tab" data-category="therapy" onclick="filterByCategory('therapy')">
+                            Therapy
+                        </button>
+                        <button class="category-tab" data-category="medical" onclick="filterByCategory('medical')">
+                            Medical
+                        </button>
+                        <button class="category-tab" data-category="allied" onclick="filterByCategory('allied')">
+                            Allied Health
+                        </button>
+                        <button class="category-tab" data-category="specialist" onclick="filterByCategory('specialist')">
+                            Specialist
+                        </button>
+                    </div>
+                    
+                    <div class="discipline-grid" id="available-disciplines">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Selected Disciplines Summary -->
+            <div class="discipline-section">
+                <div class="section-header">
+                    <h3>✅ Selected Disciplines</h3>
+                    <span class="count-badge" id="selected-count">0 selected</span>
+                </div>
+                <div class="selected-disciplines" id="selected-disciplines">
+                    <p class="empty-state">No disciplines selected</p>
+                </div>
+            </div>
+            
+            <!-- Recommendations -->
+            <div class="discipline-section" id="recommendations-section" style="display: none;">
+                <div class="section-header">
+                    <h3>💡 Recommendations</h3>
+                    <p class="section-description">Suggested based on your selection</p>
+                </div>
+                <div class="recommendations-content" id="recommendations-content">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <div class="footer-left">
+                <button type="button" class="btn btn-outline" onclick="resetSelection()">
+                    Reset
+                </button>
+                <button type="button" class="btn btn-outline" onclick="loadPatientHistory()">
+                    <i class="fas fa-history"></i> Load Patient History
+                </button>
+            </div>
+            <div class="footer-right">
+                <button type="button" class="btn btn-secondary" onclick="closeDisciplineSelector()">
+                    Cancel
+                </button>
+                <button type="button" class="btn btn-primary" onclick="confirmSelection()">
+                    Confirm Selection
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Discipline Item Template -->
+<template id="discipline-item-template">
+    <div class="discipline-item" data-discipline-id="" data-category="">
+        <div class="discipline-checkbox">
+            <input type="checkbox" class="discipline-check" onchange="updateDisciplineSelection(this)">
+        </div>
+        <div class="discipline-info">
+            <div class="discipline-name"></div>
+            <div class="discipline-description"></div>
+        </div>
+        <div class="discipline-badges">
+            <!-- Auto-detected badge -->
+            <span class="badge auto-detected" style="display: none;">Auto-detected</span>
+            <!-- Priority badge -->
+            <span class="badge priority" style="display: none;">High Priority</span>
+        </div>
+    </div>
+</template>
+
+<!-- Inline Discipline Selector (for forms) -->
+<div class="inline-discipline-selector" id="inline-discipline-selector" style="display: none;">
+    <div class="selector-header">
+        <label>Report Disciplines</label>
+        <div class="selector-actions">
+            <button type="button" class="btn-link" onclick="openDisciplineSelector()">
+                <i class="fas fa-plus"></i> Add Disciplines
+            </button>
+            <button type="button" class="btn-link" onclick="autoDetectDisciplines()">
+                <i class="fas fa-history"></i> Load Patient History
+            </button>
+        </div>
+    </div>
+    <div class="selected-disciplines-preview" id="selected-disciplines-preview">
+        <p class="empty-preview">No disciplines selected. Click "Add Disciplines" to choose.</p>
+    </div>
+</div>

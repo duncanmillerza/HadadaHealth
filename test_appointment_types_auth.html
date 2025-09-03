@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Appointment Types Authentication</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>Appointment Types Authentication Test</h1>
+    <div id="test-results"></div>
+    
+    <script>
+        const results = document.getElementById('test-results');
+        
+        function addResult(type, message) {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.textContent = message;
+            results.appendChild(div);
+        }
+        
+        // Test the API endpoints to understand authentication requirements
+        async function testEndpoints() {
+            const endpoints = [
+                { url: 'http://localhost:8000/api/practices/1/appointment-types/effective?enabled_only=false', name: 'Practice Effective Types' },
+                { url: 'http://localhost:8000/api/appointment-types?active_only=true', name: 'Global Types' },
+                { url: 'http://localhost:8000/appointment-types-management-page', name: 'Management Page' }
+            ];
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(endpoint.url);
+                    
+                    if (response.ok) {
+                        addResult('success', `✅ ${endpoint.name}: ${response.status} OK`);
+                        
+                        if (endpoint.name === 'Practice Effective Types' || endpoint.name === 'Global Types') {
+                            const data = await response.json();
+                            addResult('info', `   └─ Data: ${data.length} items loaded`);
+                        }
+                    } else {
+                        if (response.status === 401) {
+                            addResult('error', `🔐 ${endpoint.name}: ${response.status} Authentication Required`);
+                        } else {
+                            addResult('error', `❌ ${endpoint.name}: ${response.status} ${response.statusText}`);
+                        }
+                        
+                        // Try to get response text for more details
+                        try {
+                            const text = await response.text();
+                            if (text && text.length < 200) {
+                                addResult('info', `   └─ Response: ${text}`);
+                            }
+                        } catch (e) {
+                            // Ignore errors reading response text
+                        }
+                    }
+                } catch (error) {
+                    addResult('error', `❌ ${endpoint.name}: ${error.message}`);
+                }
+            }
+        }
+        
+        addResult('info', '🔍 Testing appointment types endpoints...');
+        testEndpoints();
+        
+        // Test our authentication handling logic
+        setTimeout(() => {
+            addResult('info', '🧪 Testing authentication redirect logic...');
+            
+            // Simulate the loadAppointmentTypes function behavior
+            const currentPracticeId = 1;
+            
+            fetch(`http://localhost:8000/api/practices/${currentPracticeId}/appointment-types/effective?enabled_only=false`)
+                .then(response => {
+                    if (!response.ok && response.status === 401) {
+                        addResult('success', '✅ Authentication redirect logic would trigger correctly');
+                        addResult('info', '   └─ In real app, this would redirect to /login');
+                    } else {
+                        addResult('error', '⚠️  Expected 401 response but got: ' + response.status);
+                    }
+                })
+                .catch(error => {
+                    addResult('error', '❌ Error testing auth logic: ' + error.message);
+                });
+        }, 2000);
+    </script>
+</body>
+</html>

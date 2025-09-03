@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HadadaHealth</title>
+  
+  <!-- PWA Meta Tags -->
+  <meta name="application-name" content="HadadaHealth">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="HadadaHealth">
+  <meta name="description" content="Healthcare management application for therapists">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#2D6356">
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/static/manifest.json">
+  
+  <!-- Apple Touch Icons -->
+  <link rel="apple-touch-icon" href="/static/hadada_health_logo.svg">
+  
+</head>
+  <link rel="stylesheet" href="/static/calendar.css">
+  <link rel="stylesheet" href="/static/nav.css">
+  <link rel="icon" href="/static/favicon.ico" type="image/x-icon" />
+  <link rel="preload" href="/static/fonts/MaterialIcons-Regular.woff2" as="font" type="font/ttf" crossorigin="anonymous">
+  <script src="/static/js/pwa-utils.js"></script>
+  <script src="/static/js/session-manager.js"></script>
+  <style>
+    .appt-clickable {
+      cursor: pointer;
+      color: #2D6356;
+      transition: color 0.2s;
+    }
+    .appt-clickable:hover {
+      color: #214c43;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <script src="/static/js/nav-bar.js"></script>
+  <div id="top-nav"></div>
+  <!-- <div class="therapist-name" id="therapist-name">
+    Therapist: 
+  </div> -->
+  <h1 id="dashboard-heading">Loading...</h1>
+  <div class="dashboard">
+    <div class="section">
+      <h2>Today's Appointments</h2>
+      <ul id="appointments-list"></ul>
+    </div>
+    <div class="section">
+      <h2>Outstanding Notes</h2>
+      <ul id="outstanding-notes-list"></ul>
+    </div>
+    <div class="section">
+      <h2>Outstanding Billing</h2>
+      <ul id="outstanding-billing-list"></ul>
+    </div>
+    <div class="section">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="margin: 0;">Reminders</h2>
+        <button onclick="openReminderModal()" style="font-size: 1.2em; background: #2D6356; color: white; border: none; border-radius: 4px; padding: 0.2em 0.6em; cursor: pointer;">+</button>
+      </div>
+      <ul id="reminders-list">
+        <li>Loading reminders...</li>
+      </ul>
+    </div>
+    <div class="section">
+      <h2>Stats (Lifetime)</h2>
+      <div class="stat-block">
+        <strong id="lifetime-appointments-count">0</strong>
+        Appointments
+      </div>
+      <div class="stat-block">
+        <strong id="lifetime-avg-note-completion-time">0.0 min</strong>
+        Avg Note Completion Time
+      </div>
+      <div class="stat-block">
+        <strong id="lifetime-avg-invoice-amount">R0.00</strong>
+        Avg Invoice Amount
+      </div>
+      <div class="stat-block">
+        <strong id="lifetime-total-invoiced">R0.00</strong>
+        Total Invoiced
+      </div>
+    </div>
+    <div class="section">
+      <h2>Stats (Last 30 Days)</h2>
+      <div class="stat-block">
+        <strong id="recent-appointments-count">0</strong>
+        Appointments
+      </div>
+      <div class="stat-block">
+        <strong id="avg-note-completion-time">0.0 min</strong>
+        Avg Note Completion Time
+      </div>
+      <div class="stat-block">
+        <strong id="avg-invoice-amount">R0.00</strong>
+        Avg Invoice Amount
+      </div>
+      <div class="stat-block">
+        <strong id="total-invoiced-30d">R0.00</strong>
+        Total Invoiced
+      </div>
+    </div>
+  </div>
+  
+  
+      <div id="bottom-nav"></div>
+  <script src="/static/js/summary-modal.js"></script>
+<script>
+    // Helper to format date as DD MMM
+    function formatDateDDMMM(dateString) {
+      const d = new Date(dateString);
+      return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+    }
+
+    // Personalise dashboard with therapist name if linked, otherwise username
+    async function personaliseDashboard() {
+      try {
+        const res = await fetch('/check-login');
+        const data = await res.json();
+        if (data.logged_in && data.username) {
+          if (data.linked_therapist_id) {
+            const therapistRes = await fetch(`/therapist/${data.linked_therapist_id}`);
+            const therapist = await therapistRes.json();
+            const displayName = therapist.preferred_name || therapist.name;
+            document.getElementById('dashboard-heading').textContent = displayName + "'s Dashboard";
+          } else {
+            document.getElementById('dashboard-heading').textContent = data.username + "'s Dashboard";
+          }
+        } else {
+          document.getElementById('dashboard-heading').textContent = "Dashboard";
+        }
+      } catch (err) {
+        console.error('Failed to personalise dashboard:', err);
+        document.getElementById('dashboard-heading').textContent = "Dashboard";
+      }
+    }
+
+    // Populate today's appointments
+    async function populateTodaysAppointments() {
+      try {
+        const session = await fetch('/check-login');
+        const sessionData = await session.json();
+        if (!sessionData.logged_in || !sessionData.linked_therapist_id) return;
+
+        const today = new Date().toISOString().split("T")[0];
+        const response = await fetch(`/bookings?therapist_id=${sessionData.linked_therapist_id}`);
+        let bookings = await response.json();
+        // Remove duplicates caused by SQL joins
+        let uniqueIds = Array.from(new Set(bookings.map(b => b.id)));
+        bookings = uniqueIds.map(id => bookings.find(b => b.id === id));
+
+        // 🛠️ Debug: log fetched bookings array
+        console.log('🛠️ fetched bookings:', bookings);
+
+        const appointmentsList = document.getElementById('appointments-list');
+        appointmentsList.innerHTML = "";
+
+        const todaysAppointments = bookings
+          .filter(booking => booking.date === today)
+          .sort((a, b) => a.time.localeCompare(b.time));
+
+        if (todaysAppointments.length === 0) {
+          appointmentsList.innerHTML = "<li>No appointments today</li>";
+        } else {
+          todaysAppointments.forEach(booking => {
+            const li = document.createElement("li");
+            li.textContent = `${booking.time} - ${booking.name}`;
+            li.classList.add('appt-clickable');
+            li.addEventListener('click', () => {
+              console.log(`🛠️ appt-click for booking id: ${booking.id}`);
+              openSummaryModal(booking);
+            });
+            appointmentsList.appendChild(li);
+          });
+        }
+      } catch (err) {
+        console.error("Failed to populate today's appointments:", err);
+      }
+    }
+
+    // Populate outstanding notes only
+    async function populateOutstandingNotes() {
+      try {
+        const session = await fetch('/check-login');
+        const { logged_in, linked_therapist_id } = await session.json();
+        if (!logged_in || !linked_therapist_id) return;
+
+        const today = new Date().toISOString().split("T")[0];
+        const response = await fetch(`/bookings?therapist_id=${linked_therapist_id}`);
+        let bookings = await response.json();
+        // Remove duplicates caused by SQL joins
+        let uniqueIds = Array.from(new Set(bookings.map(b => b.id)));
+        bookings = uniqueIds.map(id => bookings.find(b => b.id === id));
+
+        const notesList = document.getElementById('outstanding-notes-list');
+        notesList.innerHTML = "";
+
+        const outstandingNotes = bookings
+          .filter(b => b.date < today && !b.has_note)
+          .sort((a, b) => a.date.localeCompare(b.date));
+
+        if (outstandingNotes.length === 0) {
+          notesList.innerHTML = "<li>No outstanding notes</li>";
+        } else {
+          outstandingNotes.forEach(b => {
+            const li = document.createElement("li");
+            li.textContent = `${formatDateDDMMM(b.date)} ${b.time} - ${b.name}`;
+            li.classList.add('appt-clickable');
+            li.addEventListener('click', () => openSummaryModal(b));
+            notesList.appendChild(li);
+          });
+        }
+      } catch (err) {
+        console.error("Failed to populate outstanding notes:", err);
+      }
+    }
+
+    // Populate outstanding billing only
+    async function populateOutstandingBilling() {
+      try {
+        const session = await fetch('/check-login');
+        const { logged_in, linked_therapist_id } = await session.json();
+        if (!logged_in || !linked_therapist_id) return;
+
+        const today = new Date().toISOString().split("T")[0];
+        const response = await fetch(`/bookings?therapist_id=${linked_therapist_id}`);
+        let bookings = await response.json();
+        // Remove duplicates caused by SQL joins
+        let uniqueIds = Array.from(new Set(bookings.map(b => b.id)));
+        bookings = uniqueIds.map(id => bookings.find(b => b.id === id));
+
+        const billingList = document.getElementById('outstanding-billing-list');
+        billingList.innerHTML = "";
+
+        const outstandingBilling = bookings
+          .filter(b => b.date < today && b.billing_completed === false)
+          .sort((a, b) => a.date.localeCompare(b.date));
+
+        if (outstandingBilling.length === 0) {
+          billingList.innerHTML = "<li>No outstanding billing</li>";
+        } else {
+          outstandingBilling.forEach(b => {
+            const li = document.createElement("li");
+            li.textContent = `${formatDateDDMMM(b.date)} ${b.time} - ${b.name}`;
+            li.classList.add('appt-clickable');
+            li.addEventListener('click', () => openSummaryModal(b));
+            billingList.appendChild(li);
+          });
+        }
+      } catch (err) {
+        console.error("Failed to populate outstanding billing:", err);
+      }
+    }
+
+    // Call all functions on load
+    window.onload = function() {
+      personaliseDashboard();
+      populateTodaysAppointments();
+      populateOutstandingNotes();
+      populateOutstandingBilling();
+      populateStats();
+      populateReminders();
+    };
+    /**
+     * Format a duration in minutes into the largest time units.
+     */
+    function formatDuration(totalMinutes) {
+      let remaining = Math.round(totalMinutes);
+      const parts = [];
+      const years = Math.floor(remaining / (60 * 24 * 365));
+      if (years) { parts.push(years + 'y'); remaining -= years * 60 * 24 * 365; }
+      const weeks = Math.floor(remaining / (60 * 24 * 7));
+      if (weeks) { parts.push(weeks + 'w'); remaining -= weeks * 60 * 24 * 7; }
+      const days = Math.floor(remaining / (60 * 24));
+      if (days) { parts.push(days + 'd'); remaining -= days * 60 * 24; }
+      const hours = Math.floor(remaining / 60);
+      if (hours) { parts.push(hours + 'h'); remaining -= hours * 60; }
+      if (remaining || parts.length === 0) { parts.push(remaining + 'min'); }
+      return parts.join(' ');
+    }
+
+    async function populateStats() {
+      try {
+        const sessionRes = await fetch('/session-info');
+        const { linked_therapist_id } = await sessionRes.json();
+        if (!linked_therapist_id) return;
+        // Fetch stats view
+        const res = await fetch('/therapist-stats');
+        const statsArray = await res.json();
+        // Find this therapist's stats
+        const stats = statsArray.find(s => s.therapist_id === linked_therapist_id);
+        if (!stats) return;
+        // Update 30-day stats
+        document.getElementById('recent-appointments-count').textContent = stats.recent_appointments_30d || 0;
+        document.getElementById('avg-note-completion-time').textContent =
+          stats.avg_note_completion_minutes_30d !== null
+            ? formatDuration(stats.avg_note_completion_minutes_30d)
+            : '0min';
+        document.getElementById('avg-invoice-amount').textContent =
+          'R' + (stats.avg_invoice_amount_30d !== null ? stats.avg_invoice_amount_30d.toFixed(2) : '0.00');
+        document.getElementById('total-invoiced-30d').textContent =
+          'R' + (stats.total_invoiced_30d !== null ? stats.total_invoiced_30d.toFixed(2) : '0.00');
+
+        // Populate lifetime stats
+        document.getElementById('lifetime-appointments-count').textContent = stats.total_appointments || 0;
+        document.getElementById('lifetime-avg-note-completion-time').textContent =
+          stats.avg_note_completion_minutes !== null
+            ? formatDuration(stats.avg_note_completion_minutes)
+            : '0min';
+        document.getElementById('lifetime-avg-invoice-amount').textContent =
+          'R' + (stats.avg_invoice_amount !== null ? stats.avg_invoice_amount.toFixed(2) : '0.00');
+        document.getElementById('lifetime-total-invoiced').textContent =
+          'R' + (stats.total_invoiced !== null ? stats.total_invoiced.toFixed(2) : '0.00');
+      } catch (err) {
+        console.error('Failed to populate stats:', err);
+      }
+    }
+    window.populateStats = populateStats;
+
+      // Populate reminders dynamically
+  async function populateReminders() {
+    try {
+      const res = await fetch("/reminders");
+      const reminders = await res.json();
+      const list = document.getElementById("reminders-list");
+      list.innerHTML = "";
+
+      if (!reminders.length) {
+        list.innerHTML = "<li>No reminders</li>";
+        return;
+      }
+
+      reminders.forEach(reminder => {
+        const li = document.createElement("li");
+        // Container for the title and the info button
+        const span = document.createElement("span");
+        span.textContent = reminder.title;
+        // Add due date if present
+        if (reminder.due_date) {
+          span.textContent += ` (Due: ${new Date(reminder.due_date).toLocaleDateString()})`;
+        }
+        li.style.borderLeft = `6px solid ${reminder.colour || "#2D6356"}`;
+        li.style.paddingLeft = "0.5em";
+        li.style.display = "flex";
+        li.style.alignItems = "center";
+        li.style.gap = "0.5em";
+
+        // Info button
+        const infoBtn = document.createElement("button");
+        infoBtn.textContent = "ⓘ";
+        infoBtn.title = "View reminder details";
+        infoBtn.style.background = "none";
+        infoBtn.style.border = "none";
+        infoBtn.style.cursor = "pointer";
+        infoBtn.style.fontSize = "1.1em";
+        infoBtn.style.marginLeft = "0.25em";
+        infoBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          openReminderViewModal(reminder);
+        });
+
+        li.appendChild(span);
+        li.appendChild(infoBtn);
+        list.appendChild(li);
+      });
+    } catch (err) {
+      console.error("Failed to load reminders:", err);
+      const list = document.getElementById("reminders-list");
+      list.innerHTML = "<li>Error loading reminders</li>";
+    }
+  }
+
+  // Populate AI reports dynamically
+  async function populateAIReports() {
+    try {
+      const res = await fetch("/api/reports/user/reports?limit=5");
+      const reports = await res.json();
+      const list = document.getElementById("ai-reports-list");
+      list.innerHTML = "";
+
+      if (!reports.length) {
+        list.innerHTML = "<li>No reports assigned</li>";
+        return;
+      }
+
+      reports.forEach(report => {
+        const li = document.createElement("li");
+        li.style.borderLeft = `6px solid ${getPriorityColor(report.priority)}`;
+        li.style.paddingLeft = "0.5em";
+        li.style.marginBottom = "0.5em";
+        li.style.cursor = "pointer";
+        
+        const title = document.createElement("span");
+        title.textContent = report.title;
+        title.style.fontWeight = "bold";
+        
+        const status = document.createElement("small");
+        status.textContent = ` (${report.status.charAt(0).toUpperCase() + report.status.slice(1)})`;
+        status.style.color = getStatusColor(report.status);
+        
+        const deadline = document.createElement("small");
+        if (report.deadline_date) {
+          deadline.textContent = ` - Due: ${new Date(report.deadline_date).toLocaleDateString()}`;
+          deadline.style.color = "#666";
+        }
+        
+        li.appendChild(title);
+        li.appendChild(status);
+        li.appendChild(deadline);
+        
+        // Make it clickable to edit the report
+        li.addEventListener("click", () => {
+          openReportWizard('therapist', report.id);
+        });
+        
+        list.appendChild(li);
+      });
+    } catch (err) {
+      console.error("Failed to load AI reports:", err);
+      const list = document.getElementById("ai-reports-list");
+      list.innerHTML = "<li>Error loading reports</li>";
+    }
+  }
+
+  function getPriorityColor(priority) {
+    switch(priority) {
+      case 3: return "#f44336"; // Red for high priority
+      case 2: return "#ff9800"; // Orange for normal priority
+      case 1: return "#4caf50"; // Green for low priority
+      default: return "#2D6356";
+    }
+  }
+
+  function getStatusColor(status) {
+    switch(status) {
+      case 'pending': return "#ff9800";
+      case 'in_progress': return "#2196f3";
+      case 'completed': return "#4caf50";
+      case 'overdue': return "#f44336";
+      default: return "#666";
+    }
+  }
+  </script>
+  <script src="/static/js/reminder-modal.js"></script>
+  <div id="reminder-modal-container"></div>
+  <div id="reminder-view-modal-container"></div>
+  
+  <!-- PWA Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/static/sw.js')
+          .then(registration => {
+            console.log('Service Worker registered successfully:', registration.scope);
+          })
+          .catch(error => {
+            console.log('Service Worker registration failed:', error);
+          });
+      });
+    }
+
+    // PWA Install Prompt - Store for settings page
+    let deferredPrompt;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      // Store the event globally for settings page access
+      window.deferredPrompt = e;
+    });
+
+    window.addEventListener('appinstalled', () => {
+      console.log('PWA was installed');
+      deferredPrompt = null;
+      window.deferredPrompt = null;
+    });
+  </script>
+<script>
+  fetch("/static/fragments/reminder-modal.html")
+    .then(res => res.text())
+    .then(html => {
+      document.getElementById("reminder-modal-container").innerHTML = html;
+      initReminderModal();
+    })
+    .then(() => {
+      const script = document.createElement("script");
+      script.src = "/static/js/reminder-modal.js";
+      document.body.appendChild(script);
+    });
+
+  // Load the reminder view modal fragment
+  fetch("/static/fragments/reminder-view-modal.html")
+    .then(res => res.text())
+    .then(html => {
+      document.getElementById("reminder-view-modal-container").innerHTML = html;
+    });
+
+  // Load the report wizard modal fragment
+  fetch("/static/fragments/report_wizard_modal.html")
+    .then(res => res.text())
+    .then(html => {
+      document.body.insertAdjacentHTML('beforeend', html);
+      console.log('✅ Report wizard modal HTML loaded successfully');
+      // Small delay to ensure DOM is updated
+      return new Promise(resolve => setTimeout(resolve, 50));
+    })
+    .then(() => {
+      // Load the CSS for report wizard and dashboard widgets
+      const wizardCssLink = document.createElement("link");
+      wizardCssLink.rel = "stylesheet";
+      wizardCssLink.href = "/static/css/report_wizard.css";
+      document.head.appendChild(wizardCssLink);
+      
+      // Keep old report modal CSS for compatibility
+      const reportCssLink = document.createElement("link");
+      reportCssLink.rel = "stylesheet";
+      reportCssLink.href = "/static/css/report-request-modal.css";
+      document.head.appendChild(reportCssLink);
+      
+      const widgetsCssLink = document.createElement("link");
+      widgetsCssLink.rel = "stylesheet";
+      widgetsCssLink.href = "/static/css/dashboard-widgets.css";
+      document.head.appendChild(widgetsCssLink);
+      
+      const notificationCssLink = document.createElement("link");
+      notificationCssLink.rel = "stylesheet";
+      notificationCssLink.href = "/static/css/notification-system.css";
+      document.head.appendChild(notificationCssLink);
+      
+      const editorCssLink = document.createElement("link");
+      editorCssLink.rel = "stylesheet";
+      editorCssLink.href = "/static/css/report-editor.css";
+      document.head.appendChild(editorCssLink);
+      
+      const disciplineCssLink = document.createElement("link");
+      disciplineCssLink.rel = "stylesheet";
+      disciplineCssLink.href = "/static/css/discipline-selector.css";
+      document.head.appendChild(disciplineCssLink);
+      
+      // Load the JavaScript
+      const wizardScript = document.createElement("script");
+      wizardScript.src = "/static/js/report_wizard.js";
+      document.body.appendChild(wizardScript);
+      
+      // Keep old report modal JS for compatibility
+      const reportScript = document.createElement("script");
+      reportScript.src = "/static/js/report-request-modal.js";
+      document.body.appendChild(reportScript);
+      
+      const widgetsScript = document.createElement("script");
+      widgetsScript.src = "/static/js/dashboard-widgets.js?v=" + Date.now();
+      document.body.appendChild(widgetsScript);
+      
+      const notificationScript = document.createElement("script");
+      notificationScript.src = "/static/js/notification-system.js";
+      document.body.appendChild(notificationScript);
+      
+      const editorScript = document.createElement("script");
+      editorScript.src = "/static/js/report-editor.js";
+      document.body.appendChild(editorScript);
+      
+      const disciplineScript = document.createElement("script");
+      disciplineScript.src = "/static/js/discipline-selector.js";
+      document.body.appendChild(disciplineScript);
+      
+      
+      // Initialize all systems after scripts load
+      let scriptsLoaded = 0;
+      function checkAllLoaded() {
+        scriptsLoaded++;
+        if (scriptsLoaded === 5) { // Now waiting for 5 scripts
+          // Initialize all systems
+          console.log('🚀 Initializing all dashboard systems...');
+          
+          initializeDashboardWidgets();
+          
+          setTimeout(() => {
+            if (typeof initializeNotificationSystem === 'function') {
+              initializeNotificationSystem();
+            }
+            
+            if (typeof initializeDisciplineSelector === 'function') {
+              console.log('🏥 Initializing discipline selector...');
+              initializeDisciplineSelector();
+            }
+            
+            if (typeof initializeReportEditor === 'function') {
+              console.log('📝 Initializing report editor...');
+              initializeReportEditor();
+            }
+            
+          }, 500);
+        }
+      }
+      
+      widgetsScript.onload = checkAllLoaded;
+      notificationScript.onload = checkAllLoaded;
+      editorScript.onload = checkAllLoaded;
+      disciplineScript.onload = checkAllLoaded;
+    });
+
+</script>
+
+
+  </body>
+  </html>

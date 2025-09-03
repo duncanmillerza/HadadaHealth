@@ -1,0 +1,14 @@
+﻿modifier_code,modifier_name,modifier_description,modifier_effect,modifier_multiplier,profession
+0001,Late Cancellation Fee,"Applied when an appointment is not cancelled at least 24 hours in advance, unless circumstances warrant otherwise.",Full fee may be charged for missed appointment,1,Physiotherapy
+0003,External Equipment Use Discount,Applied when the practitioner uses equipment not owned by them.,15% reduction on relevant tariff,0.85,Physiotherapy
+0008,Additional Procedure Discount,Used when more than one procedure is done at the same visit (except * codes); 50% fee applies to extras.,Only 50% charged for each additional procedure,0.5,Physiotherapy
+0009,Full Fee for Separate Conditions,Applied when two completely separate conditions are treated in one session.,Full fee may be charged for each condition,1,Physiotherapy
+0010,Overlapping Condition Discount,When treatments for two separate conditions overlap in time.,Second condition charged at 50% of its fee,0.5,Physiotherapy
+0013,Travel Fee (AA Rates),Travel >16 km round trip; costs may be split between patients.,Fee per km beyond 16 km using AA rate,,Physiotherapy
+0014,In-Facility Treatment Indicator,Indicates physiotherapy was done in a hospital/nursing facility; used for reporting only.,No change in fee (tracking only),1,Physiotherapy
+0006,Emergency Treatment Surcharge,Applied when an emergency requires travel to the patient. Adds 50% to the total fee and must be motivated.,50% surcharge on total treatment fee,1.5,Occupational Therapy
+0008,Assistive Device at Cost,Used when providing assistive devices made by the therapist. Charged at cost.,No markup; billed at cost,,Occupational Therapy
+0009,Orthoses/Pressure Garment Materials,Materials for orthoses or pressure garments billed at net acquisition cost. Applies to listed items.,Materials billed at cost,,Occupational Therapy
+0010,Treatment Material Cost,"Materials used in therapy sessions (e.g., therapeutic putty, sponge) billed at net acquisition cost.",Materials billed at cost,,Occupational Therapy
+0011,Travel Fee (AA Rates),For offsite therapy sessions; charged per km at AA rates. Accepted by some schemes only.,Fee per km traveled,,Occupational Therapy
+0021,Inpatient Treatment Indicator,"Used when services are performed on hospital inpatients. No monetary impact, for reporting purposes only.",No fee change; classification only,1,Occupational Therapy
