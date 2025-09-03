@@ -10,56 +10,24 @@ from typing import Optional, List, Dict, Any, Union
 
 def get_database_path():
     """
-    Get the database path, handling different deployment environments with robust error handling
+    Get the database path, handling different deployment environments
     """
     # Use environment variable if set (for production deployments like Render)
     db_path = os.environ.get('DATABASE_PATH')
-    if db_path and db_path.strip():  # Check for non-empty string
-        # Ensure directory exists for specified path
-        try:
-            db_dir = os.path.dirname(db_path)
-            if db_dir:  # Only create if there's a directory component
-                os.makedirs(db_dir, exist_ok=True)
-        except (OSError, PermissionError) as e:
-            print(f"Warning: Could not create directory for DATABASE_PATH {db_path}: {e}")
-            # Fall through to default logic
-        else:
-            return db_path
+    if db_path:
+        return db_path
     
     # For local development, use data directory
     if os.path.exists('data') or os.getcwd().endswith('HadadaHealth'):
         db_dir = 'data'
         db_path = os.path.join(db_dir, 'bookings.db')
-        
-        # Try to create data directory if it doesn't exist
-        try:
-            os.makedirs(db_dir, exist_ok=True)
-            return db_path
-        except (OSError, PermissionError) as e:
-            print(f"Warning: Could not create data directory: {e}")
-            # Fall through to /tmp logic
+    else:
+        # For production environments with read-only filesystem, use /tmp
+        db_dir = '/tmp/hadadahealth'
+        db_path = os.path.join(db_dir, 'bookings.db')
     
-    # For production environments with read-only filesystem, use /tmp
-    db_dir = '/tmp/hadadahealth'
-    db_path = os.path.join(db_dir, 'bookings.db')
-    
-    # Create directory with robust error handling
-    try:
-        os.makedirs(db_dir, exist_ok=True)
-    except (OSError, PermissionError) as e:
-        print(f"Error: Could not create tmp directory {db_dir}: {e}")
-        # Last resort - use /tmp directly
-        db_path = '/tmp/bookings.db'
-        print(f"Falling back to: {db_path}")
-    
-    # Verify we can write to the directory
-    try:
-        test_file = os.path.join(os.path.dirname(db_path), '.write_test')
-        with open(test_file, 'w') as f:
-            f.write('test')
-        os.remove(test_file)
-    except (OSError, PermissionError) as e:
-        print(f"Warning: Directory {os.path.dirname(db_path)} may not be writable: {e}")
+    # Create directory if it doesn't exist
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
     
     return db_path
 
@@ -69,14 +37,9 @@ def get_db_connection():
     Get database connection with row factory for dict-like access
     Returns: sqlite3.Connection with Row factory
     """
-    db_path = get_database_path()
-    try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
-        return conn
-    except sqlite3.OperationalError as e:
-        print(f"Failed to connect to database at {db_path}: {e}")
-        raise RuntimeError(f"Database connection failed: {e}. Path: {db_path}")
+    conn = sqlite3.connect(get_database_path())
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
 def execute_query(query: str, params: tuple = (), fetch: str = None):
