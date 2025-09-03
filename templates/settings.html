@@ -35,6 +35,21 @@
       <h2>Appearance</h2>
       <label><input type="checkbox" id="dark-mode" /> Enable Dark Mode</label>
     </div>
+
+    <div class="section">
+      <h2>PWA Settings</h2>
+      <p>Install HadadaHealth as a Progressive Web App for a native app experience</p>
+      <div style="text-align: center; margin-top: 1rem;">
+        <button 
+          id="install-app-btn" 
+          onclick="installPWA()" 
+          style="padding: 0.8rem 1.5rem; background-color: #2D6356; color: white; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; display: none;"
+        >
+          📱 Install App
+        </button>
+        <p id="pwa-status" style="margin-top: 0.5rem; color: #666; font-size: 0.9rem;">App installation not available</p>
+      </div>
+    </div>
     <div class="section">
       <h2>Professions</h2>
       <div id="professions-list" style="margin-bottom:1rem;">
@@ -610,6 +625,75 @@ async function submitNewProfession() {
     showToast('Error: ' + err.message, true);
   }
 }
+
+// PWA Installation functionality
+function checkPWAAvailability() {
+  const installBtn = document.getElementById('install-app-btn');
+  const statusText = document.getElementById('pwa-status');
+  
+  if (window.deferredPrompt) {
+    installBtn.style.display = 'inline-block';
+    statusText.textContent = 'App can be installed for offline use';
+    statusText.style.color = '#2D6356';
+  } else if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+    statusText.textContent = 'App is already installed';
+    statusText.style.color = '#4caf50';
+  } else {
+    statusText.textContent = 'App installation not available in this browser';
+    statusText.style.color = '#999';
+  }
+}
+
+async function installPWA() {
+  const installBtn = document.getElementById('install-app-btn');
+  const statusText = document.getElementById('pwa-status');
+  
+  if (!window.deferredPrompt) {
+    showToast('App installation not available', true);
+    return;
+  }
+  
+  try {
+    installBtn.disabled = true;
+    installBtn.textContent = 'Installing...';
+    
+    await window.deferredPrompt.prompt();
+    const { outcome } = await window.deferredPrompt.userChoice;
+    
+    if (outcome === 'accepted') {
+      showToast('App installed successfully!');
+      statusText.textContent = 'App is installed';
+      statusText.style.color = '#4caf50';
+      installBtn.style.display = 'none';
+    } else {
+      showToast('App installation cancelled', true);
+    }
+  } catch (error) {
+    console.error('Installation failed:', error);
+    showToast('Installation failed', true);
+  } finally {
+    installBtn.disabled = false;
+    installBtn.textContent = '📱 Install App';
+    window.deferredPrompt = null;
+  }
+}
+
+// Check PWA availability when page loads
+document.addEventListener('DOMContentLoaded', () => {
+  checkPWAAvailability();
+  
+  // Listen for the beforeinstallprompt event in case it happens after page load
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    window.deferredPrompt = e;
+    checkPWAAvailability();
+  });
+  
+  // Listen for app installation
+  window.addEventListener('appinstalled', () => {
+    checkPWAAvailability();
+  });
+});
 </script>
 </body>
 

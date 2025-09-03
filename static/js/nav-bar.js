@@ -346,10 +346,7 @@ class NavigationManager {
       
       const response = await fetch('/logout', { 
         credentials: 'include',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        method: 'GET'
       });
       
       if (response.ok) {

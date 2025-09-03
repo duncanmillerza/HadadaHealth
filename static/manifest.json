@@ -1,7 +1,7 @@
 {
   "name": "HadadaHealth",
   "short_name": "HadadaHealth",
-  "description": "Healthcare management application for therapists",
+  "description": "Healthcare practice management system for physiotherapists and allied health professionals",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -46,6 +46,13 @@
       "short_name": "Patients",
       "description": "Manage patients",
       "url": "/patients",
+      "icons": [{"src": "/static/hadada_health_logo.svg", "sizes": "96x96"}]
+    },
+    {
+      "name": "AI Reports",
+      "short_name": "Reports",
+      "description": "Generate AI reports",
+      "url": "/ai_reports",
       "icons": [{"src": "/static/hadada_health_logo.svg", "sizes": "96x96"}]
     }
   ]
