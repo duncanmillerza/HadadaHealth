@@ -1,0 +1,2015 @@
+<<<<<<< HEAD
+/* AI Reports Dashboard - HadadaHealth Brand Compliant Styles */
+
+/* ========== COMPLETE CSS VARIABLES SETUP ========== */
+:root {
+  /* Brand Colors - Theme Independent Core */
+  --color-primary: #2D6356;        /* Hadada Green - sole brand anchor */
+  --color-secondary: #32517A;      /* Deep Blue - links, secondary CTAs */
+  --color-destructive: #96364C;    /* Deep Rose - delete/cancel actions */
+  
+  /* Light mode colors */
+  --color-text: #1F2937;           /* Primary text - dark gray */
+  --color-muted: #6B7280;          /* Secondary text - medium gray */
+  --color-border: #E5E7EB;         /* Borders and dividers */
+  --color-surface: #F9FAFB;        /* Card and section backgrounds */
+  --color-white: #FFFFFF;          /* Pure white backgrounds */
+  
+  /* Status colors for light mode */
+  --color-success: #059669;        /* Success states, completed actions */
+  --color-info: #0EA5E9;           /* Information, help text, notes */
+  --color-warning: #F59E0B;        /* Warnings, cautions, pending states */
+  --color-error: #DC3545;          /* Errors, validation failures */
+  
+  /* Spacing System - 4px grid foundation */
+  --space-0: 0px;
+  --space-1: 4px;    /* Micro spacing, tight elements */
+  --space-2: 8px;    /* Small spacing, related elements */
+  --space-3: 12px;   /* Compact spacing, form groups */
+  --space-4: 16px;   /* Default spacing, comfortable separation */
+  --space-5: 20px;   /* Medium spacing, section padding */
+  --space-6: 24px;   /* Large spacing, component margins */
+  --space-8: 32px;   /* Extra large spacing, card padding */
+  --space-10: 40px;  /* Section spacing */
+  --space-12: 48px;  /* Major section separation */
+  --space-16: 64px;
+  --space-20: 80px;
+  
+  /* Border radius - Single 8px system */
+  --radius-sm: 4px;
+  --radius-md: 8px;               /* Primary radius for all components */
+  --radius-lg: 12px;
+  --radius-full: 9999px;          /* Circular elements */
+  
+  /* Typography System */
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: Georgia, "Times New Roman", Times, serif; /* PDF/print only */
+  
+  /* Font sizes - rem-based scale */
+  --text-xs: 0.75rem;             /* 12px */
+  --text-sm: 0.875rem;            /* 14px */
+  --text-base: 1rem;              /* 16px */
+  --text-lg: 1.125rem;            /* 18px */
+  --text-xl: 1.25rem;             /* 20px */
+  --text-2xl: 1.5rem;             /* 24px */
+  --text-3xl: 1.875rem;           /* 30px */
+  --text-5xl: 3rem;               /* 48px */
+  
+  /* Font weights */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  
+  /* Line heights */
+  --leading-tight: 1.25;          /* For headings */
+  --leading-normal: 1.5;          /* For UI elements */
+  --leading-relaxed: 1.625;       /* For body text readability */
+  
+  /* Shadow System */
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-modal: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-dropdown: 0 4px 16px rgba(0, 0, 0, 0.1);
+  --shadow-button: 0 2px 4px rgba(45, 99, 86, 0.2);
+  --shadow-focus: 0 0 0 3px rgba(45, 99, 86, 0.1);
+  
+  /* Animation and Transitions */
+  --duration-fast: 0.15s;
+  --duration-normal: 0.2s;
+  --duration-slow: 0.3s;
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-button: all var(--duration-normal) var(--ease-out);
+  --transition-card: all var(--duration-slow) var(--ease-in-out);
+  
+  /* Focus states - WCAG 2.1 AA compliant */
+  --focus-outline: 2px solid rgba(45, 99, 86, 0.6);
+  --focus-offset: 2px;
+  
+  /* Component heights */
+  --height-button: 44px;          /* Minimum touch target */
+  --height-button-sm: 36px;
+  --height-button-lg: 52px;
+  --height-input: 48px;
+}
+
+/* Enhanced Dark mode theme variables */
+[data-theme="dark"] {
+  --color-primary: #3B7F71;       /* Slightly brighter version for contrast */
+  --color-secondary: #4F6FBF;     /* Brighter blue for dark mode */
+  --color-destructive: #B8556B;   /* Muted version for dark theme */
+  
+  --color-text: #F3F4F6;          /* Light text on dark */
+  --color-muted: #9CA3AF;         /* Muted text with sufficient contrast */
+  --color-border: #374151;        /* Dark borders */
+  --color-surface: #0F1419;       /* Very dark background */
+  --color-white: #1F2937;         /* Dark card background */
+  
+  /* Dark mode status colors - more subdued */
+=======
+/* AI Reports Dashboard - Brand-compliant styles */
+
+/* ========== CSS VARIABLES SETUP ========== */
+:root {
+  /* Brand Colors - Theme Independent */
+  --color-primary: #2D6356;
+  --color-secondary: #32517A;
+  --color-destructive: #96364C;
+  
+  /* Light mode colors */
+  --color-text: #1F2937;
+  --color-muted: #6B7280;
+  --color-border: #E5E7EB;
+  --color-surface: #F9FAFB;
+  --color-white: #FFFFFF;
+  
+  /* Status colors */
+  --color-success: #059669;
+  --color-info: #0EA5E9;
+  --color-warning: #F59E0B;
+  --color-error: #DC3545;
+  
+  /* Spacing - 4px grid system */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  
+  /* Border radius */
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  
+  /* Typography */
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-5xl: 3rem;
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  
+  /* Shadows */
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-modal: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-button: 0 2px 4px rgba(45, 99, 86, 0.2);
+  --shadow-focus: 0 0 0 3px rgba(45, 99, 86, 0.1);
+  
+  /* Transitions */
+  --transition-normal: all 0.2s ease;
+  --transition-slow: all 0.3s ease;
+}
+
+/* Dark mode theme variables */
+[data-theme="dark"] {
+  --color-primary: #3B7F71;
+  --color-secondary: #4F6FBF;
+  --color-destructive: #B8556B;
+  --color-text: #F3F4F6;
+  --color-muted: #9CA3AF;
+  --color-border: #374151;
+  --color-surface: #0F1419;
+  --color-white: #1F2937;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
+  --color-success: #10B981;
+  --color-info: #3B82F6;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+<<<<<<< HEAD
+  
+  /* Dark mode shadows - more pronounced */
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-modal: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-dropdown: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-button: 0 2px 4px rgba(59, 127, 113, 0.3);
+  --shadow-focus: 0 0 0 3px rgba(59, 127, 113, 0.2);
+  
+  /* Dark mode focus */
+  --focus-outline: 2px solid rgba(59, 127, 113, 0.8);
+=======
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-button: 0 2px 4px rgba(59, 127, 113, 0.3);
+  --shadow-focus: 0 0 0 3px rgba(59, 127, 113, 0.2);
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
+}
+
+/* ========== BASE STYLES ========== */
+body {
+  background-color: var(--color-surface);
+  font-family: var(--font-ui);
+  color: var(--color-text);
+  line-height: var(--leading-normal);
+<<<<<<< HEAD
+  font-size: var(--text-base);
+}
+
+/* ========== CONTAINER SYSTEM ========== */
+.container {
+  max-width: 1200px; 
+  margin: var(--space-10) auto; 
+  padding: 0 var(--space-6);
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 var(--space-4);
+    margin: var(--space-6) auto;
+  }
+}
+
+/* ========== TYPOGRAPHY SYSTEM ========== */
+/* Following HadadaHealth brand hierarchy */
+
+h1 { 
+  font-size: var(--text-5xl);        /* 48px - Primary page headings */
+  font-weight: var(--font-semibold); 
+  letter-spacing: -0.025em;
+  line-height: var(--leading-tight);
+  margin: var(--space-8) 0 var(--space-4);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+}
+
+h2 { 
+  font-size: var(--text-3xl);        /* 30px - Section headings */
+  font-weight: var(--font-semibold); 
+  letter-spacing: -0.025em;
+  line-height: var(--leading-tight);
+  margin: var(--space-6) 0 var(--space-3);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+}
+
+h3 { 
+  font-size: var(--text-xl);         /* 20px - Subsection headings */
+  font-weight: var(--font-medium); 
+  letter-spacing: -0.025em;
+  line-height: var(--leading-tight);
+  margin: var(--space-5) 0 var(--space-3);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+}
+
+h4 {
+  font-size: var(--text-lg);         /* 18px - Component titles */
+  font-weight: var(--font-medium);
+  line-height: var(--leading-tight);
+  margin: var(--space-4) 0 var(--space-2);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+}
+
+/* Body text and paragraphs */
+p {
+  font-size: var(--text-base);       /* 16px */
+  line-height: var(--leading-relaxed); /* 1.625 for readability */
+  color: var(--color-text);
+  margin: 0 0 var(--space-4) 0;
+  font-family: var(--font-ui);
+}
+
+/* Utility classes */
+.text-muted { 
+  color: var(--color-muted); 
+}
+.text-primary { 
+  color: var(--color-primary); 
+}
+.text-success { 
+  color: var(--color-success); 
+}
+.text-warning { 
+  color: var(--color-warning); 
+}
+.text-error { 
+  color: var(--color-error); 
+}
+
+/* Mobile typography scaling */
+@media (max-width: 768px) {
+  h1 {
+    font-size: var(--text-2xl);      /* 24px on mobile */
+    margin: var(--space-6) 0 var(--space-4);
+  }
+  
+  h2 {
+    font-size: var(--text-xl);       /* 20px on mobile */
+    margin: var(--space-5) 0 var(--space-3);
+  }
+  
+  h3 {
+    font-size: var(--text-lg);       /* 18px on mobile */
+    margin: var(--space-4) 0 var(--space-2);
+  }
+}
+
+@media (max-width: 480px) {
+  h1 { font-size: var(--text-xl); }    /* 20px on small mobile */
+  h2 { font-size: var(--text-lg); }    /* 18px on small mobile */
+  h3 { font-size: var(--text-base); }  /* 16px on small mobile */
+  body, p { font-size: 0.9rem; }       /* 14.4px on small mobile */
+}
+
+/* ========== ANIMATIONS - LOOK AND FEEL BRAND STANDARD ========== */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  opacity: 0;
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.animate-delay-200 { animation-delay: 0.2s; }
+
+/* ========== GRID SYSTEM - LOOK AND FEEL BRAND STANDARD ========== */
+.grid{display:grid; gap:var(--space-8)}
+.grid.cols-2{grid-template-columns:repeat(2,1fr)}
+.grid.cols-3{grid-template-columns:repeat(3,1fr)}
+.grid.cols-4{grid-template-columns:repeat(4,1fr)}
+@media (max-width:900px){ .grid.cols-3, .grid.cols-4{grid-template-columns:repeat(2,1fr)} }
+@media (max-width:640px){ .grid.cols-2, .grid.cols-3, .grid.cols-4{grid-template-columns:1fr} }
+
+/* ========== CARD SYSTEM ========== */
+/* Following HadadaHealth brand card specifications */
+
+.card {
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);          /* Single 8px radius system */
+  box-shadow: var(--shadow-card);
+  padding: var(--space-8);                  /* 32px padding */
+  transition: var(--transition-card);       /* Smooth transitions */
+  display: flex;
+  flex-direction: column;
+}
+
+.card:hover {
+  transform: translateY(-4px) scale(1.02);  /* Enhanced hover effect */
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="dark"] .card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* Interactive cards for navigation */
+.card-interactive {
+  cursor: pointer;
+  transition: var(--transition-card);
+  border-left: 4px solid transparent;
+}
+
+.card-interactive:hover {
+  border-left-color: var(--color-primary);
+  background: rgba(45, 99, 86, 0.02);
+  transform: translateX(4px);
+}
+
+[data-theme="dark"] .card-interactive:hover {
+  background: rgba(59, 127, 113, 0.1);
+}
+
+.card-interactive:focus {
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
+}
+
+/* Card grid layouts */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-6);
+  margin: var(--space-6) 0;
+}
+
+@media (max-width: 768px) {
+  .card-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+    padding: 0 var(--space-4);
+  }
+}
+
+/* ========== SECTIONS - LOOK AND FEEL BRAND STANDARD ========== */
+.mt-8 { margin-top: var(--space-8); }
+
+/* ========== PAGE HEADER WITH STATS ========== */
+.page-header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-8);
+  gap: var(--space-6);
+}
+
+.header-content {
+  flex: 1;
+}
+
+.stats-card-container {
+  flex-shrink: 0;
+}
+
+.stats-summary {
+  min-width: 200px;
+  padding: var(--space-4) var(--space-6);
+}
+
+.stats-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.stat-item {
+  text-align: center;
+  flex: 1;
+}
+
+.stat-number {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--color-primary);
+  margin-bottom: var(--space-1);
+  line-height: var(--leading-tight);
+}
+
+.stat-label {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  margin: 0;
+}
+
+.stat-divider {
+  width: 1px;
+  height: 40px;
+  background: var(--color-border);
+}
+
+/* Mobile responsive - stack stats below header */
+@media (max-width: 768px) {
+  .page-header-section {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-4);
+  }
+  
+  .stats-card-container {
+    align-self: center;
+  }
+  
+  .stats-summary {
+    min-width: auto;
+    max-width: 300px;
+  }
+=======
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
+}
+
+/* ========== PAGE HEADER ========== */
+.page-header {
+  background: linear-gradient(135deg, var(--color-primary) 0%, rgba(45, 99, 86, 0.85) 100%);
+  color: var(--color-white);
+  padding: var(--space-16) 0;
+  margin-bottom: var(--space-16);
+  box-shadow: var(--shadow-card);
+}
+
+.page-header h1 {
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-semibold);
+  margin: 0;
+  line-height: var(--leading-tight);
+}
+
+.page-header p {
+  margin: var(--space-2) 0 0 0;
+  opacity: 0.9;
+  font-size: var(--text-lg);
+}
+
+/* Breadcrumb styling */
+.breadcrumb {
+  background: transparent;
+  padding: 0;
+  margin-bottom: var(--space-4);
+}
+
+.breadcrumb-item a {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  transition: var(--transition-normal);
+}
+
+.breadcrumb-item a:hover {
+  color: var(--color-white);
+  text-decoration: underline;
+}
+
+.breadcrumb-item.active {
+  color: var(--color-white);
+}
+
+/* ========== BACK BUTTON ========== */
+.back-button {
+  position: fixed;
+  top: var(--space-5);
+  left: var(--space-5);
+  z-index: 1000;
+  background: var(--color-primary);
+  color: var(--color-white);
+  border: none;
+  border-radius: var(--space-12);
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  font-family: var(--font-ui);
+  box-shadow: var(--shadow-button);
+  transition: var(--transition-normal);
+  cursor: pointer;
+}
+
+.back-button:hover {
+  background: rgba(45, 99, 86, 0.9);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(45, 99, 86, 0.3);
+}
+
+/* ========== STATISTICS CARDS ========== */
+.stats-cards {
+  margin-bottom: var(--space-16);
+}
+
+.stat-card {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  text-align: center;
+  box-shadow: var(--shadow-card);
+  border-left: 4px solid var(--color-primary);
+  transition: var(--transition-normal);
+  border: 1px solid var(--color-border);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-modal);
+}
+
+.stat-number {
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  color: var(--color-primary);
+  margin-bottom: var(--space-2);
+  line-height: var(--leading-tight);
+}
+
+.stat-label {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  margin: 0;
+}
+
+/* ========== QUICK ACTIONS SECTION ========== */
+.quick-actions {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  padding: var(--space-16);
+  box-shadow: var(--shadow-card);
+  margin-bottom: var(--space-16);
+  border: 1px solid var(--color-border);
+}
+
+.quick-actions h2 {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+  margin-bottom: var(--space-4);
+}
+
+.action-card {
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  text-align: center;
+  transition: var(--transition-normal);
+  cursor: pointer;
+  height: 100%;
+  background: var(--color-white);
+}
+
+.action-card:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-card);
+  transform: translateY(-2px);
+}
+
+.action-card i {
+  font-size: var(--text-5xl);
+  margin-bottom: var(--space-4);
+  color: var(--color-primary);
+}
+
+.action-card.warning i {
+  color: var(--color-warning);
+}
+
+.action-card h3 {
+  font-size: var(--text-lg);
+  margin-bottom: var(--space-2);
+  font-weight: var(--weight-semibold);
+  color: var(--color-primary);
+}
+
+.action-card.warning h3 {
+  color: var(--color-warning);
+}
+
+.action-card p {
+  color: var(--color-muted);
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+}
+
+/* ========== REPORTS DASHBOARD ========== */
+.reports-dashboard {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  padding: var(--space-16);
+  box-shadow: var(--shadow-card);
+  margin-bottom: var(--space-16);
+  border: 1px solid var(--color-border);
+}
+
+.reports-dashboard h2 {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+  margin: 0;
+}
+
+/* Search and filter controls */
+.search-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+  gap: var(--space-4);
+}
+
+<<<<<<< HEAD
+/* ========== TAB NAVIGATION SYSTEM ========== */
+/* Following HadadaHealth brand navigation specifications */
+
+.nav-tabs {
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--space-6);
+}
+
+.nav-tabs .nav-item {
+  margin-bottom: -1px;
+}
+
+.nav-tabs .nav-link {
+  color: var(--color-muted);
+  font-weight: var(--font-medium);        /* 500 weight for nav elements */
+  font-family: var(--font-ui);
+  font-size: var(--text-base);            /* 16px for good readability */
+  border: none;
+  border-bottom: 3px solid transparent;   /* Thicker bottom border for emphasis */
+  padding: var(--space-4) var(--space-6); /* Comfortable padding */
+  transition: var(--transition-button);
+  background: transparent;
+  min-height: var(--height-button);       /* Touch-friendly height */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.nav-tabs .nav-link.active {
+  color: var(--color-primary);            /* Primary brand color */
+  border-bottom-color: var(--color-primary);
+  background: none;
+  font-weight: var(--font-semibold);      /* Bolder weight for active state */
+}
+
+.nav-tabs .nav-link:hover:not(.active) {
+  color: var(--color-text);               /* Darker color on hover */
+  border-bottom-color: rgba(45, 99, 86, 0.3); /* Subtle primary color hint */
+  background: rgba(45, 99, 86, 0.05);     /* Very subtle background */
+}
+
+.nav-tabs .nav-link:focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
+}
+
+/* Mobile navigation adjustments */
+@media (max-width: 768px) {
+  .nav-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .nav-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .nav-tabs .nav-link {
+    padding: var(--space-3) var(--space-5);
+    font-size: var(--text-sm);           /* Smaller font on mobile */
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+}
+
+/* ========== REPORT CARDS ========== */
+/* Healthcare-specific report card styling following brand specifications */
+
+.report-card {
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);           /* Single 8px radius system */
+  padding: 0;                                /* Remove padding, add to sub-elements */
+  margin-bottom: var(--space-4);             /* 16px bottom margin */
+  transition: var(--transition-card);
+  position: relative;
+  border-left: 4px solid transparent;       /* Subtle left indicator */
+  box-shadow: var(--shadow-card);
+  overflow: hidden;                         /* Prevent content overflow */
+}
+
+/* Legacy support - maintain both classes for compatibility */
+.report-item {
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);           /* Single 8px radius system */
+  padding: var(--space-6);                   /* 24px padding */
+  margin-bottom: var(--space-4);             /* 16px bottom margin */
+  transition: var(--transition-card);
+  position: relative;
+  border-left: 4px solid transparent;       /* Subtle left indicator */
+  box-shadow: var(--shadow-card);
+}
+
+/* Report card and legacy report item hover effects */
+.report-card:hover,
+.report-item:hover {
+  border-left-color: var(--color-primary);
+  background: rgba(45, 99, 86, 0.02);
+  transform: translateX(4px);               /* Consistent with brand card pattern */
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="dark"] .report-card:hover,
+[data-theme="dark"] .report-item:hover {
+  background: rgba(59, 127, 113, 0.1);
+}
+
+/* ========== REPORT CARD STRUCTURE ========== */
+/* New responsive report card layout */
+
+.report-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: var(--space-6);                  /* 24px padding */
+  gap: var(--space-4);                      /* 16px gap between content areas */
+}
+
+.report-info {
+  flex: 1;
+  min-width: 0;                             /* Allow text truncation */
+}
+
+.report-status-container {
+  flex-shrink: 0;                           /* Prevent status badge from shrinking */
+  display: flex;
+  align-items: flex-start;
+}
+
+.report-description {
+  color: var(--color-muted);
+  font-size: var(--text-sm);               /* 14px */
+  margin: var(--space-2) 0 var(--space-4) 0; /* 8px top, 16px bottom */
+  line-height: var(--leading-relaxed);
+}
+
+.report-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);                     /* 16px gaps between items */
+  margin-bottom: var(--space-3);           /* 12px bottom margin */
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);                     /* 8px gap between icon and text */
+  color: var(--color-muted);
+  font-size: var(--text-sm);               /* 14px for metadata */
+  line-height: 1.4;
+}
+
+.meta-item i {
+  width: 16px;
+  font-size: 16px;
+  flex-shrink: 0;
+  color: var(--color-primary);
+}
+
+/* ========== COMPLETION SECTION ========== */
+/* Completion status styling within report cards */
+
+.completion-section {
+  padding: 0 var(--space-6) var(--space-4);  /* Side padding matches header, bottom padding */
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  margin: 0;
+}
+
+.completion-section:empty {
+  display: none;                             /* Hide when no completion content */
+}
+
+.completion-status {
+  padding: var(--space-3) 0;               /* 12px vertical padding */
+}
+
+.completion-progress {
+  margin-bottom: var(--space-3);           /* 12px bottom margin */
+}
+
+.completion-actions {
+  display: flex;
+  justify-content: flex-start;
+  gap: var(--space-2);                     /* 8px gap between completion buttons */
+}
+
+/* ========== REPORT ACTIONS ========== */
+/* Responsive button layout following brand button specifications */
+
+.report-actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--space-2);                     /* 8px gap between all buttons */
+  padding: var(--space-4) var(--space-6); /* 16px vertical, 24px horizontal */
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.primary-actions,
+.secondary-actions {
+  display: flex;
+  gap: var(--space-2);                     /* 8px gap between buttons */
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+}
+
+.primary-actions {
+  order: 1;                                /* Primary actions first */
+}
+
+.secondary-actions {
+  order: 2;                                /* Secondary actions second */
+}
+
+/* ========== RESPONSIVE BUTTON ENHANCEMENTS ========== */
+/* Enhanced button styling for report actions */
+
+.report-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);                     /* 8px gap between icon and text */
+  min-width: 0;                            /* Allow buttons to shrink if needed */
+  flex-shrink: 0;                          /* Prevent buttons from being too small */
+  padding: 10px 16px;                      /* Adjust padding for better mobile touch */
+  font-size: var(--text-sm);               /* 14px for report actions */
+  font-weight: var(--font-medium);         /* 500 weight following brand */
+  border-radius: var(--radius-md);         /* 8px radius following brand */
+  transition: var(--transition-button);    /* Brand transition timing */
+  position: relative;
+}
+
+.report-actions .btn:hover {
+  transform: translateY(-1px);             /* Consistent with brand hover effect */
+}
+
+.report-actions .btn i {
+  font-size: 16px;                         /* Icon size */
+  flex-shrink: 0;
+}
+
+.btn-text {
+  white-space: nowrap;                     /* Prevent text wrapping */
+}
+
+/* ========== MOBILE RESPONSIVE DESIGN ========== */
+/* Mobile-first responsive design following brand breakpoints */
+
+@media (max-width: 768px) {
+  .report-card-header {
+    flex-direction: column;                 /* Stack header content vertically */
+    gap: var(--space-3);                   /* 12px gap on mobile */
+    padding: var(--space-4);               /* 16px padding on mobile */
+  }
+  
+  .report-status-container {
+    align-self: flex-start;                /* Align status to start */
+  }
+  
+  .report-meta {
+    flex-direction: column;                /* Stack metadata vertically */
+    gap: var(--space-2);                  /* 8px gaps on mobile */
+  }
+  
+  .completion-section {
+    padding: var(--space-3) var(--space-4); /* Adjust padding for mobile */
+  }
+  
+  .report-actions {
+    padding: var(--space-3) var(--space-4); /* Reduce padding on mobile */
+    gap: var(--space-2);                   /* Smaller gaps on mobile */
+  }
+  
+  .primary-actions,
+  .secondary-actions {
+    width: 100%;
+    justify-content: space-between;        /* Distribute buttons evenly */
+  }
+  
+  .report-actions .btn {
+    flex: 1;                               /* Make buttons equal width */
+    justify-content: center;               /* Center button content */
+    min-width: 0;                          /* Allow shrinking */
+    padding: 12px 8px;                     /* Adjust padding for mobile */
+    font-size: 13px;                       /* Slightly smaller text on mobile */
+  }
+  
+  /* Hide button text on very small screens, show icon only */
+  @media (max-width: 480px) {
+    .btn-text {
+      display: none;
+    }
+    
+    .report-actions .btn {
+      min-width: 44px;                     /* Minimum touch target */
+      padding: 12px;                       /* Equal padding for icon-only buttons */
+      justify-content: center;
+    }
+    
+    .report-actions .btn i {
+      margin: 0;                           /* Remove margin for icon-only buttons */
+    }
+  }
+}
+
+/* Report titles following typography hierarchy for both new and legacy cards */
+.report-card h4,
+.report-item h4 {
+  font-size: var(--text-lg);               /* 18px - Component titles */
+  font-weight: var(--font-medium);         /* 500 weight */
+  line-height: var(--leading-tight);       /* 1.25 line height */
+  margin: 0 0 var(--space-2) 0;           /* Only bottom margin */
+  color: var(--color-text);
+  font-family: var(--font-ui);
+}
+
+/* Legacy report metadata styling for backward compatibility */
+.report-item .report-meta {
+  color: var(--color-muted);
+  font-size: var(--text-sm);               /* 14px for metadata */
+  margin-bottom: var(--space-4);           /* 16px bottom margin */
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);                     /* 16px gaps between items */
+}
+
+.report-item .report-meta span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);                     /* 8px gap between icon and text */
+}
+
+.report-item .report-meta i {
+  width: 16px;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+/* Enhanced status badges following brand color system */
+.report-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;                       /* Consistent padding */
+  border-radius: var(--radius-full);       /* Pill shape */
+  font-size: 12px;                         /* Smaller text for badges */
+  font-weight: var(--font-semibold);       /* Bolder weight for emphasis */
+  text-transform: uppercase;
+  letter-spacing: 0.5px;                   /* Letter spacing for caps */
+  margin-bottom: var(--space-4);
+  border: 1px solid transparent;
+=======
+/* Tab navigation */
+.nav-tabs .nav-link {
+  color: var(--color-muted);
+  font-weight: var(--weight-medium);
+  font-family: var(--font-ui);
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: var(--space-4) var(--space-6);
+  transition: var(--transition-normal);
+}
+
+.nav-tabs .nav-link.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  background: none;
+}
+
+.nav-tabs .nav-link:hover {
+  color: var(--color-primary);
+  border-color: transparent;
+}
+
+/* ========== REPORT ITEMS ========== */
+.report-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  margin-bottom: var(--space-4);
+  transition: var(--transition-normal);
+  position: relative;
+  background: var(--color-white);
+  border-left: 4px solid transparent;
+}
+
+.report-item:hover {
+  border-left-color: var(--color-primary);
+  box-shadow: var(--shadow-card);
+  transform: translateX(2px);
+}
+
+.report-item h4 {
+  font-size: var(--text-lg);
+  margin-bottom: var(--space-2);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+  line-height: var(--leading-tight);
+}
+
+.report-meta {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-4);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.report-meta i {
+  width: 16px;
+  margin-right: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* Status badges */
+.report-status {
+  display: inline-block;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--space-5);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  margin-bottom: var(--space-4);
+  text-transform: capitalize;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
+}
+
+.status-pending {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--color-warning);
+<<<<<<< HEAD
+  border-color: rgba(245, 158, 11, 0.2);
+=======
+  border: 1px solid rgba(245, 158, 11, 0.2);
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
+}
+
+.status-in-progress {
+  background-color: rgba(14, 165, 233, 0.1);
+  color: var(--color-info);
+<<<<<<< HEAD
+  border-color: rgba(14, 165, 233, 0.2);
+=======
+  border: 1px solid rgba(14, 165, 233, 0.2);
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
+}
+
+.status-completed {
+  background-color: rgba(5, 150, 105, 0.1);
+  color: var(--color-success);
+<<<<<<< HEAD
+  border-color: rgba(5, 150, 105, 0.2);
+=======
+  border: 1px solid rgba(5, 150, 105, 0.2);
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
+}
+
+.status-overdue {
+  background-color: rgba(220, 53, 69, 0.1);
+  color: var(--color-error);
+<<<<<<< HEAD
+  border-color: rgba(220, 53, 69, 0.2);
+}
+
+/* Report action buttons */
+.report-actions {
+  display: flex;
+  gap: var(--space-2);                     /* 8px gaps between buttons */
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: var(--space-4);              /* Push actions to bottom */
+}
+
+/* Legacy mobile report optimizations for backward compatibility */
+@media (max-width: 768px) {
+  .report-item {
+    padding: var(--space-4);               /* Reduced padding on mobile */
+    margin-bottom: var(--space-3);
+  }
+  
+  .report-item .report-meta {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  
+  .report-item .report-actions {
+    justify-content: center;
+    width: 100%;
+  }
+  
+  .report-item .report-actions .btn {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* ========== HADADA HEALTH BUTTON SYSTEM ========== */
+/* Implementing official HadadaHealth button hierarchy from buttons.md */
+
+.btn {
+  /* Base button styling */
+  padding: 14px 24px;                    /* Standard button padding */
+  border-radius: var(--radius-md);       /* Single 8px radius system */
+  font-size: 15px;                       /* Button font size */
+  font-weight: var(--font-medium);       /* 500 weight for buttons */
+  font-family: var(--font-ui);
+  cursor: pointer;
+  transition: var(--transition-button);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);                   /* 8px gap for icon + text */
+  border: none;
+  text-decoration: none;
+  line-height: 1;
+  min-height: var(--height-button);      /* 44px minimum touch target */
+  position: relative;
+  overflow: hidden;
+}
+
+/* Primary Button - Main actions and primary CTAs */
+.btn-primary {
+  background: var(--color-primary);      /* Hadada Green */
+  color: var(--color-white);
+  box-shadow: var(--shadow-button);      /* Brand-specific shadow */
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(45, 99, 86, 0.25);
+}
+
+.btn-primary:active {
+  transform: translateY(1px);
+}
+
+/* Secondary Button - Alternative actions */
+=======
+  border: 1px solid rgba(220, 53, 69, 0.2);
+}
+
+/* Report actions */
+.report-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ========== BUTTONS ========== */
+.btn {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-weight: var(--weight-medium);
+  font-family: var(--font-ui);
+  cursor: pointer;
+  transition: var(--transition-normal);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  border: none;
+  text-decoration: none;
+  line-height: 1;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: var(--color-white);
+  box-shadow: var(--shadow-button);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: rgba(45, 99, 86, 0.9);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(45, 99, 86, 0.3);
+}
+
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
+.btn-secondary {
+  background: var(--color-white);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-primary);
+  color: var(--color-white);
+<<<<<<< HEAD
+  transform: translateY(-1px);
+}
+
+/* Tertiary Button - Text-based buttons for minimal actions */
+.btn-tertiary {
+  background: transparent;
+  color: var(--color-secondary);
+  border: none;
+  padding: 14px 16px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  min-height: 48px;
+}
+
+.btn-tertiary:hover {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+/* Destructive Button - Delete, remove, cancel operations */
+.btn-destructive,
+.btn-outline-danger {
+  background: var(--color-destructive);  /* Deep Rose */
+  color: var(--color-white);
+  border: none;
+  box-shadow: 0 2px 4px rgba(150, 54, 76, 0.2);
+}
+
+.btn-destructive:hover:not(:disabled),
+.btn-outline-danger:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(150, 54, 76, 0.25);
+}
+
+/* Outline button variants */
+=======
+}
+
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
+.btn-outline-secondary {
+  background: transparent;
+  color: var(--color-muted);
+  border: 1px solid var(--color-border);
+}
+
+<<<<<<< HEAD
+.btn-outline-secondary:hover:not(:disabled) {
+  background: var(--color-surface);
+  border-color: var(--color-muted);
+  color: var(--color-text);
+=======
+.btn-outline-secondary:hover {
+  background: var(--color-surface);
+  border-color: var(--color-muted);
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
+}
+
+.btn-outline-primary {
+  background: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
+<<<<<<< HEAD
+.btn-outline-primary:hover:not(:disabled) {
+  background: var(--color-primary);
+  color: var(--color-white);
+  transform: translateY(-1px);
+=======
+.btn-outline-primary:hover {
+  background: var(--color-primary);
+  color: var(--color-white);
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
+}
+
+.btn-outline-success {
+  background: transparent;
+  color: var(--color-success);
+  border: 1px solid var(--color-success);
+}
+
+<<<<<<< HEAD
+.btn-outline-success:hover:not(:disabled) {
+  background: var(--color-success);
+  color: var(--color-white);
+  transform: translateY(-1px);
+}
+
+.btn-outline-warning {
+  background: transparent;
+  color: var(--color-warning);
+  border: 1px solid var(--color-warning);
+}
+
+.btn-outline-warning:hover:not(:disabled) {
+  background: var(--color-warning);
+  color: var(--color-white);
+  transform: translateY(-1px);
+}
+
+/* Warning/Info buttons */
+.btn-warning {
+  background: var(--color-warning);
+  color: var(--color-white);
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
+}
+
+.btn-warning:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.9);
+  transform: translateY(-1px);
+}
+
+/* Button sizes */
+.btn-sm {
+  padding: 8px 16px;                     /* Small button padding */
+  font-size: 14px;
+  min-height: var(--height-button-sm);   /* 36px minimum */
+}
+
+.btn-lg {
+  padding: 18px 32px;                    /* Large button padding */
+  font-size: 16px;
+  min-height: var(--height-button-lg);   /* 52px minimum */
+}
+
+/* Icon-only buttons */
+.btn-icon {
+  width: var(--height-button);
+  height: var(--height-button);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon.btn-sm {
+  width: var(--height-button-sm);
+  height: var(--height-button-sm);
+}
+
+/* Button states */
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.btn:disabled:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Enhanced disabled state for dark mode */
+[data-theme="dark"] .btn:disabled {
+  opacity: 0.3;
+  background: var(--color-border) !important;
+  color: rgba(255, 255, 255, 0.3) !important;
+  border-color: transparent !important;
+}
+
+/* Focus states for accessibility */
+.btn:focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
+}
+
+/* Loading state */
+.btn.loading {
+  position: relative;
+  color: transparent;
+  pointer-events: none;
+}
+
+.btn.loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Icon spacing in buttons */
+.btn .material-icons,
+.btn i {
+  font-size: 20px;
+}
+
+.btn-sm .material-icons,
+.btn-sm i {
+  font-size: 16px;
+}
+
+.btn-lg .material-icons,
+.btn-lg i {
+  font-size: 24px;
+}
+
+/* ========== FORM CONTROLS ========== */
+/* Following HadadaHealth brand input specifications */
+
+.form-control {
+  width: 100%;
+  height: var(--height-input);             /* 48px consistent input height */
+  padding: var(--space-3) var(--space-4);  /* 12px vertical, 16px horizontal */
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);         /* Single 8px radius system */
+  font-size: var(--text-base);            /* 16px to prevent iOS zoom */
+  font-family: var(--font-ui);
+  color: var(--color-text);
+  background: var(--color-white);
+  transition: var(--transition-button);    /* Smooth transitions */
+=======
+.btn-outline-success:hover {
+  background: var(--color-success);
+  color: var(--color-white);
+}
+
+.btn-outline-danger {
+  background: transparent;
+  color: var(--color-destructive);
+  border: 1px solid var(--color-destructive);
+}
+
+.btn-outline-danger:hover {
+  background: var(--color-destructive);
+  color: var(--color-white);
+}
+
+.btn-warning {
+  background: var(--color-warning);
+  color: var(--color-white);
+}
+
+.btn-warning:hover {
+  background: rgba(245, 158, 11, 0.9);
+}
+
+.btn-sm {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+}
+
+.btn-lg {
+  padding: var(--space-4) var(--space-6);
+  font-size: var(--text-base);
+}
+
+/* Button disabled state */
+.btn:disabled {
+  background: var(--color-border);
+  color: var(--color-muted);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ========== FORM CONTROLS ========== */
+.form-control {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-family: var(--font-ui);
+  color: var(--color-text);
+  background: var(--color-white);
+  transition: var(--transition-normal);
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--color-primary);
+<<<<<<< HEAD
+  box-shadow: var(--shadow-focus);         /* Brand-specific focus shadow */
+}
+
+.form-control::placeholder {
+  color: var(--color-muted);
+  opacity: 1;
+}
+
+/* Input group styling for search */
+.input-group {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+}
+
+.input-group .form-control {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: none;
+}
+
+.input-group .btn {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border: 1.5px solid var(--color-border);
+  border-left: none;
+  background: var(--color-white);
+  color: var(--color-muted);
+  min-width: 48px;                         /* Touch-friendly width */
+}
+
+.input-group .btn:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+=======
+  box-shadow: var(--shadow-focus);
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
+}
+
+/* ========== EMPTY STATE ========== */
+.empty-state {
+  text-align: center;
+  padding: var(--space-20) var(--space-16);
+  color: var(--color-muted);
+}
+
+.empty-state i {
+  font-size: 4rem;
+  margin-bottom: var(--space-4);
+  opacity: 0.6;
+  color: var(--color-muted);
+}
+
+.empty-state h3 {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
+}
+
+.empty-state p {
+  font-size: var(--text-base);
+  color: var(--color-muted);
+  margin-bottom: var(--space-6);
+}
+
+/* ========== FLOATING NAVIGATION ========== */
+.floating-nav {
+  position: fixed;
+  bottom: var(--space-5);
+  right: var(--space-5);
+  z-index: 1000;
+  display: flex;
+  gap: var(--space-3);
+}
+
+.floating-nav .btn {
+  width: var(--space-12);
+  height: var(--space-12);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-shadow: var(--shadow-modal);
+}
+
+/* ========== RESPONSIVE DESIGN ========== */
+@media (max-width: 768px) {
+  .page-header {
+    padding: var(--space-12) 0;
+  }
+  
+  .page-header h1 {
+    font-size: var(--text-2xl);
+  }
+  
+  .back-button {
+    position: relative;
+    top: auto;
+    left: auto;
+    display: block;
+    width: 100%;
+    margin-bottom: var(--space-4);
+    border-radius: var(--radius-md);
+  }
+  
+  .stats-cards {
+    margin-bottom: var(--space-12);
+  }
+  
+  .quick-actions,
+  .reports-dashboard {
+    padding: var(--space-12);
+    margin-bottom: var(--space-12);
+  }
+  
+  .action-card {
+    margin-bottom: var(--space-4);
+  }
+  
+  .report-actions {
+    justify-content: center;
+    margin-top: var(--space-4);
+  }
+  
+  .report-meta {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  
+  .floating-nav {
+    position: relative;
+    bottom: auto;
+    right: auto;
+    justify-content: center;
+    margin-top: var(--space-8);
+  }
+  
+  .search-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+}
+
+@media (max-width: 480px) {
+  .report-item {
+    padding: var(--space-4);
+  }
+  
+  .stat-card {
+    padding: var(--space-4);
+  }
+  
+  .quick-actions,
+  .reports-dashboard {
+    padding: var(--space-8);
+  }
+  
+  .empty-state {
+    padding: var(--space-16) var(--space-8);
+  }
+}
+
+/* ========== HIGH CONTRAST SUPPORT ========== */
+@media (prefers-contrast: high) {
+  .stat-card,
+  .quick-actions,
+  .reports-dashboard,
+  .report-item {
+    border: 2px solid var(--color-text);
+  }
+  
+  .btn-outline-secondary,
+  .btn-outline-primary {
+    border: 2px solid currentColor;
+  }
+}
+
+<<<<<<< HEAD
+/* ========== REPORTS HEADER ========== */
+/* Dashboard header following brand typography hierarchy */
+
+.reports-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-6);           /* 24px bottom margin */
+  padding-bottom: var(--space-4);          /* 16px bottom padding */
+  border-bottom: 2px solid var(--color-border);
+}
+
+.reports-header h2 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-3xl);              /* 30px - Section headings */
+  font-weight: var(--font-semibold);       /* 600 weight following brand */
+  line-height: var(--leading-tight);       /* 1.25 line height */
+  font-family: var(--font-ui);
+}
+
+.primary-actions {
+  display: flex;
+  gap: var(--space-3);                     /* 12px gap between buttons */
+  align-items: center;
+}
+
+/* ========== SEARCH CONTROLS ========== */
+/* Dashboard search and filter controls following brand patterns */
+
+.search-controls {
+  display: flex;
+  gap: var(--space-4);                     /* 16px gap between elements */
+  align-items: center;
+  margin-bottom: var(--space-6);           /* 24px bottom margin */
+  flex-wrap: wrap;
+}
+
+.search-input {
+  min-width: 300px;
+  flex: 1;
+  max-width: 400px;
+}
+
+/* Dropdown styling */
+.dropdown-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);                     /* 8px gap for icon spacing */
+  white-space: nowrap;
+}
+
+.dropdown-toggle::after {
+  border-top: 4px solid;
+  border-right: 4px solid transparent;
+  border-left: 4px solid transparent;
+  margin-left: var(--space-2);
+}
+
+.dropdown-menu {
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-dropdown);
+  padding: var(--space-2) 0;
+  margin-top: var(--space-1);
+  min-width: 160px;
+}
+
+.dropdown-item {
+  display: block;
+  width: 100%;
+  padding: var(--space-2) var(--space-4);  /* 8px vertical, 16px horizontal */
+  color: var(--color-text);
+  text-decoration: none;
+  font-size: var(--text-sm);              /* 14px */
+  font-family: var(--font-ui);
+  transition: var(--transition-button);
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background: var(--color-surface);
+  color: var(--color-primary);
+}
+
+/* Enhanced primary actions that are already in reports header */
+.primary-actions .btn {
+  /* Base button styling already defined above - no need to override */
+}
+
+/* ========== RESPONSIVE DESIGN ========== */
+/* Mobile-first responsive design following brand breakpoints */
+
+@media (max-width: 768px) {
+  .reports-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-4);                   /* 16px gap on mobile */
+    text-align: center;
+  }
+  
+  .primary-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  
+  .search-controls {
+    justify-content: center;
+    gap: var(--space-3);                   /* 12px gap on mobile */
+  }
+  
+  .search-input {
+    min-width: 250px;
+  }
+}
+
+@media (max-width: 480px) {
+  .reports-header h2 {
+    font-size: var(--text-2xl);           /* 24px on small mobile */
+  }
+  
+  .primary-actions {
+    flex-direction: column;
+    gap: var(--space-2);                   /* 8px gap on small mobile */
+  }
+  
+  .primary-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .search-controls {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  
+  .search-input {
+    min-width: 100%;
+    max-width: none;
+  }
+  
+  /* Reduce button padding on very small screens */
+  .btn {
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+  
+  .btn-sm {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+}
+
+/* ========== ACCESSIBILITY ENHANCEMENTS ========== */
+/* Following WCAG 2.1 AA guidelines for healthcare interfaces */
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .card,
+  .report-item,
+  .btn,
+  .nav-link {
+    transition: none !important;
+  }
+  
+  .card:hover,
+  .report-item:hover,
+  .btn:hover,
+  .primary-actions .btn:hover {
+    transform: none !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .card,
+  .report-item,
+  .btn,
+  .form-control {
+    border-width: 2px;
+    border-color: currentColor;
+  }
+  
+  .btn-outline-secondary,
+  .btn-outline-primary {
+    border: 2px solid currentColor;
+  }
+  
+  .text-muted {
+    color: var(--color-text);              /* Improve contrast in high contrast mode */
+  }
+}
+
+/* Focus management for keyboard navigation */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  border: 0 !important;
+}
+
+/* Ensure interactive elements are keyboard accessible */
+[tabindex="-1"]:focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
+}
+
+/* Print styles for healthcare documentation */
+@media print {
+  .primary-actions,
+  .search-controls,
+  .nav-tabs,
+  .report-actions,
+  .btn {
+    display: none !important;
+  }
+  
+  .reports-header h2 {
+    color: #000 !important;
+    page-break-after: avoid;
+  }
+  
+  .report-item {
+    page-break-inside: avoid;
+    border: 1px solid #000 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  
+  .report-item h4 {
+    color: #000 !important;
+=======
+/* ========== REDUCED MOTION SUPPORT ========== */
+@media (prefers-reduced-motion: reduce) {
+  .stat-card,
+  .action-card,
+  .report-item,
+  .btn,
+  .back-button {
+    transition: none;
+  }
+  
+  .back-button:hover,
+  .stat-card:hover,
+  .action-card:hover,
+  .report-item:hover {
+    transform: none;
+>>>>>>> c9614a6 (feat: Enhance PWA functionality and improve UX)
+  }
+}
