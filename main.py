@@ -61,7 +61,7 @@ API_KEY = os.getenv("OPENROUTER_API_KEY")
 logging.basicConfig(level=logging.INFO)
 
 # Import our modular utilities
-from modules.database import get_db_connection
+from modules.database import get_db_connection, get_database_path
 from modules.appointments import (
     Booking, get_bookings, get_booking_by_id, create_booking,
     update_booking, delete_booking, get_bookings_for_day_for_therapists,
@@ -139,7 +139,7 @@ app.add_middleware(SessionMiddleware, **session_config)
 def toggle_alert_resolution(patient_id: str, appointment_id: str, payload: AlertResolutionModel, request: Request = None, user: dict = Depends(require_auth)):
     # Use validated payload data
     resolved = payload.resolved
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         conn.execute("""
             UPDATE treatment_notes
             SET alert_resolved = ?
@@ -149,7 +149,7 @@ def toggle_alert_resolution(patient_id: str, appointment_id: str, payload: Alert
 # --- New endpoint: Get latest alerts for a patient ---
 @app.get("/api/patient/{patient_id}/alerts")
 def get_alerts(patient_id: str, user: dict = Depends(require_auth)):
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cursor = conn.execute("""
             SELECT appointment_id, appointment_date, therapist_name, profession, alert_comment, alert_resolved
             FROM treatment_notes
@@ -171,7 +171,7 @@ def get_alerts(patient_id: str, user: dict = Depends(require_auth)):
 import re
 # --- Helper function for generating AI medical history summary ---
 async def generate_ai_medical_history(patient_id: str) -> str:
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cursor = conn.execute(
             """
             SELECT appointment_date, start_time, profession, therapist_name,
@@ -411,7 +411,7 @@ async def get_latest_note_summary_endpoint(patient_id: str, profession: str, use
 
 @app.get("/api/patient/{patient_id}/latest-session-note/{profession}")
 def get_latest_session_note(patient_id: int, profession: str, user: dict = Depends(require_auth)):
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cursor = conn.execute("""
             SELECT appointment_date, start_time, therapist_name, subjective_findings, objective_findings, treatment, plan, note_to_patient
             FROM treatment_notes
@@ -445,7 +445,7 @@ def check_treatment_notes(ids: str = Query(..., description="Comma separated app
     placeholders = ",".join("?" * len(id_list))
     sql = "SELECT appointment_id FROM treatment_notes WHERE appointment_id IN (" + placeholders + ")"
     
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         rows = conn.execute(sql, id_list).fetchall()
     found = {row[0] for row in rows}
     return [{"id": appt_id, "has_note": appt_id in found} for appt_id in id_list]
@@ -468,7 +468,7 @@ def create_billing_session(data: dict = Body(...), request: Request = None, user
         if not therapist_id:
             raise HTTPException(status_code=400, detail="Therapist ID is required")
 
-        with sqlite3.connect("data/bookings.db") as conn:
+        with sqlite3.connect(get_database_path()) as conn:
             cursor = conn.cursor()
             session_id = session_data["id"]
             
@@ -568,7 +568,7 @@ def submit_billing(data: BillingSubmissionModel, user: dict = Depends(require_th
     if not session_data or not entries_data:
         raise HTTPException(status_code=400, detail="Session and entries are required")
 
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cursor = conn.cursor()
 
         # Insert or replace billing session
@@ -661,7 +661,7 @@ def submit_billing(data: BillingSubmissionModel, user: dict = Depends(require_th
 # --- GET: Return all billing codes as JSON ---
 @app.get("/api/billing_codes")
 def get_billing_codes():
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cursor = conn.execute("SELECT id, code, description, base_fee, profession FROM billing_codes;")
         cols = [col[0] for col in cursor.description]
         return [dict(zip(cols, row)) for row in cursor.fetchall()]
@@ -673,7 +673,7 @@ def get_billing_sessions(patient_id: str, user: dict = Depends(require_auth)):
     if not patient_id or patient_id == "undefined":
         return {"error": "Invalid patient ID"}
     
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cursor = conn.execute("""
             SELECT * FROM billing_sessions WHERE patient_id = ?
         """, (patient_id,))
@@ -692,7 +692,7 @@ def get_billing_sessions(patient_id: str, user: dict = Depends(require_auth)):
 # --- New endpoint: List all invoices with their entries and therapist profession ---
 @app.get("/invoices")
 def list_invoices():
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cursor = conn.execute("""
             SELECT i.*, t.profession AS therapist_profession
             FROM invoices i
@@ -718,7 +718,7 @@ def invoice_pdf(invoice_id: str):
     Generate and return a PDF of the specified invoice.
     """
     # Fetch invoice header
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cur = conn.execute("SELECT id, appointment_id, patient_id, therapist_id, invoice_date, status, total_amount FROM invoices WHERE id = ?", (invoice_id,))
         inv = cur.fetchone()
         if not inv:
@@ -914,7 +914,7 @@ def invoice_pdf(invoice_id: str):
     )
 # Users table setup
 def init_users_table():
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1111,7 +1111,7 @@ async def contact_send(data: ContactRequest):
     return {"ok": True, "mode": "console"}
 # Database setup
 def init_db():
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS bookings (
                 id TEXT PRIMARY KEY,
@@ -1149,7 +1149,7 @@ def add_supplementary_note_endpoint(appointment_id: str, data: dict, request: Re
 # --- Outcome Measure Types endpoint (dropdown source, subscores only) ---
 
 def init_patients_table():
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS patients (
                 id TEXT PRIMARY KEY,
@@ -1204,7 +1204,7 @@ def init_patients_table():
 
 # Medical aids table setup
 def init_medical_aids_table():
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS medical_aids (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1242,7 +1242,7 @@ def populate_medical_aids():
         "Tsogo Sun Group Medical Scheme", "Umvuzo Health Medical Scheme", "University of Kwa-Zulu Natal Medical Scheme",
         "Witbank Coalfields Medical Aid Scheme", "Wooltru Healthcare Fund"
     ]
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         for name in aids:
             try:
                 conn.execute("INSERT INTO medical_aids (name) VALUES (?)", (name,))
@@ -1252,7 +1252,7 @@ def populate_medical_aids():
 
 # Therapist table setup
 def init_therapists_table():
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS therapists (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1273,7 +1273,7 @@ def init_therapists_table():
         """)
 
 def init_settings_table():
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS settings (
                 id INTEGER PRIMARY KEY,
@@ -1292,7 +1292,7 @@ def init_settings_table():
 
 # Professions table setup
 def init_professions_table():
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS professions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1307,7 +1307,7 @@ def init_professions_table():
 
 # Clinics table setup
 def init_clinics_table():
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS clinics (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1320,7 +1320,7 @@ def init_clinics_table():
 
 # Billing tables setup
 def init_billing_tables():
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS billing_codes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1472,7 +1472,7 @@ def add_booking(booking: Booking, request: Request):
     if not therapist_id:
         raise HTTPException(status_code=400, detail="Therapist ID is required")
 
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         try:
             conn.execute("""
                 INSERT INTO bookings (id, name, therapist, date, day, time, duration, notes, colour, user_id, profession, patient_id, appointment_type_id, billing_code)
@@ -1587,7 +1587,7 @@ def update_booking(booking_id: str, booking: Booking, request: Request):
     if not therapist_id:
         raise HTTPException(status_code=400, detail="Therapist ID is required")
 
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         if not conn.execute("SELECT 1 FROM bookings WHERE id = ?", (booking_id,)).fetchone():
             raise HTTPException(status_code=404, detail="Booking not found")
         conn.execute("""
@@ -1626,7 +1626,7 @@ def complete_billing(booking_id: str, request: Request):
     # ensure authenticated
     if not request.session.get('user_id'):
         raise HTTPException(status_code=401, detail="Not authenticated")
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         # mark booking as billed
         conn.execute("UPDATE bookings SET billing_completed = 1 WHERE id = ?", (booking_id,))
         # only insert a draft if one doesn't exist
@@ -1675,7 +1675,7 @@ def complete_billing(booking_id: str, request: Request):
 @app.delete("/bookings/{booking_id}")
 def delete_booking(booking_id: str):
     print(f"🧹 DELETE called for booking ID: {booking_id}")  # Debug log
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         exists = conn.execute("SELECT 1 FROM bookings WHERE id = ?", (booking_id,)).fetchone()
         print(f"🔎 Booking exists? {bool(exists)}")  # Debug log
         if not exists:
@@ -1865,7 +1865,7 @@ async def save_patient(request: Request, user: dict = Depends(require_therapist_
     import random
     patient_id = f"PAT_{int(time.time())}_{random.randint(1000, 9999)}"
     
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         conn.execute("""
             INSERT INTO patients (
                 id, first_name, surname, preferred_name, date_of_birth, gender,
@@ -1943,7 +1943,7 @@ def update_patient(patient_id: int, patient_data: PatientUpdateModel):
     if not fields:
         raise HTTPException(status_code=400, detail="No valid fields to update")
     
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         # Ensure icd10_codes column exists
         try:
             conn.execute("ALTER TABLE patients ADD COLUMN icd10_codes TEXT;")
@@ -1961,7 +1961,7 @@ def update_patient(patient_id: int, patient_data: PatientUpdateModel):
 # --- GET all patients, including icd10_codes ---
 @app.get("/patients")
 def get_patients(user: dict = Depends(require_therapist_or_admin)):
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cursor = conn.execute("SELECT * FROM patients")
         columns = [column[0] for column in cursor.description]
         all_patients = [dict(zip(columns, row)) for row in cursor.fetchall()]
@@ -2070,7 +2070,7 @@ def import_patients(file: UploadFile = File(...), user: dict = Depends(require_a
         import time
         import random
         
-        with sqlite3.connect("data/bookings.db") as conn:
+        with sqlite3.connect(get_database_path()) as conn:
             for _, row in df.iterrows():
                 # Generate unique patient ID for each import
                 patient_id = f"PAT_{int(time.time())}_{random.randint(1000, 9999)}"
@@ -2164,7 +2164,7 @@ def get_therapist_endpoint(therapist_id: int):
 @app.post("/save-therapist")
 def save_therapist_endpoint(therapist: Therapist):
     """Create therapist and linked user using the therapists module"""
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cursor = conn.cursor()
         
         # Create therapist using module function
@@ -2365,7 +2365,7 @@ def create_system_backup_endpoint():
 
 @app.get("/patients")
 def get_patients():
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cursor = conn.execute("""
             SELECT 
                 id, first_name, surname, preferred_name, gender, date_of_birth,
@@ -2443,7 +2443,7 @@ def update_patient_admin(patient_id: int, patient_data: PatientUpdateModel, user
     
     values.append(patient_id)
     
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         # Build safe SQL query - fields are now whitelisted
         sql_query = "UPDATE patients SET " + ", ".join(fields) + " WHERE id = ?"
         result = conn.execute(sql_query, values)
@@ -2455,7 +2455,7 @@ def update_patient_admin(patient_id: int, patient_data: PatientUpdateModel, user
 # API endpoint to delete a patient by ID
 @app.delete("/delete-patient/{patient_id}")
 def delete_patient(patient_id: int, user: dict = Depends(require_admin)):
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         if not conn.execute("SELECT 1 FROM patients WHERE id = ?", (patient_id,)).fetchone():
             raise HTTPException(status_code=404, detail="Patient not found")
         conn.execute("DELETE FROM patients WHERE id = ?", (patient_id,))
@@ -2541,7 +2541,7 @@ def serve_mdt_calendar(request: Request):
 # --- New JSON endpoint: get all billing codes ---
 @app.get("/api/billing-codes")
 def get_billing_codes(profession: Optional[str] = None):
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         if profession:
             cursor = conn.execute("""
                 SELECT id, code, description, base_fee, profession
@@ -2565,7 +2565,7 @@ def get_billing_codes(profession: Optional[str] = None):
 from typing import Optional
 @app.get("/api/billing_modifiers")
 def get_billing_modifiers(profession: Optional[str] = None):
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         if profession:
             cursor = conn.execute("""
                 SELECT modifier_code, modifier_name, modifier_description, modifier_effect, modifier_multiplier, profession
@@ -2599,7 +2599,7 @@ def serve_billing_codes(request: Request):
 @app.get("/billing-codes-for-profession")
 def get_billing_codes_for_profession(profession: str):
     profession = profession.lower()  # Normalize input for case-insensitive match
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cursor = conn.execute("""
             SELECT id, code, description, base_fee, profession
             FROM billing_codes
@@ -2621,7 +2621,7 @@ def get_billing_codes_for_profession(profession: str):
 
 @app.put("/billing-codes/{code_id}")
 def update_billing_code(code_id: int, updated_data: BillingCodeUpdateModel):
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cursor = conn.cursor()
         data_dict = updated_data.dict(exclude_none=True)
         cursor.execute("""
@@ -2640,7 +2640,7 @@ def update_billing_code(code_id: int, updated_data: BillingCodeUpdateModel):
 # --- DELETE endpoint for deleting billing codes ---
 @app.delete("/billing-codes/{code_id}")
 def delete_billing_code(code_id: int):
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cursor = conn.cursor()
         if not cursor.execute("SELECT 1 FROM billing_codes WHERE id = ?", (code_id,)).fetchone():
             raise HTTPException(status_code=404, detail="Billing code not found")
@@ -2655,7 +2655,7 @@ def get_full_treatment_note_endpoint(appointment_id: str):
     """Get full treatment note using the treatment_notes module"""
     return get_full_treatment_note(appointment_id)
 
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         # Check for duplicate billing code for the same profession
         existing = conn.execute("""
             SELECT 1 FROM billing_codes WHERE code = ? AND profession = ?
@@ -2694,7 +2694,7 @@ def bookings_for_day_for_therapists(
         JOIN therapists t ON b.therapist = t.id
         WHERE b.date = ? AND b.therapist IN ({placeholders})
     """
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cursor = conn.execute(query, [date] + therapist_ids)
         columns = [column[0] for column in cursor.description]
         rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
@@ -2708,7 +2708,7 @@ def bookings_for_day_for_therapists(
 # Place this near the other /api/ or /billing-codes routes
 @app.get("/api/billing_modifiers")
 def get_Billing_modifiers():
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cursor = conn.execute("SELECT code, description, adjustment_factor FROM billing_modifiers")
         return [
             {
@@ -2779,7 +2779,7 @@ def get_icd10_codes(query: str = Query(default="", description="Search ICD-10 co
 
 @app.get("/api/patient/{patient_id}")
 def get_patient_by_id(patient_id: int, user: dict = Depends(require_auth)):
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cursor = conn.execute("SELECT * FROM patients WHERE id = ?", (patient_id,))
         row = cursor.fetchone()
         if not row:
@@ -2790,7 +2790,7 @@ def get_patient_by_id(patient_id: int, user: dict = Depends(require_auth)):
 # --- GET distinct professions who have booked the patient ---
 @app.get("/api/patient/{patient_id}/professions")
 def get_patient_professions(patient_id: int, user: dict = Depends(require_auth)):
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cursor = conn.execute("""
             SELECT DISTINCT t.profession
             FROM bookings b
@@ -2836,13 +2836,13 @@ def get_patient_ai_summary_endpoint(patient_id: int, user: dict = Depends(requir
 # --- API: Check if a treatment note exists for an appointment ---
 @app.get("/api/check-treatment-note/{appointment_id}")
 def check_treatment_note(appointment_id: str):
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cur = conn.execute("SELECT 1 FROM treatment_notes WHERE appointment_id = ?", (appointment_id,))
         return {"has_note": bool(cur.fetchone())}
 
 @app.get("/api/treatment-notes/full/{appointment_id}")
 def get_full_notes(appointment_id: str):
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         # Fetch main treatment note
         cur = conn.execute("""
             SELECT subjective_findings, objective_findings, treatment, plan, note_completed_at
@@ -2882,7 +2882,7 @@ def get_full_notes(appointment_id: str):
 # Returns all treatment notes that have not yet been billed (billing_completed = 0 or NULL)
 @app.get("/api/unbilled-treatment-notes")
 def get_unbilled_treatment_notes(user: dict = Depends(require_therapist_or_admin)):
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cursor = conn.execute("""
             SELECT tn.*, b.name as booking_name, b.therapist as booking_therapist, b.date as booking_date
             FROM treatment_notes tn
@@ -2900,7 +2900,7 @@ def get_unbilled_treatment_notes(user: dict = Depends(require_therapist_or_admin
 def billing_for_appointment(payload: AppointmentBillingModel):
     appointment_id = payload.appointment_id
     billing_entries = payload.billing_entries
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cursor = conn.cursor()
         # Find patient_id and therapist_id from bookings or treatment_notes
         booking = cursor.execute("SELECT patient_id, therapist FROM bookings WHERE id = ?", (appointment_id,)).fetchone()
@@ -2950,7 +2950,7 @@ from datetime import datetime
 # GET /invoices — Return all invoices.
 @app.get("/invoices")
 def get_invoices():
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cursor = conn.execute("""
             SELECT * FROM invoices
         """)
@@ -2969,7 +2969,7 @@ def create_invoice(data: InvoiceCreateModel):
     if not invoice_id:
         invoice_id = f"INV-{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
     
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cursor = conn.cursor()
         # Insert invoice
         cursor.execute("""
@@ -2996,7 +2996,7 @@ def create_invoice(data: InvoiceCreateModel):
 # GET /invoices/{invoice_id} — Return invoice details and entries.
 @app.get("/invoices/{invoice_id}")
 def get_invoice(invoice_id: str = Path(...)):
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         cursor = conn.execute("SELECT * FROM invoices WHERE id = ?", (invoice_id,))
         invoice = cursor.fetchone()
         if not invoice:
@@ -3025,7 +3025,7 @@ def update_invoice(invoice_id: str, update_data: InvoiceUpdateModel, user: dict 
         raise HTTPException(status_code=400, detail="No valid fields to update")
     values.append(invoice_id)
     
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         # Build safe SQL query - fields are whitelisted so this is safe
         sql_query = "UPDATE invoices SET " + ", ".join(fields) + " WHERE id = ?"
         cur = conn.execute(sql_query, values)
@@ -3036,7 +3036,7 @@ def update_invoice(invoice_id: str, update_data: InvoiceUpdateModel, user: dict 
 # DELETE /invoices/{invoice_id} — Delete invoice and unassign billing entries.
 @app.delete("/invoices/{invoice_id}")
 def delete_invoice(invoice_id: str):
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         # Unassign billing entries
         conn.execute("UPDATE billing_entries SET invoice_id = NULL WHERE invoice_id = ?", (invoice_id,))
         # Delete invoice
@@ -3059,7 +3059,7 @@ def get_patient_bookings(patient_id: str, user: dict = Depends(require_auth)):
     Return a list of bookings for a specific patient, including therapist name,
     billing and notes completion status.
     """
-    with sqlite3.connect("data/bookings.db") as conn:
+    with sqlite3.connect(get_database_path()) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute("""
@@ -3218,7 +3218,7 @@ def search_patients_endpoint(
 ):
     """Search patients by name, MRN, or ID"""
     try:
-        with sqlite3.connect("data/bookings.db") as conn:
+        with sqlite3.connect(get_database_path()) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             
@@ -3251,7 +3251,7 @@ def get_recent_patients_endpoint(
 ):
     """Get recent patients based on recent bookings"""
     try:
-        with sqlite3.connect("data/bookings.db") as conn:
+        with sqlite3.connect(get_database_path()) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             
@@ -3286,7 +3286,7 @@ def get_recent_patients_endpoint(
 def get_recent_patients_test_endpoint(limit: int = Query(5, le=20)):
     """Test endpoint without auth to debug patient loading"""
     try:
-        with sqlite3.connect("data/bookings.db") as conn:
+        with sqlite3.connect(get_database_path()) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             
@@ -3320,7 +3320,7 @@ def get_therapists_test_endpoint():
     """Test therapists loading"""
     try:
         import sqlite3
-        with sqlite3.connect("data/bookings.db") as conn:
+        with sqlite3.connect(get_database_path()) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             

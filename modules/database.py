@@ -3,8 +3,33 @@ Database utilities and connection management for HadadaHealth
 """
 import sqlite3
 import json
+import os
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any, Union
+
+
+def get_database_path():
+    """
+    Get the database path, handling different deployment environments
+    """
+    # Use environment variable if set (for production deployments like Render)
+    db_path = os.environ.get('DATABASE_PATH')
+    if db_path:
+        return db_path
+    
+    # For local development, use data directory
+    if os.path.exists('data') or os.getcwd().endswith('HadadaHealth'):
+        db_dir = 'data'
+        db_path = os.path.join(db_dir, 'bookings.db')
+    else:
+        # For production environments with read-only filesystem, use /tmp
+        db_dir = '/tmp/hadadahealth'
+        db_path = os.path.join(db_dir, 'bookings.db')
+    
+    # Create directory if it doesn't exist
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    
+    return db_path
 
 
 def get_db_connection():
@@ -12,7 +37,7 @@ def get_db_connection():
     Get database connection with row factory for dict-like access
     Returns: sqlite3.Connection with Row factory
     """
-    conn = sqlite3.connect("data/bookings.db")
+    conn = sqlite3.connect(get_database_path())
     conn.row_factory = sqlite3.Row
     return conn
 
